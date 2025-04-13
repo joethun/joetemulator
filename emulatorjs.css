@@ -1,0 +1,110 @@
+    body,
+    html {
+      height: 100%;
+      background-color: #00070a;
+      color: #f9f9f9;
+      font-family: Comfortaa;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body,
+    #box,
+    #top {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    #box {
+      color: #f9f9f9;
+      height: 20em;
+      width: 30em;
+      max-width: 70%;
+      max-height: 50%;
+      background-color: #101d25;
+      border-radius: 0.9em;
+      border: 1.5px solid #1aafff;
+      position: relative;
+      flex-direction: column;
+      transition-duration: 0.2s;
+      overflow: hidden;
+      font-family: Comfortaa;
+      font-size: 20px;
+      margin: 5px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    #box:hover,
+    #box[drag] {
+      border-color: #1aafff;
+      color: #f9f9f9;
+    }
+
+    #input {
+      cursor: pointer;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+    }
+
+    #display {
+      width: 100%;
+      height: 100%;
+    }
+
+    select,
+    button {
+      padding: 0 0.4em;
+      margin: 0.5em 0.1em;
+      width: 15em;
+      max-width: 100%;
+      font-family: Comfortaa;
+      font-size: 16px;
+      background-color: #101d25;
+      color: #f9f9f9;
+      border-radius: 0.9em;
+      border: 1.5px solid #1aafff;
+      cursor: pointer;
+      transition-duration: 0.2s;
+      vertical-align: top;
+      height: 2.5em;
+    }
+
+    #version button {
+      fill: #1aafff;
+      width: auto;
+      padding: 0.2em 0.3em;
+      text-align: center;
+      margin: 0.5em 0.1em;
+    }
+
+    #version svg {
+      margin-top: 0.05em;
+      margin-left: 0.05em;
+      width: 1.8em;
+    }
+
+    #top h1 {
+      font-size: 33px;
+      margin-top: -25px;
+      font-family: Comfortaa;
+    }
+
+    #top h1 a {
+      text-decoration: none;
+      color: #f9f9f9;
+      font-family: Comfortaa;
+    }
+
+    #box span {
+      font-size: 22px;
+    }
