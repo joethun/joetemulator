@@ -426,7 +426,6 @@
 		background-color: transparent !important;
 	}
 
-	/* Make menuhiderlabel background transparent on hover */
 	.menuhiderlabel:hover,
 	.menuhiderlabel:hover::before,
 	.menuhiderlabel:hover::after {
