@@ -1,0 +1,434 @@
+	body {
+		visibility: hidden;
+		opacity: 0;
+		transition: opacity 0.25s ease-in-out;
+	}
+
+	body.visible {
+		visibility: visible;
+		opacity: 1;
+	}
+
+	body.is-fullscreen #ffd {
+		padding-top: 310px !important;
+	}
+
+	body.is-fullscreen,
+	body.is-fullscreen:fullscreen,
+	body.is-fullscreen:-webkit-full-screen,
+	body.is-fullscreen:-moz-full-screen,
+	body.is-fullscreen:-ms-fullscreen {
+		background-color: var(--body-bg-color) !important;
+	}
+
+	:root {
+		--body-bg-color: #00070a;
+		--menu-bg-color: #00070a;
+		--popup-bg-color: #00070a;
+		--button-bg-color: #00141f;
+		--button-border-color: #1aafff;
+		--button-text-color: #1aafff;
+		--text-color: #f9f9f9;
+		--scrollbar-track-color: #010305;
+		--scrollbar-thumb-color: #1aafff;
+	}
+
+	* {
+		font-family: 'Comfortaa', sans-serif !important;
+	}
+
+	a {
+		text-decoration: none;
+	}
+
+	.nav-button {
+		text-decoration: none;
+	}
+
+	::-webkit-scrollbar {
+		width: 10px;
+	}
+
+	::-webkit-scrollbar-track {
+		background: var(--scrollbar-track-color);
+	}
+
+	::-webkit-scrollbar-thumb {
+		background: var(--scrollbar-thumb-color);
+		border-radius: 5px;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		filter: brightness(1.2);
+	}
+
+	#menu,
+	#menu>li,
+	#menu li ul,
+	#menu li ul li,
+	#menu li:hover,
+	#menu li ul li:hover,
+	#fullscreenbutton,
+	#menubutton,
+	#menu li,
+	.menuback,
+	.menuhiderlabel,
+	.menuback a,
+	label[for="menuhider"],
+	#menuhider+.menuhiderlabel::before,
+	#menuhider:checked+.menuhiderlabel::before,
+	.menuhiderlabel::before,
+	.menuhiderlabel::after,
+	#menubar {
+		background-color: var(--menu-bg-color, #00070a) !important;
+	}
+
+	.menuhiderlabel::before,
+	.menuhiderlabel::after {
+		border-color: var(--menu-bg-color, #00070a) !important;
+	}
+
+	label[for="menuhider"] {
+		border: none !important;
+	}
+
+	.enhanced-container {
+		background-color: var(--button-bg-color) !important;
+		border: 1.5px solid var(--button-border-color) !important;
+		border-radius: 0.9em !important;
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+		padding: 25px !important;
+		max-width: 550px !important;
+		width: 85% !important;
+		margin: 0 auto !important;
+		left: 0 !important;
+		right: 0 !important;
+		position: relative !important;
+		min-height: 280px !important;
+		align-items: center !important;
+		justify-content: center !important;
+	}
+
+	#menubar {
+		background-color: transparent !important;
+	}
+
+	body {
+		background-color: var(--body-bg-color, #00070a) !important;
+	}
+
+	#managers,
+	.modaltop,
+	#keybindmanager,
+	#savemanager,
+	#screenshotmanager,
+	#romselector,
+	.managertable,
+	.managertableparent,
+	.managertable tr:nth-child(odd),
+	.managertable tr:nth-child(even),
+	.managertable td {
+		background-color: var(--popup-bg-color, #00070a) !important;
+	}
+
+	#managers,
+	.modaltop,
+	#keybindmanager,
+	#savemanager,
+	#screenshotmanager,
+	#romselector {
+		color: #f9f9f9 !important;
+	}
+
+	.managertable,
+	.managertable td {
+		border-color: var(--button-border-color, #1aafff) !important;
+		border-width: 1px;
+	}
+
+	button,
+	input[type="button"],
+	#savekeybinds,
+	#resetkeybinds,
+	span[data-action] {
+		background-color: var(--button-bg-color) !important;
+		border: 1.5px solid var(--button-border-color) !important;
+		color: #f9f9f9 !important;
+		border-radius: 0.9em !important;
+		padding: 8px 15px !important;
+		cursor: pointer !important;
+		transition: filter 0.2s !important;
+		font-family: 'Comfortaa', sans-serif !important;
+	}
+
+	button:hover,
+	input[type="button"]:hover,
+	#savekeybinds:hover,
+	#resetkeybinds:hover,
+	span[data-action]:hover {
+		filter: brightness(1.2) !important;
+	}
+
+	span[data-action="download"],
+	span[data-action="delete"],
+	.theme-styled-button {
+		padding: 6px 12px !important;
+		display: inline-block !important;
+		margin: 2px !important;
+		font-size: 0.9em !important;
+		background-color: #000000 !important;
+	}
+
+	.sidealert {
+		background-color: var(--button-border-color) !important;
+		color: var(--text-color) !important;
+		border-radius: 4px !important;
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+	}
+
+	#modals {
+		background-color: rgba(0, 0, 0, 0.5) !important;
+		backdrop-filter: blur(5px);
+		-webkit-backdrop-filter: blur(5px);
+		z-index: 9999 !important;
+	}
+
+	#managers {
+		border: 1.5px solid var(--button-border-color, #1aafff) !important;
+		border-radius: 8px;
+		left: 50% !important;
+		top: 50% !important;
+		transform: translate(-50%, -50%) !important;
+		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+		position: fixed !important;
+		max-width: 80%;
+		max-height: 90%;
+		margin: 0 !important;
+		overflow: auto;
+	}
+
+	#managerclose {
+		color: #fff !important;
+		font-size: 20px;
+		cursor: pointer;
+		padding: 5px;
+		transition: color 0.2s;
+	}
+
+	#managerclose:hover {
+		color: var(--button-border-color, #1aafff) !important;
+	}
+
+	#managertitle {
+		color: #f9f9f9 !important;
+		margin: 0;
+		padding: 10px;
+	}
+
+	.modaltop {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		border-bottom: none !important;
+		padding: 0 10px;
+	}
+
+	.modaltop {
+		padding-top: 15px !important;
+		padding-bottom: 10px !important;
+	}
+
+	#managertitle {
+		margin-top: 10px !important;
+		margin-bottom: 10px !important;
+		text-align: center !important;
+	}
+
+	#upload,
+	.uploadbutton {
+		background-color: var(--button-bg-color) !important;
+		border: 1.5px solid var(--button-border-color) !important;
+		color: var(--text-color) !important;
+		border-radius: 0.9em !important;
+		cursor: pointer !important;
+		transition: filter 0.2s !important;
+		padding: 10px 15px !important;
+		height: 67.5px !important;
+		font-size: 20.75px !important;
+		margin: -5px auto 25px !important;
+		width: 415px !important;
+		display: block !important;
+		font-weight: normal !important;
+	}
+
+	#upload:hover,
+	.uploadbutton:hover,
+	.uploadimage:hover,
+	button:hover,
+	input[type="button"]:hover,
+	#savekeybinds:hover,
+	#resetkeybinds:hover,
+	span[data-action]:hover,
+	#managerclose:hover {
+		filter: brightness(1.2) !important;
+	}
+
+	.uploadimage {
+		background-color: var(--button-bg-color) !important;
+		margin: 0px 7px 0 7px !important;
+		cursor: pointer !important;
+		transition: filter 0.2s !important;
+		border-radius: 4px !important;
+		padding: 4px !important;
+		width: 22px !important;
+		height: 22px !important;
+	}
+
+	.cloud-storage-buttons {
+		display: flex !important;
+		justify-content: center !important;
+		align-items: center !important;
+		gap: 8px !important;
+		margin-top: 5px !important;
+		margin-bottom: 5px !important;
+	}
+
+	#uploadarea {
+		border-radius: 0.9em !important;
+		margin-top: -10px !important;
+		padding-top: 25px !important;
+		display: flex !important;
+		flex-direction: column !important;
+		justify-content: space-between !important;
+		min-height: 160px !important;
+	}
+
+	#uploadarea h1 {
+		margin-top: 15px !important;
+		margin-bottom: 30px !important;
+		text-align: center !important;
+	}
+
+	#uploadarea h1 span {
+		font-size: 40px !important;
+		font-weight: bold !important;
+	}
+
+	#uploadarea h1 span:last-child {
+		font-size: 40px !important;
+		position: relative;
+		top: -8px;
+	}
+
+	#coreselectarea {
+		margin-bottom: 20px !important;
+		margin-top: 10px !important;
+	}
+
+	.corelistul {
+		display: grid !important;
+		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+		grid-gap: 5px !important;
+		max-height: 180px !important;
+		overflow-y: auto !important;
+		padding-left: 0 !important;
+		margin-top: 10px !important;
+	}
+
+	.coreorderrow {
+		display: flex !important;
+		align-items: center !important;
+		gap: 10px !important;
+		margin-bottom: 10px !important;
+	}
+
+	#webretrotitle {
+		margin-top: 10px !important;
+		margin-bottom: 10px !important;
+		text-align: center !important;
+	}
+
+	#coreorder,
+	select {
+		background-color: var(--button-bg-color) !important;
+		border: 1.5px solid var(--button-border-color) !important;
+		color: var(--text-color) !important;
+	}
+
+	.enhanced-container h1,
+	.enhanced-container h3,
+	.enhanced-container label,
+	.enhanced-container span {
+		color: var(--text-color) !important;
+	}
+
+	#ffd {
+		display: flex;
+		justify-content: center !important;
+		align-items: center !important;
+		min-height: calc(100vh - 170px) !important;
+		padding-top: 150px !important;
+		transition: padding-top 0.25s ease-in-out !important;
+	}
+
+	#ffdcontent {
+		padding-top: 15px !important;
+	}
+
+	#keybindtable tr {
+		height: 35px !important;
+	}
+
+	#keybindtable td:first-child {
+		font-weight: bold !important;
+	}
+
+	body *[draggable=true] {
+		-webkit-user-drag: none;
+		-khtml-user-drag: none;
+		-moz-user-drag: none;
+		-o-user-drag: none;
+	}
+
+	html,
+	body {
+		-webkit-user-drag: none;
+		-khtml-user-drag: none;
+		-moz-user-drag: none;
+		-o-user-drag: none;
+	}
+
+	#menu {
+		background-color: transparent !important;
+	}
+
+	#menu>li {
+		background-color: transparent !important;
+	}
+
+	#menu li:hover {
+		background-color: rgba(0, 0, 0, 0.2) !important;
+	}
+
+	#menu li ul,
+	#menu li ul li {
+		background-color: var(--menu-bg-color, #00070a) !important;
+	}
+
+	#fullscreenbutton,
+	#menubutton,
+	.menuback,
+	.menuhiderlabel,
+	.menuback a,
+	label[for="menuhider"],
+	#menuhider+.menuhiderlabel::before,
+	#menuhider:checked+.menuhiderlabel::before {
+		background-color: transparent !important;
+	}
+
+	/* Make menuhiderlabel background transparent on hover */
+	.menuhiderlabel:hover,
+	.menuhiderlabel:hover::before,
+	.menuhiderlabel:hover::after {
+		background-color: transparent !important;
+	} 
