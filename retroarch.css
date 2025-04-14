@@ -92,6 +92,16 @@
 		border: none !important;
 	}
 
+	#menu li ul {
+		border-radius: 0.9em !important;
+		overflow: hidden;
+		padding-bottom: 5px !important;
+	}
+
+	#menubar {
+		background-color: transparent !important;
+	}
+
 	.enhanced-container {
 		background-color: var(--button-bg-color) !important;
 		border: 1.5px solid var(--button-border-color) !important;
@@ -107,10 +117,6 @@
 		min-height: 280px !important;
 		align-items: center !important;
 		justify-content: center !important;
-	}
-
-	#menubar {
-		background-color: transparent !important;
 	}
 
 	body {
@@ -415,6 +421,15 @@
 		background-color: var(--menu-bg-color, #00070a) !important;
 	}
 
+	.menuback a {
+		background-image: none !important;
+	}
+
+	.menuback a::before,
+	.menuback a::after {
+		display: none !important;
+	}
+
 	#fullscreenbutton,
 	#menubutton,
 	.menuback,
@@ -430,4 +445,4 @@
 	.menuhiderlabel:hover::before,
 	.menuhiderlabel:hover::after {
 		background-color: transparent !important;
-	} 
+	}
