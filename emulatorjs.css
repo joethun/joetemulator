@@ -20,6 +20,17 @@
       flex-direction: column;
     }
 
+    :root {
+      --scrollbar-track-color: #010305;
+      --scrollbar-thumb-color: #1aafff;
+      --body-bg-color: #00070a;
+      --button-bg-color: #00141f;
+      --button-border-color: #1aafff;
+      --button-text-color: #1aafff;
+      --text-color: #f9f9f9;
+      --article-bg-color: #00141f;
+    }
+
     #box {
       color: #f9f9f9;
       height: 20em;
