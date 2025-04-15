@@ -418,7 +418,11 @@
 
 	#menu li ul,
 	#menu li ul li {
-		background-color: var(--menu-bg-color, #00070a) !important;
+		background-color: var(--menu-bg-color, ) !important;
+	}
+
+	#menu li ul li:hover {
+		background-color: var(--button-bg-color) !important;
 	}
 
 	.menuback a {
