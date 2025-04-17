@@ -2,4 +2,4 @@
 
 [joetemulator.rf.gd](https://joetemulator.rf.gd)
 
-[Guides/Wiki](https://github.com/joethun/joetwebemulator/wiki/Joe-T-Web-Emulator-Wiki-Guides)
+[Guides/Wiki](https://github.com/joethun/joetwebemulator/wiki/Documentation-%7C-Guides)
