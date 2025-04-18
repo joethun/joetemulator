@@ -1,15 +1,4 @@
-	body {
-		visibility: hidden;
-		opacity: 0;
-		transition: opacity 0.25s ease-in-out;
-	}
-
-	body.visible {
-		visibility: visible;
-		opacity: 1;
-	}
-
-	body.is-fullscreen #ffd {
+body.is-fullscreen #ffd {
 		padding-top: 310px !important;
 	}
 
@@ -118,6 +107,54 @@
 		min-height: 280px !important;
 		align-items: center !important;
 		justify-content: center !important;
+		animation: fadeInUp 0.6s ease-out forwards;
+		opacity: 0;
+		transform: translateY(20px);
+	}
+
+	.enhanced-container * {
+		animation: fadeIn 0.8s ease-out 0.3s forwards;
+		opacity: 0;
+	}
+
+	#ffdcontent {
+		animation: fadeIn 0.8s ease-out 0.3s forwards;
+		opacity: 0;
+	}
+
+	#rom {
+		animation: fadeIn 0.8s ease-out 0.3s forwards;
+		opacity: 0;
+	}
+
+	#upload {
+		animation: fadeIn 0.8s ease-out 0.3s forwards;
+		opacity: 0;
+	}
+
+	.core-option-selector-label {
+		animation: fadeIn 0.8s ease-out 0.3s forwards;
+		opacity: 0;
+	}
+
+	@keyframes fadeInUp {
+		0% {
+			opacity: 0;
+			transform: translateY(20px);
+		}
+		100% {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes fadeIn {
+		0% {
+			opacity: 0;
+		}
+		100% {
+			opacity: 1;
+		}
 	}
 
 	body {
@@ -157,10 +194,12 @@
 	input[type="button"],
 	#savekeybinds,
 	#resetkeybinds,
-	span[data-action] {
+	span[data-action],
+	.uploadbutton,
+	#upload {
 		background-color: var(--button-bg-color) !important;
 		border: 1.5px solid var(--button-border-color) !important;
-		color: #f9f9f9 !important;
+		color: var(--text-color) !important;
 		border-radius: 0.9em !important;
 		padding: 8px 15px !important;
 		cursor: pointer !important;
