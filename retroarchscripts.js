@@ -38,24 +38,6 @@
     }
 })();
 
-
-document.addEventListener('DOMContentLoaded', function () {
-    const style = document.createElement('style');
-    style.innerHTML = `
-        .enhanced-container { 
-            opacity: 1 !important; 
-            transform: translateY(0) !important; 
-            animation: none !important; 
-        }
-        .enhanced-container *, #ffdcontent, #rom, #upload, .core-option-selector-label {
-            opacity: 1 !important;
-            animation: none !important;
-        }
-    `;
-    document.head.appendChild(style);
-    document.body.classList.add('visible');
-});
-
 document.addEventListener('DOMContentLoaded', function () {
 const style = document.createElement('style');
 style.id = 'force-black-buttons-style';
