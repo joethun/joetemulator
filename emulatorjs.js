@@ -400,6 +400,20 @@ const savedTheme = localStorage.getItem("theme") || "default";
 switchTheme(savedTheme);
 
 document.addEventListener("DOMContentLoaded", () => {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .enhanced-container { 
+      opacity: 1 !important; 
+      transform: translateY(0) !important; 
+      animation: none !important; 
+    }
+    .enhanced-container *, #uploadarea, h1, #box, span { 
+      opacity: 1 !important; 
+      animation: none !important; 
+    }
+  `;
+  document.head.appendChild(style);
+
   const savedTheme = localStorage.getItem("theme") || "default";
   switchTheme(savedTheme);
 
@@ -421,9 +435,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   switchTheme(savedTheme);
   
-  setTimeout(() => {
-    document.body.classList.add('visible');
-  }, 10);
+  // Add visible class immediately without delay
+  document.body.classList.add('visible');
 });
 
 window.addEventListener("load", () => {
