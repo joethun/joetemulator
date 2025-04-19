@@ -418,6 +418,12 @@ document.addEventListener("DOMContentLoaded", () => {
       element.setAttribute("data-theme-color", "true");
     }
   });
+
+  switchTheme(savedTheme);
+  
+  setTimeout(() => {
+    document.body.classList.add('visible');
+  }, 10);
 });
 
 window.addEventListener("load", () => {
