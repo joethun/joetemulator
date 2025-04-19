@@ -50,7 +50,7 @@ body, #box, #top {
   padding: 25px !important;
   max-width: 605px !important;
   width: 85% !important;
-  height: 330px !important;
+  height: 335px !important;
   margin: 0 auto !important;
   position: relative !important;
   display: flex;
@@ -79,7 +79,7 @@ body, #box, #top {
   padding-top: 25px !important;
   display: flex !important;
   flex-direction: column !important;
-  justify-content: space-between !important;
+  justify-content: center !important;
   align-items: center !important;
   min-height: 160px !important;
   width: 100% !important;
@@ -87,8 +87,8 @@ body, #box, #top {
 }
 
 #uploadarea h1 {
-  margin-top: -35px !important;
-  margin-bottom: 30px !important;
+  margin-top: -80px !important;
+  margin-bottom: 55px !important; /* Increased to compensate so drag button stays in place */
   text-align: center !important;
 }
 
@@ -107,7 +107,7 @@ body, #box, #top {
 #box {
   color: var(--text-color);
   height: 70px !important;
-  width: 425px !important;
+  width: 415px !important;
   max-width: 85% !important;
   background-color: var(--button-bg-color) !important;
   border-radius: 0.9em !important;
@@ -117,7 +117,7 @@ body, #box, #top {
   transition-duration: 0.2s;
   overflow: hidden;
   font-family: Comfortaa;
-  margin: 10px auto !important;
+  margin: -25px !important;
   padding: 10px !important;
   text-align: center;
   align-items: center !important;

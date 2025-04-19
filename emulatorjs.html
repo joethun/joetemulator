@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="description"
+    content="Play classic retro games online with our web emulator. Enjoy your favorite retro games directly in your browser using emulatorjs and retroarch." />
+  <meta name="keywords" content="web emulator, online games, retro games, browser games" />
+  <meta name="author" content="Joe Thundercheeks" />
+  <link href="https://fonts.googleapis.com/css?family=Comfortaa" rel="stylesheet" />
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net/">
+  <title>emulatorjs</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <link rel="icon" type="image/x-icon" href="images/favicon.png" />
+  <link rel="stylesheet" href="emulatorjs.css">
+</head>
+
+<body>
+  <div id="top" style="display: none; position: absolute; visibility: hidden;"></div>
+  <div id="version" style="display: none; position: absolute; visibility: hidden;">
+    <select id="version-select"></select>
+  </div>
+  
+  <div class="container-wrapper">
+    <div class="enhanced-container">
+      <div id="uploadarea">
+        <h1><span>emulatorjs</span></h1>
+        <div id="box">
+          <input type="file" id="input" />
+          <span>drag the game / click here</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/gh/joethun/joetwebemulator@main/emulatorjs.js"></script>
+</body>
+
+</html>
