@@ -57,6 +57,7 @@ body, #box, #top {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  animation: simpleFadeIn 0.2s ease-out forwards;
 }
 
 .enhanced-container h1 {
@@ -82,12 +83,18 @@ body, #box, #top {
   align-items: center !important;
   min-height: 160px !important;
   width: 100% !important;
+  animation: simpleFadeIn 0.2s ease-out 0.05s forwards;
 }
 
 #uploadarea h1 {
   margin-top: -35px !important;
   margin-bottom: 30px !important;
   text-align: center !important;
+}
+
+@keyframes simpleFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 #uploadarea h1 span {
@@ -116,6 +123,7 @@ body, #box, #top {
   align-items: center !important;
   justify-content: center !important;
   cursor: pointer !important;
+  animation: simpleFadeIn 0.2s ease-out 0.1s forwards;
 }
 
 #box:hover, #box[drag] {
