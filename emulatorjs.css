@@ -9,17 +9,6 @@
   --article-bg-color: #00141f;
 }
 
-body {
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity 0.25s ease-in-out;
-}
-
-body.visible {
-  visibility: visible;
-  opacity: 1;
-}
-
 body, html {
   height: 100%;
   background-color: var(--body-bg-color);
