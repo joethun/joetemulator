@@ -423,7 +423,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   switchTheme(savedTheme);
   
-
+  setTimeout(() => {
+    document.body.classList.add('visible');
+  }, 10);
 });
 
 window.addEventListener("load", () => {
