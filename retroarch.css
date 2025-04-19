@@ -107,33 +107,33 @@ body.is-fullscreen #ffd {
 		min-height: 280px !important;
 		align-items: center !important;
 		justify-content: center !important;
-		animation: fadeInUp 0.6s ease-out forwards;
+		animation: fadeInUp 0.3s ease-out forwards;
 		opacity: 0;
 		transform: translateY(20px);
 	}
 
 	.enhanced-container * {
-		animation: fadeIn 0.8s ease-out 0.3s forwards;
+		animation: fadeIn 0.3s ease-out 0.1s forwards;
 		opacity: 0;
 	}
 
 	#ffdcontent {
-		animation: fadeIn 0.8s ease-out 0.3s forwards;
+		animation: fadeIn 0.3s ease-out 0.1s forwards;
 		opacity: 0;
 	}
 
 	#rom {
-		animation: fadeIn 0.8s ease-out 0.3s forwards;
+		animation: fadeIn 0.3s ease-out 0.1s forwards;
 		opacity: 0;
 	}
 
 	#upload {
-		animation: fadeIn 0.8s ease-out 0.3s forwards;
+		animation: fadeIn 0.3s ease-out 0.1s forwards;
 		opacity: 0;
 	}
 
 	.core-option-selector-label {
-		animation: fadeIn 0.8s ease-out 0.3s forwards;
+		animation: fadeIn 0.3s ease-out 0.1s forwards;
 		opacity: 0;
 	}
 
