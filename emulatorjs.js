@@ -360,54 +360,38 @@ function switchTheme(theme) {
   document.documentElement.style.setProperty('--scrollbar-thumb-color', selectedTheme.buttonBorderColor);
   document.documentElement.style.setProperty('--button-text-color', selectedTheme.textColor);
   
-  // Set background color with transition
   document.body.style.transition = "background-color 0.3s";
   document.body.style.backgroundColor = selectedTheme.backgroundColor;
   localStorage.setItem("theme", theme);
 
-  // Apply both CSS variables AND direct styling to ensure the theme is applied properly
-  
-  // Apply theme to enhanced-container
   const containers = document.querySelectorAll(".enhanced-container");
   containers.forEach((container) => {
     container.style.transition = "background-color 0.3s, border-color 0.3s";
-    container.style.backgroundColor = selectedTheme.buttonBackgroundColor;
-    container.style.borderColor = selectedTheme.buttonBorderColor;
   });
 
   const buttons = document.querySelectorAll("button:not(.theme-button)");
   buttons.forEach((button) => {
     button.style.transition = "border-color 0.3s, background-color 0.3s";
-    button.style.borderColor = selectedTheme.buttonBorderColor;
-    button.style.backgroundColor = selectedTheme.buttonBackgroundColor;
   });
 
   const articles = document.querySelectorAll("article");
   articles.forEach((article) => {
     article.style.transition = "background-color 0.3s";
-    article.style.backgroundColor = selectedTheme.articleBackgroundColor;
   });
 
   const boxes = document.querySelectorAll("#box");
   boxes.forEach((box) => {
     box.style.transition = "background-color 0.3s, border-color 0.3s";
-    box.style.backgroundColor = selectedTheme.boxBackgroundColor;
-    box.style.borderColor = selectedTheme.boxBorderColor;
-    box.style.color = selectedTheme.textColor;
   });
 
-  // Apply theme to box span text
   const boxSpans = document.querySelectorAll("#box span");
   boxSpans.forEach((span) => {
     span.style.transition = "color 0.3s";
-    span.style.color = selectedTheme.textColor;
   });
 
   const dropdowns = document.querySelectorAll("select");
   dropdowns.forEach((dropdown) => {
     dropdown.style.transition = "border-color 0.3s, background-color 0.3s";
-    dropdown.style.borderColor = selectedTheme.buttonBorderColor;
-    dropdown.style.backgroundColor = selectedTheme.buttonBackgroundColor;
     dropdown.style.color = "#f9f9f9";
   });
 }
@@ -434,13 +418,6 @@ document.addEventListener("DOMContentLoaded", () => {
       element.setAttribute("data-theme-color", "true");
     }
   });
-
-  switchTheme(savedTheme);
-  
-  // Add the visible class to trigger the fade-in animation
-  setTimeout(() => {
-    document.body.classList.add('visible');
-  }, 10); // Small delay to ensure CSS has applied
 });
 
 window.addEventListener("load", () => {
