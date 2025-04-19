@@ -402,14 +402,22 @@ switchTheme(savedTheme);
 document.addEventListener("DOMContentLoaded", () => {
   const style = document.createElement('style');
   style.innerHTML = `
+    *, *::before, *::after {
+      transition: none !important;
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
     .enhanced-container { 
       opacity: 1 !important; 
       transform: translateY(0) !important; 
       animation: none !important; 
+      transition: none !important;
     }
-    .enhanced-container *, #uploadarea, h1, #box, span { 
+    #uploadarea, h1, #box, span, input, button, a, div { 
       opacity: 1 !important; 
       animation: none !important; 
+      transition: none !important;
     }
   `;
   document.head.appendChild(style);
