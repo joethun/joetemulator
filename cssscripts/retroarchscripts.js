@@ -208,6 +208,21 @@ window.addEventListener('load', function () {
             }
         };
 
+        (function() {
+			var themes = {
+				default: { backgroundColor: "#00070a" },
+				pink: { backgroundColor: "#080203" },
+				green: { backgroundColor: "#020802" },
+				purple: { backgroundColor: "#050308" },
+				yellow: { backgroundColor: "#090701" },
+				beige: { backgroundColor: "#060504" }
+			};
+			var savedTheme = localStorage.getItem("theme") || "default";
+			var bgColor = themes[savedTheme] ? themes[savedTheme].backgroundColor : "#00070a";
+			
+			document.documentElement.style.setProperty('--body-bg-color', bgColor);
+		})();
+
         const savedTheme = localStorage.getItem("theme") || "default";
         const selectedTheme = themes[savedTheme];
 
