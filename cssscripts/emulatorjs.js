@@ -1,3 +1,5 @@
+document.documentElement.classList.add('js-loading');
+
 const themes = {
   default: {
     backgroundColor: "#00070a",
@@ -350,7 +352,6 @@ function addOptions(select, options, default_option, github) {
 function switchTheme(theme) {
   const selectedTheme = themes[theme];
   
-  // Update CSS variables to match the selected theme
   document.documentElement.style.setProperty('--body-bg-color', selectedTheme.backgroundColor);
   document.documentElement.style.setProperty('--button-bg-color', selectedTheme.buttonBackgroundColor);
   document.documentElement.style.setProperty('--button-border-color', selectedTheme.buttonBorderColor);
@@ -400,8 +401,6 @@ const savedTheme = localStorage.getItem("theme") || "default";
 switchTheme(savedTheme);
 
 document.addEventListener("DOMContentLoaded", () => {
-
-
   const savedTheme = localStorage.getItem("theme") || "default";
   switchTheme(savedTheme);
 

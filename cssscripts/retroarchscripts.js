@@ -212,6 +212,8 @@ window.addEventListener('load', function () {
         const selectedTheme = themes[savedTheme];
 
         if (selectedTheme) {
+            document.body.style.transition = "background-color 0.3s";
+            
             document.documentElement.style.setProperty('--body-bg-color', selectedTheme.backgroundColor);
             document.documentElement.style.setProperty('--menu-bg-color', selectedTheme.backgroundColor);
             document.documentElement.style.setProperty('--popup-bg-color', selectedTheme.backgroundColor);
@@ -225,6 +227,17 @@ window.addEventListener('load', function () {
             document.documentElement.style.setProperty('--text-color', '#f9f9f9');
 
             document.body.style.backgroundColor = selectedTheme.backgroundColor;
+            document.body.style.color = 'var(--text-color)';
+            
+            const containers = document.querySelectorAll(".enhanced-container");
+            containers.forEach((container) => {
+                container.style.transition = "background-color 0.3s, border-color 0.3s";
+            });
+            
+            const buttons = document.querySelectorAll("button, input[type='button']");
+            buttons.forEach((button) => {
+                button.style.transition = "border-color 0.3s, background-color 0.3s";
+            });
         }
 
         const keybindsButton = document.getElementById('keybindsbutton');

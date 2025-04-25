@@ -101,22 +101,37 @@ body.is-fullscreen #ffd {
 		max-width: 550px !important;
 		width: 85% !important;
 		margin: 0 auto !important;
+		margin-top: 5px !important;
 		left: 0 !important;
 		right: 0 !important;
 		position: relative !important;
 		min-height: 280px !important;
 		align-items: center !important;
 		justify-content: center !important;
-		animation: simpleFadeIn 0.2s ease-out forwards;
+		opacity: 0;
+		animation: boxAppear 0.4s ease-out 0.1s forwards;
+		backface-visibility: hidden;
+		-webkit-backface-visibility: hidden;
+		will-change: opacity, transform;
 	}
 
-	@keyframes simpleFadeIn {
-		from { opacity: 0; }
-		to { opacity: 1; }
+	@keyframes boxAppear {
+		0% { opacity: 0; transform: translateY(8px) scale(0.99); }
+		100% { opacity: 1; transform: translateY(0) scale(1); }
+	}
+
+	@keyframes boxPulse {
+		0% { transform: scale(1); }
+		50% { transform: scale(1.01); }
+		100% { transform: scale(1); }
 	}
 	
 	#ffdcontent, #rom, #upload, .core-option-selector-label {
-		animation: simpleFadeIn 0.2s ease-out 0.05s forwards;
+		opacity: 0;
+		animation: boxAppear 0.4s ease-out 0.2s forwards;
+		backface-visibility: hidden;
+		-webkit-backface-visibility: hidden;
+		will-change: opacity, transform;
 	}
 	
 body {
@@ -175,6 +190,8 @@ body {
 	#resetkeybinds:hover,
 	span[data-action]:hover {
 		filter: brightness(1.2) !important;
+		transition: transform 0.2s ease-in-out;
+		transform: scale(1.01);
 	}
 
 	span[data-action="download"],
@@ -301,10 +318,24 @@ body {
 		margin-bottom: 5px !important;
 	}
 
-	#uploadarea {
+	#uploadarea, .uploadbutton, #upload {
 		border-radius: 0.9em !important;
+		margin-bottom: 15px;
+	}
+
+	#upload:hover, .uploadbutton:hover {
+		transition: transform 0.2s ease-in-out;
+		transform: scale(1.01);
+	}
+
+	#uploadarea {
 		margin-top: -10px !important;
 		padding-top: 25px !important;
+		opacity: 0;
+		animation: boxAppear 0.4s ease-out 0.3s forwards;
+		backface-visibility: hidden;
+		-webkit-backface-visibility: hidden;
+		will-change: opacity, transform;
 		display: flex !important;
 		flex-direction: column !important;
 		justify-content: space-between !important;
