@@ -136,6 +136,8 @@ body.is-fullscreen #ffd {
 	
 body {
 		background-color: var(--body-bg-color, #00070a) !important;
+		color: var(--text-color) !important;
+		visibility: hidden !important;
 	}
 
 	#managers,

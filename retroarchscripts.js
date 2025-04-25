@@ -223,8 +223,6 @@ window.addEventListener('load', function () {
 			document.documentElement.style.setProperty('--body-bg-color', bgColor);
 		})();
 
-        document.body.style.visibility = 'visible';
-
         const savedTheme = localStorage.getItem("theme") || "default";
         const selectedTheme = themes[savedTheme];
 
