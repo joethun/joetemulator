@@ -129,7 +129,7 @@ const themes = {
   }
 };
 
-window.cdn = "data";
+window.cdn = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
 
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('input');
@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     div.appendChild(sub);
     document.body.appendChild(div);
 
-    const cdn = "data";
+    const cdn = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
 
     window.EJS_player = "#game";
     const savedTheme = localStorage.getItem("theme") || "default";
@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.EJS_ready = function () {
     };
 
-    loaderScript.src = "data/loader.js";
+    loaderScript.src = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/loader.js";
     document.body.appendChild(loaderScript);
   });
 });
