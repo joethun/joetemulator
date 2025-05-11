@@ -129,78 +129,41 @@ const themes = {
   }
 };
 
-loadJSON("/versions", (response) => {
-  if (!response) {
-    loadJSON("https://raw.githack.com/EmulatorJS/EmulatorJS/main/data/versions.json", (resp) =>
-      loadVersions(resp)
-    );
-  }
-});
+window.cdn = "data";
 
-function loadVersions(response) {
-  const version_select = document.getElementById("version-select");
-  var versions = JSON.parse(response);
-  version_select.innerHTML = "";
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('input');
+  const box = document.getElementById('box');
+  
+  input.addEventListener("change", async () => {
+    const url = input.files[0];
+    const parts = input.files[0].name.split(".");
+    
+    const core = await (async (ext) => {
+      if (["fds", "nes", "unif", "unf"].includes(ext)) return "nes";
 
-  const filteredReleases = Object.fromEntries(
-    Object.entries(versions.releases).filter(
-      ([key]) => key === "latest" || key === "nightly" || key === "stable"
-    )
-  );
-
-  const filteredVersions = Object.fromEntries(
-    Object.entries(versions.versions).filter(
-      ([key]) => key === "latest" || key === "nightly" || key === "stable"
-    )
-  );
-
-  addOptions(
-    version_select,
-    filteredReleases,
-    versions.default,
-    versions.github
-  );
-  addOptions(version_select, filteredVersions, versions.default);
-
-  version_select.addEventListener("change", () => {
-    localStorage.setItem(
-      "version",
-      version_select[version_select.selectedIndex].textContent
-    );
-    window.cdn =
-      "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
-  });
-}
-
-input.addEventListener("change", async () => {
-  const url = input.files[0];
-  const parts = input.files[0].name.split(".");
-
-  const core = await (async (ext) => {
-    if (["fds", "nes", "unif", "unf"].includes(ext)) return "nes";
-
-    if (
-      ["smc", "fig", "sfc", "gd3", "gd7", "dx2", "bsx", "swc"].includes(
-        ext
+      if (
+        ["smc", "fig", "sfc", "gd3", "gd7", "dx2", "bsx", "swc"].includes(
+          ext
+        )
       )
-    )
-      return "snes";
+        return "snes";
 
-    if (["z64", "n64"].includes(ext)) return "n64";
+      if (["z64", "n64"].includes(ext)) return "n64";
 
-    if (["pce"].includes(ext)) return "pce";
+      if (["pce"].includes(ext)) return "pce";
 
-    if (["ngp", "ngc"].includes(ext)) return "ngp";
+      if (["ngp", "ngc"].includes(ext)) return "ngp";
 
-    if (["ws", "wsc"].includes(ext)) return "ws";
+      if (["ws", "wsc"].includes(ext)) return "ws";
 
-    if (["col", "cv"].includes(ext)) return "coleco";
+      if (["col", "cv"].includes(ext)) return "coleco";
 
-    if (["d64"].includes(ext)) return "vice_x64";
+      if (["d64"].includes(ext)) return "vice_x64";
 
-    if (["nds", "gba", "gb", "z64", "n64"].includes(ext)) return ext;
+      if (["nds", "gba", "gb", "z64", "n64"].includes(ext)) return ext;
 
-    return await new Promise((resolve) => {
+      return await new Promise((resolve) => {
       const cores = {
         "Nintendo NES": "nes",
         "Nintendo GB": "gb",
@@ -271,46 +234,44 @@ input.addEventListener("change", async () => {
       box.appendChild(select);
       box.appendChild(button);
     });
-  })(parts.pop());
+    })(parts.pop());
 
-  const div = document.createElement("div");
-  const sub = document.createElement("div");
-  const loaderScript = document.createElement("script");
+    const div = document.createElement("div");
+    const sub = document.createElement("div");
+    const loaderScript = document.createElement("script");
 
-  sub.id = "game";
-  div.id = "display";
+    sub.id = "game";
+    div.id = "display";
 
-  const top = document.getElementById("top");
-  const version = document.getElementById("version");
-  top.remove();
-  version.remove();
-  box.remove();
-  div.appendChild(sub);
-  document.body.appendChild(div);
+    const top = document.getElementById("top");
+    const version = document.getElementById("version");
+    top.remove();
+    version.remove();
+    box.remove();
+    div.appendChild(sub);
+    document.body.appendChild(div);
 
-  const cdn = window.cdn || "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
+    const cdn = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
 
-  window.EJS_player = "#game";
-  const savedTheme = localStorage.getItem("theme") || "default";
-  EJS_color = themes[savedTheme].buttonBorderColor;
-  window.EJS_gameName = parts.shift();
-  window.EJS_biosUrl = "";
-  window.EJS_gameUrl = url;
-  window.EJS_core = core;
-  window.EJS_pathtodata = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
-  window.EJS_startOnLoaded = true;
-  if (core === "psp") {
-    window.EJS_threads = true;
-  }
-  window.EJS_ready = function () {
-  };
+    window.EJS_player = "#game";
+    const savedTheme = localStorage.getItem("theme") || "default";
+    EJS_color = themes[savedTheme].buttonBorderColor;
+    window.EJS_gameName = parts.shift();
+    window.EJS_biosUrl = "";
+    window.EJS_gameUrl = url;
+    window.EJS_core = core;
+    window.EJS_pathtodata = "data";
+    window.EJS_startOnLoaded = true;
+    if (core === "psp") {
+      window.EJS_threads = true;
+    }
+    window.EJS_ready = function () {
+    };
 
-  loaderScript.src = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/loader.js";
-  document.body.appendChild(loaderScript);
+    loaderScript.src = "data/loader.js";
+    document.body.appendChild(loaderScript);
+  });
 });
-
-box.ondragover = () => box.setAttribute("drag", true);
-box.ondragleave = () => box.removeAttribute("drag");
 
 function loadJSON(url, callback) {
   var xobj = new XMLHttpRequest();
@@ -344,10 +305,10 @@ function addOptions(select, options, default_option, github) {
       localStorage.getItem("version") === version
     ) {
       option.selected = true;
-      window.cdn = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
+      window.cdn = "data";
     } else if (version.includes(default_option)) {
       option.selected = true;
-      window.cdn = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
+      window.cdn = "data";
     }
     select.appendChild(option);
   }
