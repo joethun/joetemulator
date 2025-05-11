@@ -168,7 +168,7 @@ function loadVersions(response) {
       version_select[version_select.selectedIndex].textContent
     );
     window.cdn =
-      "https://raw.githack.com/EmulatorJS/EmulatorJS/main/data/";
+      "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
   });
 }
 
@@ -265,7 +265,9 @@ input.addEventListener("change", async () => {
       select.style.color = "#f9f9f9";
 
       box.innerHTML = "";
-
+      
+      box.classList.add("file-picked");
+      
       box.appendChild(select);
       box.appendChild(button);
     });
@@ -286,14 +288,16 @@ input.addEventListener("change", async () => {
   div.appendChild(sub);
   document.body.appendChild(div);
 
-  const cdn = window.cdn || "https://raw.githack.com/EmulatorJS/EmulatorJS/main/data/";
+  const cdn = window.cdn || "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
 
   window.EJS_player = "#game";
+  const savedTheme = localStorage.getItem("theme") || "default";
+  EJS_color = themes[savedTheme].buttonBorderColor;
   window.EJS_gameName = parts.shift();
   window.EJS_biosUrl = "";
   window.EJS_gameUrl = url;
   window.EJS_core = core;
-  window.EJS_pathtodata = "https://raw.githack.com/EmulatorJS/EmulatorJS/main/data/";
+  window.EJS_pathtodata = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
   window.EJS_startOnLoaded = true;
   if (core === "psp") {
     window.EJS_threads = true;
@@ -301,7 +305,7 @@ input.addEventListener("change", async () => {
   window.EJS_ready = function () {
   };
 
-  loaderScript.src = "https://raw.githack.com/EmulatorJS/EmulatorJS/main/data/loader.js";
+  loaderScript.src = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/loader.js";
   document.body.appendChild(loaderScript);
 });
 
@@ -340,10 +344,10 @@ function addOptions(select, options, default_option, github) {
       localStorage.getItem("version") === version
     ) {
       option.selected = true;
-      window.cdn = "https://raw.githack.com/EmulatorJS/EmulatorJS/main/data/";
+      window.cdn = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
     } else if (version.includes(default_option)) {
       option.selected = true;
-      window.cdn = "https://raw.githack.com/EmulatorJS/EmulatorJS/main/data/";
+      window.cdn = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
     }
     select.appendChild(option);
   }

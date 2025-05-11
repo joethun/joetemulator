@@ -98,6 +98,11 @@ body, #box, #top {
   margin-top: -80px !important;
   margin-bottom: 55px !important;
   text-align: center !important;
+  position: fixed !important;
+  top: 70px !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 10 !important;
 }
 
 @keyframes boxAppear {
@@ -132,6 +137,7 @@ body, #box, #top {
   overflow: hidden;
   font-family: Comfortaa;
   margin: -25px !important;
+  margin-top: 0px !important;
   padding: 10px !important;
   text-align: center;
   align-items: center !important;
@@ -141,12 +147,40 @@ body, #box, #top {
   animation: boxAppear 0.4s ease-out 0.3s forwards;
 }
 
-#box:hover, #box[drag] {
+#box:not(.file-picked):hover, #box:not(.file-picked)[drag] {
   filter: brightness(1.2) !important;
   border-color: var(--button-border-color);
   color: var(--text-color);
   transition: transform 0.2s ease-in-out;
   transform: scale(1.01);
+}
+
+#box.file-picked:hover, #box.file-picked[drag] {
+  filter: none !important;
+  transform: none !important;
+}
+
+#box.file-picked {
+  background-color: transparent !important;
+  border: none !important;
+  height: 140px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  justify-content: center !important;
+  padding: 15px !important;
+  padding-top: 25px !important;
+}
+
+#box.file-picked select,
+#box.file-picked button {
+  height: 3.5em !important;
+  width: 18em !important;
+  font-size: 16px !important;
+  padding: 8px !important;
+  line-height: 1.3 !important;
+  text-align: center !important;
+  text-align-last: center !important;
 }
 
 #box span {
@@ -164,6 +198,8 @@ body, #box, #top {
   height: 100%;
   opacity: 0;
 }
+
+
 
 select, button {
   padding: 0 0.4em;
