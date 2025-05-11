@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     div.appendChild(sub);
     document.body.appendChild(div);
 
-    const cdn = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
+    const cdn = "data";
 
     window.EJS_player = "#game";
     const savedTheme = localStorage.getItem("theme") || "default";
