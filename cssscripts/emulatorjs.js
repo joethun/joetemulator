@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.EJS_biosUrl = "";
     window.EJS_gameUrl = url;
     window.EJS_core = core;
-    window.EJS_pathtodata = "data";
+    window.EJS_pathtodata = "https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@main/data/";
     window.EJS_startOnLoaded = true;
     if (core === "psp") {
       window.EJS_threads = true;
