@@ -1,6 +1,4 @@
-# joe t emulator
-
-### [joetemulator.rf.gd](https://joetemulator.rf.gd)
+# [joe t emulator](https://joetemulator.rf.gd)
 
 [Changelog](https://github.com/joethun/joetemulator/wiki/Changelog)
 
