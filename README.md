@@ -1,12 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>joe t emulator</title>
-</head>
-<body>
-    <a href="https://joetemulator.rf.gd" style="color: white; text-decoration: none;">joe t emulator</a>
-</body>
-</html>
+#[joe t emulator](joetemulator.rf.gd)
 
 [Changelog](https://github.com/joethun/joetemulator/wiki/Changelog)
 
