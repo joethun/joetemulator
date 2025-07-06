@@ -1,4 +1,4 @@
-# Joe T Emulator
+# joe t emulator
 
 [joetemulator.rf.gd](https://joetemulator.rf.gd)
 
