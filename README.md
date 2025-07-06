@@ -1,5 +1,5 @@
-<div align="middle">
-<img src="https://github.com/joethun/joetemulator/raw/main/joetemulator.svg" alt="joe t emulator"/>
+<div align="center">
+<img src="https://cdn.jsdelivr.net/gh/joethun/joetemulator@main/joetemulator.svg" alt="joe t emulator"/>
 </div>
 
 [Changelog](https://github.com/joethun/joetemulator/wiki/Changelog)
