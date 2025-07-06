@@ -2,6 +2,8 @@
 
 [joetemulator.rf.gd](https://joetemulator.rf.gd)
 
-[Documentation/Guides](https://github.com/joethun/joetwebemulator/wiki/Documentation-%7C-Guides)
+[Changelog](https://github.com/joethun/joetemulator/wiki/Changelog)
 
-[Changelog](https://github.com/joethun/joetwebemulator/wiki/Changelog)
+[Forum](https://github.com/joethun/joetemulator/discussions)
+
+[Documentation/Guides](https://github.com/joethun/joetemulator/wiki/Documentation-%7C-Guides)
