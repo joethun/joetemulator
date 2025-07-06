@@ -5,7 +5,7 @@
 </div>
 <div align="center">
 <img src="https://cdn.jsdelivr.net/gh/joethun/joetemulator@main/joetemulator.svg" alt="joe t emulator" width="425"/>
-</div><br>
+</div>
 <div align="center">
 <a href="https://github.com/joethun/joetemulator/wiki/Changelog">Changelog</a><br><br>
 <a href="https://github.com/joethun/joetemulator/discussions">Forum</a><br><br>
