@@ -1,4 +1,7 @@
 <div align="center">
+<img src="https://cdn.jsdelivr.net/gh/joethun/joetemulator@main/duck.png" alt="duck"/>
+</div><br>
+<div align="center">
 <img src="https://cdn.jsdelivr.net/gh/joethun/joetemulator@main/joetemulator.svg" alt="joe t emulator"/>
 </div><br>
 <div align="center">
