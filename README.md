@@ -1,5 +1,5 @@
 <div align="center">
-<img src="https://cdn.jsdelivr.net/gh/joethun/joetemulator@main/duck.png" alt="duck"/>
+<img src="https://cdn.jsdelivr.net/gh/joethun/joetemulator@main/duck.png" alt="duck" width="125"/>
 </div><br>
 <div align="center">
 <img src="https://cdn.jsdelivr.net/gh/joethun/joetemulator@main/joetemulator.svg" alt="joe t emulator"/>
