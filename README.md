@@ -4,7 +4,7 @@
 
   # JOE T EMULATOR
 
-  ### Play retro games in your browser
+  ### _Play retro games in your browser_
 
   [joetemulator.rf.gd](https://joetemulator.rf.gd)
 
