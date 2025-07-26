@@ -4,8 +4,6 @@
 
   # JOE T EMULATOR
 
-  ### _Play retro games in your browser_
-
   [joetemulator.rf.gd](https://joetemulator.rf.gd)
 
   [![Changelog](https://img.shields.io/badge/Changelog-4CAF50?style=for-the-badge)](https://github.com/joethun/joetemulator/wiki/Changelog)
