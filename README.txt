@@ -12,7 +12,7 @@ TODO
 [X] add "about" section
 [X] add drag to drop functionality for roms
 [X] add pwa (so you can install the site as an app)
-[] migrate to github pages
+[-] migrate to netlify
  
 First major update will be: THEMES and backgrounds (meaning you will be able to choose background style + color)
 
