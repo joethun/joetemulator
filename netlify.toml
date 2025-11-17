@@ -1,6 +1,8 @@
 [build]
-  # Use the npm script which runs "next build"
   command = "npm run build"
+  publish = "out"
 
-  # CRITICAL: Change from 'out' to '.next' for dynamic Next.js builds
-  publish = ".next"
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
