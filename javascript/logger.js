@@ -1,1 +1,0 @@
-const LOG_TYPE={INFO:"INFO",ERROR:"ERROR",WARNING:"WARNING"};function log(o,R){console.log(`[${o}]: ${R}`)}export{log,LOG_TYPE};
