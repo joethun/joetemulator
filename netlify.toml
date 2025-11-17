@@ -1,3 +1,6 @@
 [build]
-  command = "next build"
-  publish = "out"
+  # Use the npm script which runs "next build"
+  command = "npm run build"
+
+  # CRITICAL: Change from 'out' to '.next' for dynamic Next.js builds
+  publish = ".next"
