@@ -798,7 +798,6 @@ export default function Home() {
                       backgroundColor: currentColors.midDark,
                       color: currentColors.softLight,
                     }}
-                    title={`Sort ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
                   >
                     <div className="w-4 h-4 flex items-center justify-center">
                       {sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
@@ -1067,7 +1066,6 @@ export default function Home() {
                                   onClick={removeCoverArt}
                                   className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center"
                                   style={{ backgroundColor: '#ef4444', color: currentColors.softLight }}
-                                  title="Remove cover art"
                                 >
                                   <Trash2 className="w-5 h-5" />
                                 </button>

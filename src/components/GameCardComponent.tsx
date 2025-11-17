@@ -84,8 +84,6 @@ export function GameCard({ game, onPlay, onEdit, onDelete, onSelect, isSelected,
               <button
                 onClick={(e) => { e.stopPropagation(); onCoverArtClick(game); }}
                 className="absolute inset-0"
-                aria-label="Add cover art"
-                title="Add cover art"
               >
                 <span className="sr-only">Add cover art</span>
               </button>
@@ -112,7 +110,6 @@ export function GameCard({ game, onPlay, onEdit, onDelete, onSelect, isSelected,
               className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center"
               style={{ backgroundColor: colors.highlight, color: colors.darkBg }}
               onClick={(e) => { e.stopPropagation(); onEdit(game); }}
-              title="Edit System"
             >
               <Settings className="w-5 h-5" />
             </button>
@@ -140,7 +137,6 @@ export function GameCard({ game, onPlay, onEdit, onDelete, onSelect, isSelected,
                 e.stopPropagation();
                 onDelete(game);
               }}
-              title="Delete"
             >
               <Trash2 className="w-5 h-5" />
             </button>
