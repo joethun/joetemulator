@@ -556,6 +556,7 @@ export default function Home() {
         const updatedGames = games.filter(g => g.id !== game.id);
         setGames(updatedGames);
         localStorage.setItem('games', JSON.stringify(updatedGames));
+        setGameListAnimationKey(prev => prev + 1);
 
         setDeletingGameIds(prev => {
           const next = new Set(prev);
@@ -608,6 +609,7 @@ export default function Home() {
         const updatedGames = games.filter(g => !selectedGameIds.has(g.id));
         setGames(updatedGames);
         localStorage.setItem('games', JSON.stringify(updatedGames));
+        setGameListAnimationKey(prev => prev + 1);
         setSelectedGameIds(new Set());
         setDeletingGameIds(new Set());
         setIsDeleteMode(false);
