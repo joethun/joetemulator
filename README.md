@@ -1,1 +1,0 @@
-Joe T Emulator

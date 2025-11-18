@@ -1,2 +1,56 @@
-[00:00:00.805] Server  LOG      ✓ Ready in 538ms
-[00:00:03.592] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:58:03.629] Server  ERROR    ⨯ Error: Cannot find module 'next/dist/client/components/builtin/global-not-found'
+Require stack:
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/on-demand-entry-handler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/hot-reloader-turbopack.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-server.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/start-server.js
+[03:58:03.660] Server  ERROR   Error: Cannot find module 'next/dist/pages/_error'
+Require stack:
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/on-demand-entry-handler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/hot-reloader-turbopack.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-server.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/start-server.js
+[03:58:03.690] Server  ERROR    ⨯ Error: Cannot find module 'next/dist/pages/_error'
+Require stack:
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/on-demand-entry-handler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/hot-reloader-turbopack.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-server.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/start-server.js
+[03:58:03.717] Server  ERROR   Error: Cannot find module 'next/dist/pages/_error'
+Require stack:
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/on-demand-entry-handler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/hot-reloader-turbopack.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-server.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/start-server.js
+[03:58:03.778] Server  ERROR    ⨯ Error: Cannot find module 'next/dist/client/components/builtin/global-not-found'
+Require stack:
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/on-demand-entry-handler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/hot-reloader-turbopack.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-server.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/start-server.js
+[03:58:03.809] Server  ERROR   Error: Cannot find module 'next/dist/pages/_error'
+Require stack:
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/on-demand-entry-handler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/hot-reloader-turbopack.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-server.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/start-server.js
+[03:58:03.831] Server  ERROR    ⨯ Error: Cannot find module 'next/dist/pages/_error'
+Require stack:
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/on-demand-entry-handler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/hot-reloader-turbopack.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-server.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/start-server.js
+[03:58:03.864] Server  ERROR   Error: Cannot find module 'next/dist/pages/_error'
+Require stack:
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/on-demand-entry-handler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/dev/hot-reloader-turbopack.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/router-server.js
+- /home/joet/Downloads/Joe T Emulator/joetemulator/node_modules/next/dist/server/lib/start-server.js
