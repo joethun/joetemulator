@@ -129,18 +129,50 @@ export const SYSTEM_DISPLAY_NAMES: Record<string, string> = {
   ws: 'WS',
 };
 
+// Cache for system lookups to improve performance
+const systemNameCache = new Map<string, string>();
+const systemCategoryCache = new Map<string, string>();
+
+// Build category cache on module load
+const categoryMap = new Map<string, string>();
+for (const [category, systems] of Object.entries(SYSTEM_PICKER)) {
+  for (const core of Object.values(systems)) {
+    categoryMap.set(core, category);
+  }
+}
+
 export function getSystemNameByCore(core: string): string {
+  if (systemNameCache.has(core)) {
+    return systemNameCache.get(core)!;
+  }
+
   for (const category of Object.values(SYSTEM_PICKER)) {
     for (const [name, systemCore] of Object.entries(category)) {
       if (systemCore === core) {
+        systemNameCache.set(core, name);
         return name;
       }
     }
   }
-  return 'Unknown System';
+  
+  const fallback = 'Unknown System';
+  systemNameCache.set(core, fallback);
+  return fallback;
 }
 
 export function getSystemDisplayName(core?: string): string {
   if (!core) return 'Unknown';
   return SYSTEM_DISPLAY_NAMES[core] || core.toUpperCase();
+}
+
+export function getSystemCategory(core?: string): string {
+  if (!core) return 'Other';
+  
+  if (systemCategoryCache.has(core)) {
+    return systemCategoryCache.get(core)!;
+  }
+
+  const category = categoryMap.get(core) || 'Other';
+  systemCategoryCache.set(core, category);
+  return category;
 }

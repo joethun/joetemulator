@@ -1,153 +1,67 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { DragEvent } from 'react';
 import { loadGame } from '@/lib/emulator';
 import { saveGameFile, getGameFile } from '@/lib/storage';
-import { SYSTEM_PICKER, FILE_EXTENSIONS, getSystemNameByCore } from '@/lib/constants';
+import { SYSTEM_PICKER, FILE_EXTENSIONS, getSystemNameByCore, getSystemCategory } from '@/lib/constants';
 import { Game, THEMES, getGradientStyle } from '@/types';
 import { GameCard } from '@/components/GameCardComponent';
 import { Gamepad2, Palette, Menu, X, Trash2, ArrowUp, ArrowDown, Search, Plus } from 'lucide-react';
+import { useGameLibrary } from '@/hooks/useGameLibrary';
+import { useUIState } from '@/hooks/useUIState';
+import { useGameOperations } from '@/hooks/useGameOperations';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+
+// Constants
+const SIDEBAR_ANIMATION_DURATION = 200;
+const TIME_UPDATE_INTERVAL = 60000;
+const SORT_OPTIONS = ['title', 'system'] as const;
+const NAV_ITEMS = [
+  { view: 'library' as const, icon: Gamepad2, label: 'Library' },
+  { view: 'themes' as const, icon: Palette, label: 'Themes' }
+];
 
 
 export default function Home() {
-  const [activeView, setActiveView] = useState<'library' | 'themes'>('library');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentTime, setCurrentTime] = useState<string>('');
-  const [isMounted, setIsMounted] = useState(false);
-  const [games, setGames] = useState<Game[]>([]);
-  const [editingGame, setEditingGame] = useState<Game | null>(null);
-  const [systemPickerOpen, setSystemPickerOpen] = useState(false);
-  const [systemPickerClosing, setSystemPickerClosing] = useState(false);
-  const [pendingGame, setPendingGame] = useState<Partial<Game> | null>(null);
-  const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; index: number }>>([]);
-  const [systemSearchQuery, setSystemSearchQuery] = useState('');
-  const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
-  const [showDuplicateMessage, setShowDuplicateMessage] = useState(false);
-  const [isLoadingGames, setIsLoadingGames] = useState(true);
-  const [selectedTheme, setSelectedTheme] = useState<string>('default');
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [gameSearchFocused, setGameSearchFocused] = useState(false);
-  const [gameSearchQuery, setGameSearchQuery] = useState('');
-  const [gameSearchExpanded, setGameSearchExpanded] = useState(false);
-  const [coverArtFit, setCoverArtFit] = useState<'cover' | 'contain'>('cover');
-  const [sortBy, setSortBy] = useState<'title' | 'system'>('title');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [selectedGameIds, setSelectedGameIds] = useState<Set<number>>(new Set());
-  const [isDeleteMode, setIsDeleteMode] = useState(false);
-  const [deletingGameIds, setDeletingGameIds] = useState<Set<number>>(new Set());
-  const [themeAnimationKey, setThemeAnimationKey] = useState(0);
-  const [isDragActive, setIsDragActive] = useState(false);
-  const [gameListAnimationKey, setGameListAnimationKey] = useState(0);
-  const [pendingBatchCore, setPendingBatchCore] = useState<string | null>(null);
-  const gameSearchInputRef = useRef<HTMLInputElement | null>(null);
-  const dragCounterRef = useRef(0);
-  const previousGameCountRef = useRef(0);
+  const { games, isLoadingGames, previousGameCountRef, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
+  
+  const {
+    activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, currentTime, setCurrentTime,
+    isMounted, setIsMounted, gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused,
+    gameSearchExpanded, setGameSearchExpanded, isDragActive, setIsDragActive, themeAnimationKey, setThemeAnimationKey,
+    gameListAnimationKey, setGameListAnimationKey, isDeleteMode, setIsDeleteMode, selectedGameIds, setSelectedGameIds,
+    deletingGameIds, setDeletingGameIds, gameSearchInputRef, dragCounterRef,
+    toggleGameSearch, toggleGameSelection, toggleSelectAll, exitDeleteMode, handleDeleteButtonMouseDown, handleDeleteButtonMouseUp,
+  } = useUIState();
 
-  // Sync theme from localStorage immediately before first render to prevent flash
-  useLayoutEffect(() => {
-    if (typeof window === 'undefined') return;
-    const savedTheme = localStorage.getItem('theme') || 'default';
-    setSelectedTheme(savedTheme);
-    setIsHydrated(true);
-  }, []);
+  const {
+    duplicateMessage, showDuplicateMessage, editingGame, setEditingGame, pendingGame, setPendingGame,
+    pendingFiles, setPendingFiles, systemPickerOpen, setSystemPickerOpen, systemPickerClosing, setSystemPickerClosing,
+    systemSearchQuery, setSystemSearchQuery, pendingBatchCore, setPendingBatchCore, coverArtFit, setCoverArtFit,
+    showDuplicateError, closeSystemPicker, getSystemFromExtension, extractFilesFromDataTransfer, handleCoverArtFileUpload,
+  } = useGameOperations();
+
+  const [selectedTheme, setSelectedTheme, isThemeHydrated] = useLocalStorage('theme', 'default');
+  const [sortBy, setSortBy, isSortByHydrated] = useLocalStorage<'title' | 'system'>('sortBy', 'title');
+  const [sortOrder, setSortOrder, isSortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
+  
+  const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated;
+  const searchFocused = useRef(false);
 
   useEffect(() => {
-    if (!isMounted) return;
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('theme', selectedTheme);
-  }, [selectedTheme, isMounted]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // Load sort preferences from localStorage
-    const savedSortBy = (localStorage.getItem('sortBy') as 'title' | 'system') || 'title';
-    const savedSortOrder = (localStorage.getItem('sortOrder') as 'asc' | 'desc') || 'asc';
-    setSortBy(savedSortBy);
-    setSortOrder(savedSortOrder);
-
+    setIsMounted(true);
+    loadGamesFromStorage();
+    
     const updateTime = () => {
       setCurrentTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
     };
 
     updateTime();
-    setIsMounted(true);
-    const interval = setInterval(updateTime, 60000);
-
-    // Load games from localStorage on mount
-    const loadGames = async () => {
-      setIsLoadingGames(true);
-      const savedGames = localStorage.getItem('games');
-      if (savedGames) {
-        try {
-          const loadedGames: Game[] = JSON.parse(savedGames);
-
-          // Migrate old games with fileData to IndexedDB
-          let migratedGames = loadedGames;
-          for (const game of loadedGames) {
-            if (game.fileData) {
-              migratedGames = await migrateGameToIndexedDB(game, migratedGames);
-            }
-          }
-
-          // Migrate games: update genre and coverArtFit
-          migratedGames = migratedGames.map(game => {
-            let updated = { ...game };
-            if (game.genre === 'ROM' && game.core) {
-              const systemName = getSystemNameByCore(game.core);
-              updated.genre = systemName;
-            }
-            if (game.coverArt && !game.coverArtFit) {
-              updated.coverArtFit = 'cover';
-            }
-            return updated;
-          });
-
-          if (migratedGames !== loadedGames) {
-            // Update localStorage with migrated games (without fileData)
-            localStorage.setItem('games', JSON.stringify(migratedGames));
-          }
-
-          setGames(migratedGames);
-          previousGameCountRef.current = migratedGames.length;
-        } catch (e) {
-          console.error('Failed to load games from storage', e);
-        }
-      }
-      setIsLoadingGames(false);
-    };
-
-    loadGames();
+    const interval = setInterval(updateTime, TIME_UPDATE_INTERVAL);
 
     return () => clearInterval(interval);
-  }, []);
-
-  // Save sort preferences to localStorage when they change
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('sortBy', sortBy);
-  }, [sortBy]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('sortOrder', sortOrder);
-  }, [sortOrder]);
-
-  // Close system picker with fade-out animation
-  const closeSystemPicker = () => {
-    setSystemPickerClosing(true);
-    setTimeout(() => {
-      setSystemPickerOpen(false);
-      setSystemPickerClosing(false);
-      setPendingFiles([]);
-      setPendingGame(null);
-      setEditingGame(null);
-      setSystemSearchQuery('');
-      setPendingBatchCore(null);
-    }, 200); // Match the fade-out animation duration
-  };
+  }, [loadGamesFromStorage, setCurrentTime, setIsMounted]);
 
   const handleSystemPickerDone = async () => {
     if (editingGame) {
@@ -179,13 +93,9 @@ export default function Home() {
         const derivedTitle = pendingGame.title || file.name.replace(/\.[^/.]+$/, '');
         const genre = pendingGame.genre || getSystemNameByCore(pendingGame.core) || 'Unknown System';
 
-        const isDuplicate = games.some(g => g.fileName === file.name);
-        if (isDuplicate) {
-          setDuplicateMessage(`"${file.name}" is already in your library`);
-          setShowDuplicateMessage(true);
+        if (games.some(g => g.fileName === file.name)) {
+          showDuplicateError(`"${file.name}" is already in your library`);
           closeSystemPicker();
-          setTimeout(() => setShowDuplicateMessage(false), 2500);
-          setTimeout(() => setDuplicateMessage(null), 3000);
           return;
         }
 
@@ -202,9 +112,7 @@ export default function Home() {
           coverArtFit: pendingGame.coverArt ? (pendingGame.coverArtFit || coverArtFit) : undefined,
         };
 
-        const updatedGames = [...games, newGame];
-        setGames(updatedGames);
-        localStorage.setItem('games', JSON.stringify(updatedGames));
+        addGame(newGame);
       } catch (error) {
         console.error('Error finalizing game addition:', error);
       }
@@ -274,10 +182,6 @@ export default function Home() {
     }
   };
 
-  const getSystemFromExtension = (extension: string): string | null => {
-    return FILE_EXTENSIONS[extension.toLowerCase()] || null;
-  };
-
   const processGameFile = async (file: File, index: number, selectedCore?: string, currentGamesList?: Game[]): Promise<Game[]> => {
     const fileName = file.name;
     const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
@@ -287,10 +191,7 @@ export default function Home() {
     const gamesListToCheck = currentGamesList || games;
     const isDuplicate = gamesListToCheck.some(g => g.fileName === fileName || g.filePath === file.name);
     if (isDuplicate) {
-      setDuplicateMessage(`"${fileName}" is already in your library`);
-      setShowDuplicateMessage(true);
-      setTimeout(() => setShowDuplicateMessage(false), 2500);
-      setTimeout(() => setDuplicateMessage(null), 3000);
+      showDuplicateError(`"${fileName}" is already in your library`);
       return gamesListToCheck;
     }
 
@@ -304,21 +205,17 @@ export default function Home() {
       ? getSystemNameByCore(detectedCore)
       : 'Unknown System';
 
-    const gameData: Partial<Game> = {
-      id: gameId,
-      title: nameWithoutExt,
-      genre: systemName,
-      filePath: file.name,
-      fileName: fileName,
-      core: detectedCore || undefined,
-    };
-
     if (detectedCore) {
-      const newGame = gameData as Game;
-      const updatedGames = [...gamesListToCheck, newGame];
-      setGames(updatedGames);
-      localStorage.setItem('games', JSON.stringify(updatedGames));
-      return updatedGames;
+      const newGame: Game = {
+        id: gameId,
+        title: nameWithoutExt,
+        genre: systemName,
+        filePath: file.name,
+        fileName: fileName,
+        core: detectedCore,
+      };
+      addGame(newGame);
+      return [...gamesListToCheck, newGame];
     }
 
     return gamesListToCheck;
@@ -336,13 +233,10 @@ export default function Home() {
     // If adding a single file from file picker without detected system
     if (editingGame) {
       // When editing, update the selection and keep modal open
-      const updatedGames = games.map(g => g.id === editingGame.id ? { ...g, core: core, genre: systemName } : g);
-      setGames(updatedGames);
-      localStorage.setItem('games', JSON.stringify(updatedGames));
-      // Update the editing game and pending game to reflect the new selection
-      setEditingGame({ ...editingGame, core: core, genre: systemName });
+      updateGame(editingGame.id, { core, genre: systemName });
+      setEditingGame({ ...editingGame, core, genre: systemName });
       if (pendingGame) {
-        setPendingGame({ ...pendingGame, core: core, genre: systemName });
+        setPendingGame({ ...pendingGame, core, genre: systemName });
       }
       // Don't close the modal - let user close it manually
     } else if (pendingGame) {
@@ -358,27 +252,19 @@ export default function Home() {
     if (!coverArt) return;
 
     if (editingGame) {
-      const updatedGames = games.map(g =>
-        g.id === editingGame.id ? { ...g, coverArt: coverArt, coverArtFit: coverArtFit } : g
-      );
-      setGames(updatedGames);
-      localStorage.setItem('games', JSON.stringify(updatedGames));
-      setEditingGame({ ...editingGame, coverArt: coverArt, coverArtFit: coverArtFit });
+      updateGame(editingGame.id, { coverArt, coverArtFit });
+      setEditingGame({ ...editingGame, coverArt, coverArtFit });
       if (pendingGame && pendingGame.id === editingGame.id) {
-        setPendingGame({ ...pendingGame, coverArt: coverArt, coverArtFit: coverArtFit });
+        setPendingGame({ ...pendingGame, coverArt, coverArtFit });
       }
     } else if (pendingGame) {
-      setPendingGame({ ...pendingGame, coverArt: coverArt, coverArtFit: coverArtFit });
+      setPendingGame({ ...pendingGame, coverArt, coverArtFit });
     }
   };
 
   const updateCoverArtFit = (newFit: 'cover' | 'contain') => {
     if (editingGame && (editingGame.coverArt || pendingGame?.coverArt)) {
-      const updatedGames = games.map(g =>
-        g.id === editingGame.id ? { ...g, coverArtFit: newFit } : g
-      );
-      setGames(updatedGames);
-      localStorage.setItem('games', JSON.stringify(updatedGames));
+      updateGame(editingGame.id, { coverArtFit: newFit });
       setEditingGame({ ...editingGame, coverArtFit: newFit });
       if (pendingGame && pendingGame.id === editingGame.id) {
         setPendingGame({ ...pendingGame, coverArtFit: newFit });
@@ -388,56 +274,17 @@ export default function Home() {
     }
   };
 
-  const handleCoverArtFileUpload = async (file: File): Promise<void> => {
-    try {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        applyCoverArt(dataUrl);
-      };
-      reader.onerror = () => {
-        console.error('Error reading file');
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error('Error uploading cover art:', error);
-    }
-  };
-
   const removeCoverArt = () => {
     if (editingGame) {
-      const updatedGames = games.map(g =>
-        g.id === editingGame.id ? { ...g, coverArt: undefined } : g
-      );
-      setGames(updatedGames);
-      localStorage.setItem('games', JSON.stringify(updatedGames));
+      updateGame(editingGame.id, { coverArt: undefined });
       const updatedEditingGame = { ...editingGame, coverArt: undefined };
       setEditingGame(updatedEditingGame);
-      // Also update pendingGame if it exists
       if (pendingGame && pendingGame.id === editingGame.id) {
         setPendingGame(updatedEditingGame);
       }
     } else if (pendingGame) {
       setPendingGame({ ...pendingGame, coverArt: undefined });
     }
-  };
-
-  const extractFilesFromDataTransfer = (dataTransfer: DataTransfer): File[] => {
-    const files: File[] = [];
-    if (dataTransfer.items) {
-      for (let i = 0; i < dataTransfer.items.length; i++) {
-        const item = dataTransfer.items[i];
-        if (item.kind === 'file') {
-          const file = item.getAsFile();
-          if (file) files.push(file);
-        }
-      }
-    } else {
-      for (let i = 0; i < dataTransfer.files.length; i++) {
-        files.push(dataTransfer.files[i]);
-      }
-    }
-    return files;
   };
 
   const handleIncomingFiles = async (files: File[]) => {
@@ -490,13 +337,10 @@ export default function Home() {
       setSystemPickerOpen(true);
     } else if (filesNeedingSystem.length > 0) {
       if (filesNeedingSystem.length === 1) {
-        setDuplicateMessage(`The file "${filesNeedingSystem[0].file.name}" is already in your library`);
+        showDuplicateError(`The file "${filesNeedingSystem[0].file.name}" is already in your library`);
       } else {
-        setDuplicateMessage(`All ${filesNeedingSystem.length} selected files are already in your library`);
+        showDuplicateError(`All ${filesNeedingSystem.length} selected files are already in your library`);
       }
-      setShowDuplicateMessage(true);
-      setTimeout(() => setShowDuplicateMessage(false), 2000);
-      setTimeout(() => setDuplicateMessage(null), 2500);
     }
   };
 
@@ -540,9 +384,6 @@ export default function Home() {
   const handleDeleteGame = async (game: Game) => {
     if (confirm(`Are you sure you want to delete "${game.title}"?`)) {
       try {
-        const { deleteGameFile } = await import('@/lib/storage');
-
-        // Trigger fade-out animation for this game
         setDeletingGameIds(prev => {
           const next = new Set(prev);
           next.add(game.id);
@@ -551,11 +392,7 @@ export default function Home() {
 
         await new Promise(resolve => setTimeout(resolve, 400));
 
-        await deleteGameFile(game.id);
-
-        const updatedGames = games.filter(g => g.id !== game.id);
-        setGames(updatedGames);
-        localStorage.setItem('games', JSON.stringify(updatedGames));
+        await deleteGame(game.id);
         setGameListAnimationKey(prev => prev + 1);
 
         setDeletingGameIds(prev => {
@@ -569,46 +406,18 @@ export default function Home() {
     }
   };
 
-  const toggleGameSelection = (gameId: number) => {
-    const newSelected = new Set(selectedGameIds);
-    if (newSelected.has(gameId)) {
-      newSelected.delete(gameId);
-    } else {
-      newSelected.add(gameId);
-    }
-    setSelectedGameIds(newSelected);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedGameIds.size === games.length) {
-      setSelectedGameIds(new Set());
-    } else {
-      setSelectedGameIds(new Set(games.map(g => g.id)));
-    }
-  };
-
   const handleMassDelete = async () => {
     if (selectedGameIds.size === 0) return;
 
     if (confirm(`Are you sure you want to delete ${selectedGameIds.size} game(s)? This action cannot be undone.`)) {
       try {
-        const { deleteGameFile } = await import('@/lib/storage');
-
-        // Trigger fade-out animation
         setDeletingGameIds(new Set(selectedGameIds));
-
-        // Wait for animation to complete
         await new Promise(resolve => setTimeout(resolve, 400));
 
-        // Delete from IndexedDB
         for (const gameId of selectedGameIds) {
-          await deleteGameFile(gameId);
+          await deleteGame(gameId);
         }
 
-        // Remove from state and localStorage
-        const updatedGames = games.filter(g => !selectedGameIds.has(g.id));
-        setGames(updatedGames);
-        localStorage.setItem('games', JSON.stringify(updatedGames));
         setGameListAnimationKey(prev => prev + 1);
         setSelectedGameIds(new Set());
         setDeletingGameIds(new Set());
@@ -617,44 +426,6 @@ export default function Home() {
         console.error('Error deleting games:', error);
       }
     }
-  };
-
-  const deleteButtonRef = useRef<HTMLButtonElement>(null);
-  const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isPressingRef = useRef(false);
-
-  const toggleGameSearch = () => {
-    setGameSearchExpanded((prev) => {
-      const next = !prev;
-      if (next) {
-        requestAnimationFrame(() => gameSearchInputRef.current?.focus());
-      } else {
-        setGameSearchQuery('');
-      }
-      return next;
-    });
-  };
-
-  const handleDeleteButtonMouseDown = () => {
-    isPressingRef.current = true;
-    deleteTimeoutRef.current = setTimeout(() => {
-      if (isPressingRef.current) {
-        setIsDeleteMode(true);
-      }
-    }, 500);
-  };
-
-  const handleDeleteButtonMouseUp = () => {
-    isPressingRef.current = false;
-    if (deleteTimeoutRef.current) {
-      clearTimeout(deleteTimeoutRef.current);
-      deleteTimeoutRef.current = null;
-    }
-  };
-
-  const exitDeleteMode = () => {
-    setIsDeleteMode(false);
-    setSelectedGameIds(new Set());
   };
 
   const handlePlayClick = async (game: Game) => {
@@ -683,16 +454,16 @@ export default function Home() {
     }
   };
 
-  const handleNavClick = (viewName: 'library' | 'themes') => {
+  const handleNavClick = useCallback((viewName: 'library' | 'themes') => {
     setActiveView(viewName);
     setIsSidebarOpen(false);
-  };
+  }, [setActiveView, setIsSidebarOpen]);
 
-  const getSidebarButtonClass = (view: 'library' | 'themes') => {
+  const getSidebarButtonClass = useCallback((view: 'library' | 'themes') => {
     const baseClass = "sidebar-item block p-3 mb-2 rounded-lg transition-all flex items-center border-l-4 hover:translate-x-1";
     const isActive = activeView === view;
     return `${baseClass} ${isActive ? 'border-l-4' : 'border-transparent'}`;
-  };
+  }, [activeView]);
 
   const sidebarClass = isSidebarOpen ? "translate-x-0" : "-translate-x-full";
   const sidebarFullClass = `w-64 p-6 flex flex-col justify-start shadow-xl fixed left-0 top-0 bottom-0 z-50 transition-all duration-300 ease-in-out ${sidebarClass}`;
@@ -1036,18 +807,20 @@ export default function Home() {
 
   return (
     <>
-      {!isHydrated ? (
-        <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#0f0f0f', fontFamily: 'Inter, sans-serif' }} />
+      {!isMounted || !isHydrated ? (
+        <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#0a0a0f', fontFamily: 'Inter, sans-serif' }} />
       ) : (
         <div
           className="min-h-screen flex flex-col"
           style={{ backgroundColor: currentColors.darkBg, fontFamily: 'Inter, sans-serif' }}
         >
-          <div
-            className={`fixed inset-0 z-40 transition-all duration-300 ${isSidebarOpen ? 'bg-black/60 backdrop-blur-sm' : 'bg-black/0 backdrop-blur-none pointer-events-none'
-              }`}
-            onClick={() => setIsSidebarOpen(false)}
-          />
+          {isHydrated && (
+            <div
+              className={`fixed inset-0 z-40 transition-all duration-300 ${isSidebarOpen ? 'bg-black/60 backdrop-blur-sm' : 'bg-black/0 backdrop-blur-none pointer-events-none'
+                }`}
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
           <aside className={sidebarFullClass} style={{ backgroundColor: currentColors.midDark, boxShadow: '4px 0 12px rgba(0, 0, 0, 0.3)' }}>
             <div className="flex items-center gap-3 mb-12 animate-fade-in pb-6 border-b" style={{ borderColor: currentColors.highlight + '30' }}>
               <img src="/favicon.ico" alt="Joe T Emulator" className="w-12 h-12 flex-shrink-0" />
@@ -1066,10 +839,7 @@ export default function Home() {
               </h2>
             </div>
             <nav>
-              {[
-                { view: 'library' as const, icon: Gamepad2, label: 'Library' },
-                { view: 'themes' as const, icon: Palette, label: 'Themes' }
-              ].map(({ view, icon: Icon, label }, index) => (
+              {NAV_ITEMS.map(({ view, icon: Icon, label }, index) => (
                 <button
                   key={view}
                   className={getSidebarButtonClass(view) + " hover:bg-opacity-50"}
@@ -1118,7 +888,7 @@ export default function Home() {
           {duplicateMessage && (
             <div
               className={`fixed bottom-24 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-2xl z-60 p-4 transition-opacity duration-300 ${showDuplicateMessage ? 'animate-fade-in' : 'animate-fade-out'}`}
-              onClick={() => setDuplicateMessage(null)}
+              onClick={() => {}}
               style={{
                 backgroundColor: '#ef4444',
                 color: currentColors.softLight,
@@ -1288,8 +1058,8 @@ export default function Home() {
                         className="w-full flex items-center rounded-xl border-2 transition-all mb-4"
                         style={{
                           backgroundColor: currentColors.darkBg,
-                          borderColor: searchFocused ? currentColors.playGreen : currentColors.highlight + '50',
-                          boxShadow: searchFocused ? `0 0 0 2px ${currentColors.playGreen}30` : 'none',
+                          borderColor: searchFocused.current ? currentColors.playGreen : currentColors.highlight + '50',
+                          boxShadow: searchFocused.current ? `0 0 0 2px ${currentColors.playGreen}30` : 'none',
                         }}
                       >
                         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0" style={{ color: currentColors.softLight }}>
@@ -1300,8 +1070,8 @@ export default function Home() {
                           placeholder="Search systems..."
                           value={systemSearchQuery}
                           onChange={(e) => setSystemSearchQuery(e.target.value)}
-                          onFocus={() => setSearchFocused(true)}
-                          onBlur={() => setSearchFocused(false)}
+                          onFocus={() => { searchFocused.current = true; }}
+                          onBlur={() => { searchFocused.current = false; }}
                           className="bg-transparent h-10 flex-1 focus:outline-none text-sm pr-4"
                           style={{
                             color: currentColors.softLight,

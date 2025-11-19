@@ -3,22 +3,28 @@ const DB_VERSION = 1;
 const STORE_NAME = 'gameFiles';
 
 let db: IDBDatabase | null = null;
+let dbPromise: Promise<IDBDatabase> | null = null;
 
 function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === 'undefined' || !window.indexedDB) {
-      reject(new Error('IndexedDB not supported'));
-      return;
-    }
+  if (typeof window === 'undefined' || !window.indexedDB) {
+    return Promise.reject(new Error('IndexedDB not supported'));
+  }
 
-    if (db) {
-      resolve(db);
-      return;
-    }
+  if (db) {
+    return Promise.resolve(db);
+  }
 
+  if (dbPromise) {
+    return dbPromise;
+  }
+
+  dbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      dbPromise = null;
+      reject(request.error);
+    };
     request.onsuccess = () => {
       db = request.result;
       resolve(db);
@@ -31,6 +37,8 @@ function openDB(): Promise<IDBDatabase> {
       }
     };
   });
+
+  return dbPromise;
 }
 
 async function executeStoreOperation<T>(
@@ -49,15 +57,30 @@ async function executeStoreOperation<T>(
 }
 
 export async function saveGameFile(gameId: number, file: File): Promise<void> {
-  await executeStoreOperation('readwrite', (store) => store.put(file, gameId));
+  try {
+    await executeStoreOperation('readwrite', (store) => store.put(file, gameId));
+  } catch (error) {
+    console.error(`Failed to save game file ${gameId}:`, error);
+    throw error;
+  }
 }
 
 export async function getGameFile(gameId: number): Promise<File | null> {
-  const result = await executeStoreOperation('readonly', (store) => store.get(gameId));
-  return result || null;
+  try {
+    const result = await executeStoreOperation('readonly', (store) => store.get(gameId));
+    return result || null;
+  } catch (error) {
+    console.error(`Failed to retrieve game file ${gameId}:`, error);
+    return null;
+  }
 }
 
 export async function deleteGameFile(gameId: number): Promise<void> {
-  await executeStoreOperation('readwrite', (store) => store.delete(gameId));
+  try {
+    await executeStoreOperation('readwrite', (store) => store.delete(gameId));
+  } catch (error) {
+    console.error(`Failed to delete game file ${gameId}:`, error);
+    throw error;
+  }
 }
 

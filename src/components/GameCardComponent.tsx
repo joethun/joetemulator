@@ -1,3 +1,4 @@
+import { memo, useCallback } from 'react';
 import { Trash2, Settings } from 'lucide-react';
 import { Game, THEMES, getGradientStyle } from '@/types';
 import { getSystemDisplayName } from '@/lib/constants';
@@ -15,16 +16,22 @@ interface GameCardProps {
   colors: typeof THEMES.default;
 }
 
-export function GameCard({ game, onPlay, onEdit, onDelete, onSelect, isSelected, isDeleteMode, onEnterDeleteMode, onCoverArtClick, colors }: GameCardProps) {
-  const baseCoverClass = "h-full flex items-center justify-center bg-cover bg-center bg-no-repeat relative";
-  const cardClass = `group relative overflow-hidden w-64 h-80 rounded-xl transition-all duration-300 ease-in-out hover:shadow-lg hover:z-10 border animate-border-breathe ${isDeleteMode ? 'animate-shake' : 'hover:scale-[1.02]'}`;
-  const overlayClass = "absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent backdrop-brightness-75 flex flex-col justify-end p-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300";
-  const contentClass = "transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 ease-out";
-  const buttonClass = "w-full font-bold py-2.5 px-4 rounded-lg transition-all text-sm hover:shadow-md active:scale-[0.98]";
+const CARD_STYLES = {
+  baseCover: "h-full flex items-center justify-center bg-cover bg-center bg-no-repeat relative",
+  card: (isDeleteMode: boolean) => `group relative overflow-hidden w-64 h-80 rounded-xl transition-all duration-300 ease-in-out hover:shadow-lg hover:z-10 border animate-border-breathe ${isDeleteMode ? 'animate-shake' : 'hover:scale-[1.02]'}`,
+  overlay: "absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent backdrop-brightness-75 flex flex-col justify-end p-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
+  content: "transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 ease-out",
+  button: "w-full font-bold py-2.5 px-4 rounded-lg transition-all text-sm hover:shadow-md active:scale-[0.98]",
+} as const;
+
+function GameCardComponent({ game, onPlay, onEdit, onDelete, onSelect, isSelected, isDeleteMode, onEnterDeleteMode, onCoverArtClick, colors }: GameCardProps) {
+  const handleDeleteButtonInteraction = useCallback(() => {
+    onEnterDeleteMode();
+  }, [onEnterDeleteMode]);
 
   return (
     <div
-      className={cardClass}
+      className={CARD_STYLES.card(isDeleteMode)}
       style={{
         backgroundColor: isDeleteMode && isSelected ? '#ef4444' : colors.midDark,
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
@@ -55,7 +62,7 @@ export function GameCard({ game, onPlay, onEdit, onDelete, onSelect, isSelected,
         </div>
       )}
       <div
-        className={baseCoverClass}
+        className={CARD_STYLES.baseCover}
         style={game.coverArt ? {
           backgroundImage: `url(${game.coverArt})`,
           backgroundColor: 'transparent',
@@ -83,15 +90,15 @@ export function GameCard({ game, onPlay, onEdit, onDelete, onSelect, isSelected,
         )}
       </div>
       {!isDeleteMode && (
-        <div className={overlayClass}>
-          <div className={contentClass}>
+        <div className={CARD_STYLES.overlay}>
+          <div className={CARD_STYLES.content}>
             <h3 className="text-xl font-bold truncate mb-1.5" style={{ color: colors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{game.title}</h3>
             <p className="text-sm mb-3" style={{ color: colors.highlight }}>
               {game.genre}
             </p>
             <div className="flex gap-2.5 items-stretch mt-3">
               <button
-                className={buttonClass + " flex-1"}
+                className={CARD_STYLES.button + " flex-1"}
                 style={{ ...getGradientStyle(colors.gradientFrom, colors.gradientTo), color: colors.darkBg }}
                 onClick={(e) => { e.stopPropagation(); onPlay(game); }}
               >
@@ -138,3 +145,5 @@ export function GameCard({ game, onPlay, onEdit, onDelete, onSelect, isSelected,
     </div>
   );
 }
+
+export const GameCard = memo(GameCardComponent);
