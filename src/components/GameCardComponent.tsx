@@ -1,7 +1,6 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { Trash2, Settings } from 'lucide-react';
 import { Game, THEMES, getGradientStyle } from '@/types';
-import { getSystemDisplayName } from '@/lib/constants';
 
 interface GameCardProps {
   game: Game;
@@ -25,20 +24,38 @@ const CARD_STYLES = {
 } as const;
 
 function GameCardComponent({ game, onPlay, onEdit, onDelete, onSelect, isSelected, isDeleteMode, onEnterDeleteMode, onCoverArtClick, colors }: GameCardProps) {
-  const handleDeleteButtonInteraction = useCallback(() => {
-    onEnterDeleteMode();
+  const shadowText = '0 2px 4px rgba(0,0,0,0.2)';
+  const shadowOverlay = '0 2px 4px rgba(0,0,0,0.5)';
+
+  const cardStyle = useMemo(() => ({
+    backgroundColor: isDeleteMode && isSelected ? '#ef4444' : colors.midDark,
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+    borderColor: colors.highlight,
+  }), [isDeleteMode, isSelected, colors]);
+
+  const coverStyle = useMemo(() => (
+    game.coverArt ? {
+      backgroundImage: `url(${game.coverArt})`,
+      backgroundColor: 'transparent',
+      backgroundSize: game.coverArtFit || 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    } : {
+      ...getGradientStyle(colors.gradientFrom, colors.gradientTo)
+    }
+  ), [game.coverArt, game.coverArtFit, colors]);
+
+  const withStop = useCallback((fn: (e: any) => void) => (e: any) => { e.stopPropagation(); fn(e); }, []);
+  const attachLongPress = useCallback((el: EventTarget) => {
+    const t = setTimeout(() => { onEnterDeleteMode(); }, 500);
+    const c = () => clearTimeout(t);
+    el.addEventListener('mouseup', c, { once: true } as any);
+    el.addEventListener('mouseleave', c, { once: true } as any);
+    el.addEventListener('touchend', c, { once: true } as any);
   }, [onEnterDeleteMode]);
 
   return (
-    <div
-      className={CARD_STYLES.card(isDeleteMode)}
-      style={{
-        backgroundColor: isDeleteMode && isSelected ? '#ef4444' : colors.midDark,
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-        borderColor: colors.highlight,
-      }}
-      onClick={() => isDeleteMode && onSelect(game.id)}
-    >
+    <div className={CARD_STYLES.card(isDeleteMode)} style={cardStyle} onClick={() => isDeleteMode && onSelect(game.id)}>
       {isDeleteMode && (
         <div
           className="absolute inset-0 z-20 flex items-center justify-center rounded-xl pointer-events-none transition-opacity duration-300"
@@ -61,28 +78,14 @@ function GameCardComponent({ game, onPlay, onEdit, onDelete, onSelect, isSelecte
           </div>
         </div>
       )}
-      <div
-        className={CARD_STYLES.baseCover}
-        style={game.coverArt ? {
-          backgroundImage: `url(${game.coverArt})`,
-          backgroundColor: 'transparent',
-          backgroundSize: game.coverArtFit || 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        } : {
-          ...getGradientStyle(colors.gradientFrom, colors.gradientTo)
-        }}
-      >
+      <div className={CARD_STYLES.baseCover} style={coverStyle}>
         {!game.coverArt && (
-          <div className="flex items-center justify-center" style={{ color: colors.darkBg }}>
-            <span className="text-4xl font-bold tracking-wide" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-              {getSystemDisplayName(game.core)}
+          <div className="flex items-center justify-center w-full px-4" style={{ color: colors.darkBg }}>
+            <span className="block w-full max-w-full text-4xl font-bold tracking-wide text-center break-words whitespace-normal select-none" style={{ textShadow: shadowText, hyphens: 'auto' }}>
+              {game.title}
             </span>
             {onCoverArtClick && !isDeleteMode && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onCoverArtClick(game); }}
-                className="absolute inset-0"
-              >
+              <button onClick={withStop(() => onCoverArtClick(game))} className="absolute inset-0">
                 <span className="sr-only">Add cover art</span>
               </button>
             )}
@@ -92,49 +95,21 @@ function GameCardComponent({ game, onPlay, onEdit, onDelete, onSelect, isSelecte
       {!isDeleteMode && (
         <div className={CARD_STYLES.overlay}>
           <div className={CARD_STYLES.content}>
-            <h3 className="text-xl font-bold truncate mb-1.5" style={{ color: colors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{game.title}</h3>
+            <h3 className="text-xl font-bold truncate mb-1.5" style={{ color: colors.softLight, textShadow: shadowOverlay }}>{game.title}</h3>
             <p className="text-sm mb-3" style={{ color: colors.highlight }}>
               {game.genre}
             </p>
             <div className="flex gap-2.5 items-stretch mt-3">
-              <button
-                className={CARD_STYLES.button + " flex-1"}
-                style={{ ...getGradientStyle(colors.gradientFrom, colors.gradientTo), color: colors.darkBg }}
-                onClick={(e) => { e.stopPropagation(); onPlay(game); }}
-              >
+              <button className={CARD_STYLES.button + " flex-1"} style={{ ...getGradientStyle(colors.gradientFrom, colors.gradientTo), color: colors.darkBg }} onClick={withStop(() => onPlay(game))}>
                 PLAY
               </button>
-              <button
-                className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center"
-                style={{ backgroundColor: colors.highlight, color: colors.darkBg }}
-                onClick={(e) => { e.stopPropagation(); onEdit(game); }}
-              >
+              <button className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center" style={{ backgroundColor: colors.highlight, color: colors.darkBg }} onClick={withStop(() => onEdit(game))}>
                 <Settings className="w-5 h-5" />
               </button>
-              <button
-                className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center select-none"
-                style={{ backgroundColor: '#ef4444', color: '#ffffff' }}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  const timeout = setTimeout(() => {
-                    onEnterDeleteMode();
-                  }, 500);
-                  const cleanup = () => clearTimeout(timeout);
-                  e.currentTarget.addEventListener('mouseup', cleanup, { once: true });
-                  e.currentTarget.addEventListener('mouseleave', cleanup, { once: true });
-                }}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  const timeout = setTimeout(() => {
-                    onEnterDeleteMode();
-                  }, 500);
-                  const cleanup = () => clearTimeout(timeout);
-                  e.currentTarget.addEventListener('touchend', cleanup, { once: true });
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(game);
-                }}
+              <button className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center select-none" style={{ backgroundColor: '#ef4444', color: '#ffffff' }}
+                onMouseDown={(e) => { e.stopPropagation(); attachLongPress(e.currentTarget); }}
+                onTouchStart={(e) => { e.stopPropagation(); attachLongPress(e.currentTarget); }}
+                onClick={withStop(() => onDelete(game))}
               >
                 <Trash2 className="w-5 h-5" />
               </button>

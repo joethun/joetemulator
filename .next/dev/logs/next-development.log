@@ -7538,3 +7538,525 @@ Import traces:
 [03:16:01.775] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
 [03:16:02.956] Browser LOG     Loading language en
 [03:16:03.350] Browser LOG     Missing language en !!
+[01:20:48.030] Server  LOG      ✓ Compiled in 1115ms
+[01:21:28.327] Server  LOG      ✓ Compiled in 1225ms
+[01:22:17.738] Server  LOG      ✓ Compiled in 515ms
+[01:22:18.869] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:22:19.778] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:50:41.034] Server  LOG      ✓ Compiled in 1518ms
+[01:56:42.564] Server  LOG      ✓ Compiled in 1640ms
+[01:56:48.361] Server  LOG      ✓ Compiled in 1469ms
+[02:04:41.801] Server  LOG      ✓ Compiled in 1808ms
+[02:04:46.605] Server  LOG      ✓ Compiled in 1384ms
+[02:11:19.579] Server  LOG      ✓ Compiled in 1456ms
+[02:11:24.599] Server  LOG      ✓ Compiled in 1196ms
+[02:12:17.220] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:15:08.198] Server  LOG      ✓ Compiled in 42ms
+[02:15:23.965] Server  LOG      ✓ Compiled in 41ms
+[02:17:04.560] Server  LOG      ✓ Compiled in 1503ms
+[02:17:10.193] Server  LOG      ✓ Compiled in 1263ms
+[02:17:15.272] Server  LOG      ✓ Compiled in 580ms
+[02:17:31.256] Server  LOG      ✓ Compiled in 1074ms
+[02:20:20.938] Server  LOG      ✓ Compiled in 87ms
+[02:20:21.056] Browser ERROR   ./src/app/page.tsx:582:19
+Parsing ecmascript source code failed
+  580 |                   className="p-6 rounded-xl transition-all border-2 relative overflow-hidden animate-fade-in"
+  581 |                   style={{
+> 582 |                   </div>
+      |                   ^
+  583 |                   <div className="flex gap-2">
+  584 |                     <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.darkBg }}></div>
+  585 |                     <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.midDark }}></div>
+
+Expression expected
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[02:20:21.056] Browser ERROR   ./src/app/page.tsx:582:20
+Parsing ecmascript source code failed
+  580 |                   className="p-6 rounded-xl transition-all border-2 relative overflow-hidden animate-fade-in"
+  581 |                   style={{
+> 582 |                   </div>
+      |                    ^^^^^
+  583 |                   <div className="flex gap-2">
+  584 |                     <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.darkBg }}></div>
+  585 |                     <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.midDark }}></div>
+
+Unterminated regexp literal
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[02:20:50.694] Server  LOG      ✓ Compiled in 368ms
+[02:23:04.228] Server  LOG      ✓ Compiled in 2.4s
+[02:23:34.109] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:24:23.689] Server  LOG      ✓ Compiled in 1156ms
+[02:26:14.710] Server  LOG      ✓ Compiled in 1345ms
+[02:26:37.212] Server  LOG      ✓ Compiled in 1140ms
+[02:26:48.006] Server  LOG      ✓ Compiled in 1624ms
+[02:38:48.455] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:43:19.858] Server  LOG      ✓ Compiled in 246ms
+[02:44:45.164] Server  LOG      ✓ Compiled in 271ms
+[02:44:53.912] Server  LOG      ✓ Compiled in 122ms
+[02:45:20.201] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:46:33.075] Server  LOG      ✓ Compiled in 52ms
+[02:46:33.523] Browser ERROR   ./src/components/GameCardComponent.tsx:106:24
+Parsing ecmascript source code failed
+  104 |               >
+  105 |                 PLAY
+> 106 |               </button>
+      |                        ^
+> 107 |               <button
+      | ^^^^^^^^^^^^^^^
+  108 |                 className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center"
+  109 |                 style={{ backgroundColor: colors.highlight, color: colors.darkBg }}
+  110 |                 onClick={(e) => { e.stopPropagation(); onEdit(game); }}
+
+Expected '</', got 'jsx text (
+              )'
+
+Import traces:
+  Client Component Browser:
+    ./src/components/GameCardComponent.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/GameCardComponent.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[02:46:34.524] Browser ERROR   ./src/components/GameCardComponent.tsx:106:24
+Parsing ecmascript source code failed
+  104 |               >
+  105 |                 PLAY
+> 106 |               </button>
+      |                        ^
+> 107 |               <button
+      | ^^^^^^^^^^^^^^^
+  108 |                 className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center"
+  109 |                 style={{ backgroundColor: colors.highlight, color: colors.darkBg }}
+  110 |                 onClick={(e) => { e.stopPropagation(); onEdit(game); }}
+
+Expected '</', got 'jsx text (
+              )'
+
+Import traces:
+  Client Component Browser:
+    ./src/components/GameCardComponent.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/GameCardComponent.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[02:47:03.627] Server  LOG      ✓ Compiled in 129ms
+[02:49:31.159] Server  LOG      ✓ Compiled in 125ms
+[02:50:21.736] Server  LOG      ✓ Compiled in 286ms
+[02:50:35.815] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:50:35.933] Browser ERROR   A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <RootLayout>
+                        <html lang="en" suppressHydrationWarning={true}>
+                          <head>
+                          <body
+                            className="lexend_99ca8c04-module__K1QbjW__variable jetbrains_mono_7d65b77b-module__VxV-Ta..."
+-                           cz-shortcut-listen="true"
+                          >
+                  ...
+
+[02:51:43.799] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:51:43.909] Browser ERROR   A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <RootLayout>
+                        <html
+                          lang="en"
+-                         data-theme={"\"indigo\""}
+                        >
+                  ...
+
+[02:51:55.886] Server  LOG      ✓ Compiled in 240ms
+[02:51:58.656] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:53:34.486] Server  LOG      ✓ Compiled in 119ms
+[02:53:51.827] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:54:36.956] Server  LOG      ✓ Compiled in 146ms
+[02:56:48.021] Server  LOG      ✓ Compiled in 144ms
+[02:57:17.832] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:58:15.037] Server  LOG      ✓ Compiled in 130ms
+[03:02:13.698] Server  LOG      ✓ Compiled in 138ms
+[03:04:39.940] Browser LOG     Loading language en
+[03:04:40.751] Browser LOG     Missing language en !!
+[03:04:43.181] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:04:44.440] Browser LOG     Loading language en
+[03:04:44.440] Browser LOG     Missing language en !!
+[03:04:50.176] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:11:15.371] Server  LOG      ✓ Compiled in 141ms
+[03:16:43.351] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:16:43.498] Browser ERROR   A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <RootLayout>
+                        <html lang="en" suppressHydrationWarning={true}>
+                          <head>
+                          <body
+                            className="lexend_99ca8c04-module__K1QbjW__variable jetbrains_mono_7d65b77b-module__VxV-Ta..."
+-                           cz-shortcut-listen="true"
+                          >
+                  ...
+
+[03:17:05.542] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:17:06.512] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:17:07.979] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:17:08.989] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:20:59.056] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:20:59.167] Browser ERROR   A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <RootLayout>
+                        <html lang="en" suppressHydrationWarning={true}>
+                          <head>
+                          <body
+                            className="lexend_99ca8c04-module__K1QbjW__variable jetbrains_mono_7d65b77b-module__VxV-Ta..."
+-                           cz-shortcut-listen="true"
+                          >
+                  ...
+
+[03:21:02.077] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:22:02.556] Server  LOG      ✓ Compiled in 1719ms
+[03:34:22.991] Server  LOG      ✓ Compiled in 1600ms
+[03:36:54.142] Server  LOG      ✓ Compiled in 58ms
+[03:39:27.634] Server  LOG      ✓ Compiled in 42ms
+[03:40:53.326] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[03:42:07.911] Server  LOG      ✓ Compiled in 128ms
+[04:26:27.725] Server  LOG      ✓ Compiled in 154ms
+[04:26:27.847] Server  LOG      ✓ Compiled in 117ms
+[04:27:36.065] Server  LOG      ✓ Compiled in 92ms
+[04:27:37.267] Server  LOG      ✓ Compiled in 86ms
+[04:27:43.757] Server  LOG      ✓ Compiled in 83ms
+[04:27:49.422] Server  LOG      ✓ Compiled in 95ms
+[04:27:53.404] Server  LOG      ✓ Compiled in 83ms
+[04:27:54.418] Server  LOG      ✓ Compiled in 88ms
+[04:27:54.868] Server  LOG      ✓ Compiled in 123ms
+[04:28:02.614] Server  LOG      ✓ Compiled in 70ms
+[04:28:03.120] Server  LOG      ✓ Compiled in 79ms
+[04:28:08.484] Server  LOG      ✓ Compiled in 87ms
+[04:28:11.196] Server  LOG      ✓ Compiled in 87ms
+[04:28:13.382] Server  LOG      ✓ Compiled in 77ms
+[04:28:16.795] Server  LOG      ✓ Compiled in 76ms
+[04:28:17.297] Server  LOG      ✓ Compiled in 91ms
+[04:28:18.052] Server  LOG      ✓ Compiled in 71ms
+[04:28:19.689] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:28:19.812] Browser ERROR   A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <RootLayout>
+                        <html lang="en" suppressHydrationWarning={true}>
+                          <head>
+                          <body
+                            className="lexend_99ca8c04-module__K1QbjW__variable jetbrains_mono_7d65b77b-module__VxV-Ta..."
+-                           cz-shortcut-listen="true"
+                          >
+                  ...
+
+[04:28:25.146] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:28:35.151] Server  LOG      ✓ Compiled in 64ms
+[04:28:35.948] Server  LOG      ✓ Compiled in 80ms
+[04:28:36.653] Server  LOG      ✓ Compiled in 78ms
+[04:28:42.764] Server  LOG      ✓ Compiled in 74ms
+[04:28:43.798] Server  LOG      ✓ Compiled in 82ms
+[04:28:51.212] Server  LOG      ✓ Compiled in 78ms
+[04:28:51.894] Server  LOG      ✓ Compiled in 92ms
+[04:28:52.162] Server  LOG      ✓ Compiled in 68ms
+[04:30:24.109] Server  LOG      ✓ Compiled in 4.5s
+[04:30:24.322] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:30:24.428] Browser ERROR   A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <RootLayout>
+                        <html lang="en" suppressHydrationWarning={true}>
+                          <head>
+                          <body
+                            className="lexend_99ca8c04-module__K1QbjW__variable jetbrains_mono_7d65b77b-module__VxV-Ta..."
+-                           cz-shortcut-listen="true"
+                          >
+                  ...
+
+[04:30:47.056] Server  LOG      ✓ Compiled in 2.7s
+[04:30:48.512] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:37:24.808] Server  LOG      ✓ Compiled in 2s
+[04:37:25.523] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:37:38.208] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:37:38.227] Server  LOG      ✓ Compiled in 1505ms
+[04:37:38.618] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:37:39.536] Browser ERROR   uncaughtError: ReferenceError: AddGameButton is not defined
+[04:38:46.428] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:38:46.441] Server  LOG      ✓ Compiled in 655ms
+[04:38:46.856] Server  ERROR   C:\Users\sharmase\Downloads\joetemulator-1\.next\dev\server\chunks\ssr\[root-of-the-server]__c95ed850._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+[04:38:46.861] Server  ERROR    ⨯ ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:38:47.259] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:38:47.533] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:48:41.275] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:48:41.447] Server  ERROR   C:\Users\sharmase\Downloads\joetemulator-1\.next\dev\server\chunks\ssr\[root-of-the-server]__c95ed850._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+[04:48:41.450] Server  ERROR    ⨯ ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:48:41.466] Server  LOG      ✓ Compiled in 1594ms
+[04:48:41.724] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:48:42.523] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:48:54.181] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:48:54.340] Server  ERROR   C:\Users\sharmase\Downloads\joetemulator-1\.next\dev\server\chunks\ssr\[root-of-the-server]__c95ed850._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+[04:48:54.343] Server  ERROR    ⨯ ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:48:54.372] Server  LOG      ✓ Compiled in 1289ms
+[04:48:54.564] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:48:55.534] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:50:34.758] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:50:34.763] Server  LOG      ✓ Compiled in 281ms
+[04:50:34.957] Server  ERROR   C:\Users\sharmase\Downloads\joetemulator-1\.next\dev\server\chunks\ssr\[root-of-the-server]__c95ed850._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+[04:50:34.959] Server  ERROR    ⨯ ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:50:35.277] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:50:35.532] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:50:45.196] Server  LOG      ✓ Compiled in 582ms
+[04:50:45.210] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:50:45.503] Server  ERROR   C:\Users\sharmase\Downloads\joetemulator-1\.next\dev\server\chunks\ssr\[root-of-the-server]__c95ed850._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+[04:50:45.511] Server  ERROR    ⨯ ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:50:46.036] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:50:46.531] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:51:17.369] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:51:17.379] Server  LOG      ✓ Compiled in 848ms
+[04:51:17.960] Server  ERROR   C:\Users\sharmase\Downloads\joetemulator-1\.next\dev\server\chunks\ssr\[root-of-the-server]__c95ed850._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+[04:51:17.972] Server  ERROR    ⨯ ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:51:18.537] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:51:19.527] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:54:25.418] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:54:25.421] Server  LOG      ✓ Compiled in 666ms
+[04:54:25.825] Server  ERROR   C:\Users\sharmase\Downloads\joetemulator-1\.next\dev\server\chunks\ssr\[root-of-the-server]__c95ed850._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+[04:54:25.838] Server  ERROR    ⨯ ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:54:26.567] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:54:27.527] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:54:52.912] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:54:52.915] Server  LOG      ✓ Compiled in 327ms
+[04:54:53.100] Server  ERROR   C:\Users\sharmase\Downloads\joetemulator-1\.next\dev\server\chunks\ssr\[root-of-the-server]__c95ed850._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+[04:54:53.103] Server  ERROR    ⨯ ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:54:53.398] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:54:54.525] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:55:57.590] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:55:57.595] Server  LOG      ✓ Compiled in 495ms
+[04:55:57.791] Server  ERROR   C:\Users\sharmase\Downloads\joetemulator-1\.next\dev\server\chunks\ssr\[root-of-the-server]__c95ed850._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+[04:55:57.796] Server  ERROR    ⨯ ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:55:58.201] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:55:59.522] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:56:38.262] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:56:38.277] Server  LOG      ✓ Compiled in 299ms
+[04:56:38.465] Server  ERROR   C:\Users\sharmase\Downloads\joetemulator-1\.next\dev\server\chunks\ssr\[root-of-the-server]__c95ed850._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+[04:56:38.468] Server  ERROR    ⨯ ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:56:38.693] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:56:39.521] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:56:55.747] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[04:56:55.950] Server  ERROR   C:\Users\sharmase\Downloads\joetemulator-1\.next\dev\server\chunks\ssr\[root-of-the-server]__c95ed850._.js: Invalid source map. Only conformant source maps can be used to find the original code. Cause: Error: sourceMapURL could not be parsed
+[04:56:55.955] Server  ERROR    ⨯ ReferenceError: Cannot access 'handleFileSelect' before initialization
+[04:56:55.999] Server  LOG      ✓ Compiled in 252ms
+[04:56:56.211] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[04:56:56.522] Browser ERROR   uncaughtError: ReferenceError: Cannot access 'handleFileSelect' before initialization
+[05:18:35.062] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[05:18:35.086] Server  LOG      ✓ Compiled in 602ms
+[05:18:36.261] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[05:18:37.168] Browser ERROR   A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <RootLayout>
+                        <html lang="en" suppressHydrationWarning={true}>
+                          <head>
+                          <body
+                            className="lexend_99ca8c04-module__K1QbjW__variable jetbrains_mono_7d65b77b-module__VxV-Ta..."
+-                           cz-shortcut-listen="true"
+                          >
+                  ...
+
+[05:18:42.745] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[05:18:58.711] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[05:19:09.222] Browser LOG     Loading language en
+[05:19:09.976] Browser LOG     Missing language en !!
+[05:19:15.234] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[05:19:15.586] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[05:19:16.886] Browser LOG     Loading language en
+[05:19:16.886] Browser LOG     Missing language en !!
+[05:19:19.158] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold

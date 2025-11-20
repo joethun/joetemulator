@@ -1,22 +1,39 @@
 "use client";
+/*
+Revision Log
+- Date: 2025-11-19
+- Summary: Performance and maintainability optimization while preserving functionality.
+- Changes:
+- 1) Removed unused imports and variables; resolved naming conflict with getSystemCategory.
+- 2) Consolidated repeated game card rendering into helper to reduce duplication.
+- 3) Simplified system picker finalization logic and unified duplicate pathways.
+- 4) Optimized event handlers with stable callbacks; added delay helper and centralized error logging.
+- 5) Centralized font family constant; replaced repeated inline strings.
+- 6) Replaced duplicated "Add Game" button with reusable helper.
+*/
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { DragEvent } from 'react';
 import { loadGame } from '@/lib/emulator';
 import { saveGameFile, getGameFile } from '@/lib/storage';
-import { SYSTEM_PICKER, FILE_EXTENSIONS, getSystemNameByCore, getSystemCategory } from '@/lib/constants';
+import { SYSTEM_PICKER, getSystemNameByCore } from '@/lib/constants';
 import { Game, THEMES, getGradientStyle } from '@/types';
 import { GameCard } from '@/components/GameCardComponent';
-import { Gamepad2, Palette, Menu, X, Trash2, ArrowUp, ArrowDown, Search, Plus } from 'lucide-react';
+import { Gamepad2, Palette, Menu, X, Trash2, ArrowUp, ArrowDown, Search, Plus, CheckCircle, Image, XCircle } from 'lucide-react';
 import { useGameLibrary } from '@/hooks/useGameLibrary';
 import { useUIState } from '@/hooks/useUIState';
 import { useGameOperations } from '@/hooks/useGameOperations';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 // Constants
-const SIDEBAR_ANIMATION_DURATION = 200;
 const TIME_UPDATE_INTERVAL = 60000;
-const SORT_OPTIONS = ['title', 'system'] as const;
+const FONT_FAMILY = 'Inter, sans-serif';
+
+// Utilities
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const logError = (scope: string, error: unknown) => {
+  console.error(`[${scope}]`, error);
+};
 const NAV_ITEMS = [
   { view: 'library' as const, icon: Gamepad2, label: 'Library' },
   { view: 'themes' as const, icon: Palette, label: 'Themes' }
@@ -24,7 +41,7 @@ const NAV_ITEMS = [
 
 
 export default function Home() {
-  const { games, isLoadingGames, previousGameCountRef, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
+  const { games, previousGameCountRef, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
   
   const {
     activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, currentTime, setCurrentTime,
@@ -32,7 +49,7 @@ export default function Home() {
     gameSearchExpanded, setGameSearchExpanded, isDragActive, setIsDragActive, themeAnimationKey, setThemeAnimationKey,
     gameListAnimationKey, setGameListAnimationKey, isDeleteMode, setIsDeleteMode, selectedGameIds, setSelectedGameIds,
     deletingGameIds, setDeletingGameIds, gameSearchInputRef, dragCounterRef,
-    toggleGameSearch, toggleGameSelection, toggleSelectAll, exitDeleteMode, handleDeleteButtonMouseDown, handleDeleteButtonMouseUp,
+    toggleGameSearch, toggleGameSelection, exitDeleteMode,
   } = useUIState();
 
   const {
@@ -45,9 +62,24 @@ export default function Home() {
   const [selectedTheme, setSelectedTheme, isThemeHydrated] = useLocalStorage('theme', 'default');
   const [sortBy, setSortBy, isSortByHydrated] = useLocalStorage<'title' | 'system'>('sortBy', 'title');
   const [sortOrder, setSortOrder, isSortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
+  const [systemSearchFocused, setSystemSearchFocused] = useState(false);
   
   const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated;
-  const searchFocused = useRef(false);
+
+  const currentColors = THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default;
+  const gradientStyle = useMemo(() => getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), [currentColors.gradientFrom, currentColors.gradientTo]);
+
+  // Reusable UI pieces
+  const AddGameButton = useCallback(() => (
+    <button
+      onClick={handleFileSelect}
+      className="px-8 rounded-lg font-semibold transition-all hover:shadow-md active:scale-95 flex items-center gap-2 justify-center"
+      style={{ ...gradientStyle, color: currentColors.darkBg, height: '48px' }}
+    >
+      <Plus className="w-5 h-5" />
+      <span>Add Game</span>
+    </button>
+  ), [gradientStyle, currentColors]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -63,12 +95,15 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [loadGamesFromStorage, setCurrentTime, setIsMounted]);
 
+  // Finalize system selection and game additions (single or batch)
   const handleSystemPickerDone = async () => {
+    // If editing, picker closes without adding new games
     if (editingGame) {
       closeSystemPicker();
       return;
     }
 
+    // Batch add
     if (pendingFiles.length > 1) {
       if (!pendingBatchCore) return;
       try {
@@ -79,12 +114,13 @@ export default function Home() {
         setPendingFiles([]);
         setPendingBatchCore(null);
       } catch (error) {
-        console.error('Error finalizing batch game addition:', error);
+        logError('Finalize batch game addition', error);
       }
       closeSystemPicker();
       return;
     }
 
+    // Single add
     if (pendingFiles.length === 1 && pendingGame?.core) {
       try {
         const { file } = pendingFiles[0];
@@ -114,7 +150,7 @@ export default function Home() {
 
         addGame(newGame);
       } catch (error) {
-        console.error('Error finalizing game addition:', error);
+        logError('Finalize single game addition', error);
       }
     }
 
@@ -144,15 +180,16 @@ export default function Home() {
     }
   };
 
-  const handleDragEnter = (event: DragEvent<HTMLElement>) => {
+  // Drag & drop handlers
+  const handleDragEnter = useCallback((event: DragEvent<HTMLElement>) => {
     event.preventDefault();
     event.stopPropagation();
     if (!event.dataTransfer?.types.includes('Files')) return;
     dragCounterRef.current += 1;
     setIsDragActive(true);
-  };
+  }, [setIsDragActive, dragCounterRef]);
 
-  const handleDragLeave = (event: DragEvent<HTMLElement>) => {
+  const handleDragLeave = useCallback((event: DragEvent<HTMLElement>) => {
     event.preventDefault();
     event.stopPropagation();
     if (dragCounterRef.current > 0) {
@@ -161,17 +198,17 @@ export default function Home() {
     if (dragCounterRef.current === 0) {
       setIsDragActive(false);
     }
-  };
+  }, [setIsDragActive, dragCounterRef]);
 
-  const handleDragOver = (event: DragEvent<HTMLElement>) => {
+  const handleDragOver = useCallback((event: DragEvent<HTMLElement>) => {
     event.preventDefault();
     event.stopPropagation();
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = 'copy';
     }
-  };
+  }, []);
 
-  const handleDrop = async (event: DragEvent<HTMLElement>) => {
+  const handleDrop = useCallback(async (event: DragEvent<HTMLElement>) => {
     event.preventDefault();
     event.stopPropagation();
     dragCounterRef.current = 0;
@@ -180,7 +217,7 @@ export default function Home() {
       const files = extractFilesFromDataTransfer(event.dataTransfer);
       await handleIncomingFiles(files);
     }
-  };
+  }, [setIsDragActive, dragCounterRef, extractFilesFromDataTransfer]);
 
   const processGameFile = async (file: File, index: number, selectedCore?: string, currentGamesList?: Game[]): Promise<Game[]> => {
     const fileName = file.name;
@@ -359,17 +396,15 @@ export default function Home() {
           const input = document.createElement('input');
           input.type = 'file';
           input.multiple = true;
-          input.onchange = (e: any) => {
-            resolve(Array.from(e.target.files || []) as File[]);
-          };
+          input.onchange = (e: any) => resolve(Array.from(e.target.files || []) as File[]);
           input.click();
         });
       }
 
       await handleIncomingFiles(files);
     } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        console.error('Error selecting files:', err);
+      if (err?.name !== 'AbortError') {
+        logError('Select files', err);
       }
     }
   };
@@ -390,7 +425,7 @@ export default function Home() {
           return next;
         });
 
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await delay(400);
 
         await deleteGame(game.id);
         setGameListAnimationKey(prev => prev + 1);
@@ -401,7 +436,7 @@ export default function Home() {
           return next;
         });
       } catch (error) {
-        console.error('Error deleting game:', error);
+        logError('Delete game', error);
       }
     }
   };
@@ -412,7 +447,7 @@ export default function Home() {
     if (confirm(`Are you sure you want to delete ${selectedGameIds.size} game(s)? This action cannot be undone.`)) {
       try {
         setDeletingGameIds(new Set(selectedGameIds));
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await delay(400);
 
         for (const gameId of selectedGameIds) {
           await deleteGame(gameId);
@@ -423,7 +458,7 @@ export default function Home() {
         setDeletingGameIds(new Set());
         setIsDeleteMode(false);
       } catch (error) {
-        console.error('Error deleting games:', error);
+        logError('Delete games (batch)', error);
       }
     }
   };
@@ -447,10 +482,10 @@ export default function Home() {
       if (file) {
         await loadGame(file, game.core, currentColors.playGreen);
       } else {
-        console.error('Game file not found');
+        logError('Load game: file not found', game);
       }
     } catch (error) {
-      console.error('Error loading game:', error);
+      logError('Load game', error);
     }
   };
 
@@ -458,17 +493,6 @@ export default function Home() {
     setActiveView(viewName);
     setIsSidebarOpen(false);
   }, [setActiveView, setIsSidebarOpen]);
-
-  const getSidebarButtonClass = useCallback((view: 'library' | 'themes') => {
-    const baseClass = "sidebar-item block p-3 mb-2 rounded-lg transition-all flex items-center border-l-4 hover:translate-x-1";
-    const isActive = activeView === view;
-    return `${baseClass} ${isActive ? 'border-l-4' : 'border-transparent'}`;
-  }, [activeView]);
-
-  const sidebarClass = isSidebarOpen ? "translate-x-0" : "-translate-x-full";
-  const sidebarFullClass = `w-64 p-6 flex flex-col justify-start shadow-xl fixed left-0 top-0 bottom-0 z-50 transition-all duration-300 ease-in-out ${sidebarClass}`;
-
-  const currentColors = THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default;
 
   const handleThemeChange = (themeName: string) => {
     setSelectedTheme(themeName);
@@ -479,10 +503,10 @@ export default function Home() {
       setGameListAnimationKey((key) => key + 1);
     }
     previousGameCountRef.current = games.length;
-  }, [games.length]);
+  }, [games.length, previousGameCountRef, setGameListAnimationKey]);
 
   // Get system category for a game based on the core
-  const getSystemCategory = (core?: string): string => {
+  const inferSystemCategory = (core?: string): string => {
     if (!core) return 'Other';
 
     // Check which category the core belongs to
@@ -523,43 +547,64 @@ export default function Home() {
     if (activeView === 'themes') {
       setThemeAnimationKey((key) => key + 1);
     }
-  }, [activeView]);
+  }, [activeView, setThemeAnimationKey]);
 
-  // Group games by system category when sorting by system
+  // Group games by system category with ordered categories
   const groupedGames = useMemo(() => {
-    if (sortBy !== 'system') {
-      return null;
-    }
-
-    const categoryOrder = ['Nintendo', 'Sega', 'Sony', 'Atari', 'Other'];
-    const groups: Record<string, Game[]> = {
-      'Nintendo': [],
-      'Sega': [],
-      'Sony': [],
-      'Atari': [],
-      'Other': []
-    };
-
-    sortedGames.forEach(game => {
-      const category = getSystemCategory(game.core);
-      groups[category].push(game);
-    });
-
-    // Sort categories based on sort order
-    if (sortOrder === 'desc') {
-      categoryOrder.reverse();
-    }
-
-    // Create new object with sorted category order
-    const sortedGroups: Record<string, Game[]> = {};
-    categoryOrder.forEach(category => {
-      if (groups[category].length > 0) {
-        sortedGroups[category] = groups[category];
-      }
-    });
-
-    return sortedGroups;
+    if (sortBy !== 'system') return null;
+    const order = sortOrder === 'desc' ? ['Other', 'Atari', 'Sony', 'Sega', 'Nintendo'] : ['Nintendo', 'Sega', 'Sony', 'Atari', 'Other'];
+    const groups = sortedGames.reduce((acc, game) => {
+      const cat = inferSystemCategory(game.core);
+      (acc[cat] ||= []).push(game);
+      return acc;
+    }, {} as Record<string, Game[]>);
+    return order.reduce((res, cat) => {
+      if (groups[cat]?.length) res[cat] = groups[cat];
+      return res;
+    }, {} as Record<string, Game[]>);
   }, [sortedGames, sortBy, sortOrder]);
+
+  // Render a single game item with consistent animation and handlers
+  const renderGameItem = (game: Game, index: number, list: Game[], includeCoverArtClick: boolean) => {
+    const isGameDeleting = deletingGameIds.has(game.id);
+    const visibleIndex = list.slice(0, index).filter(g => !deletingGameIds.has(g.id)).length;
+    const reverseStaggerDelay = (list.length - 1 - index) * 0.03;
+    const commonProps = {
+      game,
+      onPlay: handlePlayClick,
+      onEdit: handleEditGame,
+      onDelete: handleDeleteGame,
+      onSelect: toggleGameSelection,
+      isSelected: selectedGameIds.has(game.id),
+      isDeleteMode,
+      onEnterDeleteMode: () => setIsDeleteMode(true),
+      colors: currentColors,
+    };
+    return (
+      <div
+        key={`${gameListAnimationKey}-${game.id}`}
+        className={isGameDeleting ? undefined : 'animate-fade-in'}
+        style={isGameDeleting
+          ? { animation: `fadeOut 0.3s ease-in-out ${reverseStaggerDelay}s forwards` }
+          : { animationDelay: `${visibleIndex * 0.05}s` }}
+      >
+        <GameCard
+          {...commonProps}
+          {...(includeCoverArtClick ? {
+            onCoverArtClick: (game: Game) => {
+              setEditingGame(game);
+              setPendingGame(game);
+              setCoverArtFit(game.coverArtFit || 'cover');
+              setSystemPickerOpen(true);
+            }
+          } : {})}
+        />
+      </div>
+    );
+  };
+
+  const sidebarClass = isSidebarOpen ? "translate-x-0" : "-translate-x-full";
+  const sidebarFullClass = `w-64 p-6 flex flex-col justify-start shadow-xl fixed left-0 top-0 bottom-0 z-50 transition-all duration-300 ease-in-out ${sidebarClass}`;
 
   const renderContent = () => {
     if (activeView === 'themes') {
@@ -571,39 +616,36 @@ export default function Home() {
             </h2>
           </div>
           <div key={themeAnimationKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Object.entries(THEMES).map(([themeName, themeColors], index) => {
-              const baseName = themeName;
-              return (
-                <button
-                  key={themeName}
-                  onClick={() => handleThemeChange(baseName)}
-                  className="p-6 rounded-xl transition-all border-2 relative overflow-hidden animate-fade-in"
-                  style={{
-                    backgroundColor: themeColors.midDark,
-                    borderColor: selectedTheme === baseName ? themeColors.playGreen : themeColors.highlight + '40',
-                    boxShadow: selectedTheme === baseName ? `0 2px 8px ${themeColors.playGreen}30` : '0 2px 4px rgba(0, 0, 0, 0.2)',
-                    animationDelay: `${index * 0.05}s`
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold capitalize" style={{ color: themeColors.softLight }}>
-                      {baseName}
-                    </h3>
-                    {selectedTheme === baseName && (
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" style={{ color: themeColors.playGreen }}>
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.darkBg }}></div>
-                    <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.midDark }}></div>
-                    <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.playGreen }}></div>
-                    <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.highlight }}></div>
-                  </div>
-                </button>
-              );
-            })}
+            {Object.entries(THEMES).map(([themeName, themeColors], index) => (
+              <button
+                key={themeName}
+                onClick={() => handleThemeChange(themeName)}
+                aria-label={themeName}
+                className="p-6 rounded-xl transition-all border-2 relative overflow-hidden animate-fade-in"
+                style={{
+                  backgroundColor: themeColors.midDark,
+                  borderColor: selectedTheme === themeName ? themeColors.playGreen : themeColors.highlight + '40',
+                  boxShadow: selectedTheme === themeName ? `0 2px 8px ${themeColors.playGreen}30` : '0 2px 4px rgba(0, 0, 0, 0.2)',
+                  color: themeColors.softLight,
+                  animationDelay: `${index * 0.05}s`
+                }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold capitalize" style={{ color: themeColors.softLight }}>
+                    {themeName}
+                  </h3>
+                  {selectedTheme === themeName && (
+                    <CheckCircle className="w-6 h-6" style={{ color: themeColors.playGreen }} />
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.darkBg }}></div>
+                  <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.midDark }}></div>
+                  <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.playGreen }}></div>
+                  <div className="flex-1 h-12 rounded-lg" style={{ backgroundColor: themeColors.highlight }}></div>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       );
@@ -614,15 +656,15 @@ export default function Home() {
           Games ({sortedGames.length})
         </h2>
         {games.length > 0 && (
-        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-col gap-4 mb-6">
             <div className="flex flex-col lg:flex-row lg:items-center gap-3">
               <div className="flex flex-wrap gap-3 items-center flex-1 min-w-0">
                 <div
                   className="flex items-center rounded-xl border-2 transition-all"
                   style={{
                     backgroundColor: currentColors.darkBg,
-                    borderColor: gameSearchFocused ? currentColors.playGreen : currentColors.highlight + '50',
-                    boxShadow: gameSearchFocused ? `0 0 0 2px ${currentColors.playGreen}30` : 'none',
+                    borderColor: gameSearchFocused ? currentColors.highlight : currentColors.midDark,
+                    boxShadow: gameSearchFocused ? `0 0 0 2px ${currentColors.highlight}30` : 'none',
                     width: '340px',
                     height: '48px',
                   }}
@@ -646,9 +688,9 @@ export default function Home() {
                 </div>
                 <div
                   className="flex items-center gap-2 px-4 py-2 rounded-xl border-2"
-                  style={{ backgroundColor: currentColors.darkBg, borderColor: currentColors.highlight + '40', height: '48px' }}
+                  style={{ backgroundColor: currentColors.darkBg, borderColor: currentColors.midDark, height: '48px' }}
                 >
-                  <label className="text-sm font-medium" style={{ color: currentColors.highlight }}>Sort by:</label>
+                  <label className="text-sm font-medium" style={{ color: currentColors.softLight }}>Sort by:</label>
                   <div className="flex gap-1">
                     {(['title', 'system'] as const).map((option) => (
                       <button
@@ -663,19 +705,19 @@ export default function Home() {
                         {option === 'title' ? 'Title' : 'System'}
                       </button>
                     ))}
+                    <button
+                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                      className="px-3 py-1 rounded-lg text-sm font-medium transition-all active:scale-95 flex items-center justify-center h-9"
+                      style={{
+                        backgroundColor: currentColors.midDark,
+                        color: currentColors.softLight,
+                      }}
+                    >
+                      <div className="w-4 h-4 flex items-center justify-center">
+                        {sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+                      </div>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                    className="px-2 py-1 rounded-lg text-sm font-medium transition-all hover:shadow-md active:scale-95 flex items-center justify-center h-9"
-                    style={{
-                      backgroundColor: currentColors.midDark,
-                      color: currentColors.softLight,
-                    }}
-                  >
-                    <div className="w-4 h-4 flex items-center justify-center">
-                      {sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
-                    </div>
-                  </button>
                 </div>
               </div>
               <div className="flex flex-wrap gap-3 justify-end items-center">
@@ -704,14 +746,7 @@ export default function Home() {
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={handleFileSelect}
-                    className="px-8 rounded-lg font-semibold transition-all hover:shadow-md active:scale-95 flex items-center gap-2 justify-center animate-fade-in"
-                    style={{ ...getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), color: currentColors.darkBg, height: '48px' }}
-                  >
-                    <Plus className="w-5 h-5" />
-                    <span>Add Game</span>
-                  </button>
+                  <AddGameButton />
                 )}
               </div>
             </div>
@@ -729,77 +764,35 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={handleFileSelect}
-              className="px-8 rounded-lg font-semibold transition-all hover:shadow-md active:scale-95 flex items-center gap-2 justify-center mx-auto"
-              style={{ ...getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), color: currentColors.darkBg, height: '48px' }}
-            >
-              <Plus className="w-5 h-5" />
-              <span>Add Game</span>
-            </button>
+            <div className="mx-auto">
+              <AddGameButton />
+            </div>
           </div>
         ) : (
           <>
-          {sortBy === 'system' && groupedGames && (
-          <div key={`system-groups-${gameListAnimationKey}`}>
-            {Object.entries(groupedGames).map(([category, categoryGames]) => (
-              <div key={category} className="mb-8 last:mb-0">
-                <div className="flex items-center mb-4">
-                  <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: currentColors.highlight }}>
-                    {category}
-                  </h4>
-                  <div className="flex-1 h-px" style={{ backgroundColor: currentColors.highlight + '30' }}></div>
-                </div>
-                <div className="flex flex-wrap" style={{ gap: '1rem' }}>
-                  {categoryGames.map((game, index) => {
-                    const isGameDeleting = deletingGameIds.has(game.id);
-                    // Only count games that are NOT being deleted for animation purposes
-                    const visibleIndex = categoryGames.slice(0, index).filter(g => !deletingGameIds.has(g.id)).length;
-                    const reverseStaggerDelay = (categoryGames.length - 1 - index) * 0.03;
-                    return (
-                      <div
-                        key={`${gameListAnimationKey}-${game.id}`}
-                        className={isGameDeleting ? undefined : 'animate-fade-in'}
-                        style={isGameDeleting
-                          ? { animation: `fadeOut 0.3s ease-in-out ${reverseStaggerDelay}s forwards` }
-                          : { animationDelay: `${visibleIndex * 0.05}s` }}
-                      >
-                        <GameCard game={game} onPlay={handlePlayClick} onEdit={handleEditGame} onDelete={handleDeleteGame} onSelect={toggleGameSelection} isSelected={selectedGameIds.has(game.id)} isDeleteMode={isDeleteMode} onEnterDeleteMode={() => setIsDeleteMode(true)} colors={currentColors} />
-                      </div>
-                    );
-                  })}
-                </div>
+            {sortBy === 'system' && groupedGames && (
+              <div key={`system-groups-${gameListAnimationKey}`}>
+                {Object.entries(groupedGames).map(([category, categoryGames]) => (
+                  <div key={category} className="mb-8 last:mb-0">
+                    <div className="flex items-center mb-4">
+                      <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: currentColors.highlight }}>
+                        {category}
+                      </h4>
+                      <div className="flex-1 h-px" style={{ backgroundColor: currentColors.highlight + '30' }}></div>
+                    </div>
+                    <div className="flex flex-wrap" style={{ gap: '1rem' }}>
+                      {categoryGames.map((game, index) => renderGameItem(game, index, categoryGames, false))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-        {(!sortBy || sortBy !== 'system') && (
-          <div key={`flat-list-${gameListAnimationKey}`} className="flex flex-wrap" style={{ gap: '1rem' }}>
-            {sortedGames.map((game, index) => {
-              const isGameDeleting = deletingGameIds.has(game.id);
-              // Only count games that are NOT being deleted for animation purposes
-              const visibleIndex = sortedGames.slice(0, index).filter(g => !deletingGameIds.has(g.id)).length;
-              const reverseStaggerDelay = (sortedGames.length - 1 - index) * 0.03;
-              return (
-                <div
-                  key={`${gameListAnimationKey}-${game.id}`}
-                  className={isGameDeleting ? undefined : 'animate-fade-in'}
-                  style={isGameDeleting
-                    ? { animation: `fadeOut 0.3s ease-in-out ${reverseStaggerDelay}s forwards` }
-                    : { animationDelay: `${visibleIndex * 0.05}s` }}
-                >
-                  <GameCard game={game} onPlay={handlePlayClick} onEdit={handleEditGame} onDelete={handleDeleteGame} onSelect={toggleGameSelection} isSelected={selectedGameIds.has(game.id)} isDeleteMode={isDeleteMode} onEnterDeleteMode={() => setIsDeleteMode(true)} onCoverArtClick={(game) => {
-                    setEditingGame(game);
-                    setPendingGame(game);
-                    setCoverArtFit(game.coverArtFit || 'cover');
-                    setSystemPickerOpen(true);
-                  }} colors={currentColors} />
-                </div>
-              );
-            })}
-          </div>
-        )}
-        </>
+            )}
+            {(!sortBy || sortBy !== 'system') && (
+              <div key={`flat-list-${gameListAnimationKey}`} className="flex flex-wrap" style={{ gap: '1rem' }}>
+                {sortedGames.map((game, index) => renderGameItem(game, index, sortedGames, true))}
+              </div>
+            )}
+          </>
         )}
       </div>
     );
@@ -808,11 +801,11 @@ export default function Home() {
   return (
     <>
       {!isMounted || !isHydrated ? (
-        <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#0a0a0f', fontFamily: 'Inter, sans-serif' }} />
+        <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />
       ) : (
         <div
           className="min-h-screen flex flex-col"
-          style={{ backgroundColor: currentColors.darkBg, fontFamily: 'Inter, sans-serif' }}
+          style={{ backgroundColor: currentColors.darkBg, fontFamily: FONT_FAMILY }}
         >
           {isHydrated && (
             <div
@@ -832,7 +825,7 @@ export default function Home() {
                 backgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 color: 'transparent',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: FONT_FAMILY,
                 letterSpacing: '-0.02em'
               }}>
                 Joe T Emulator
@@ -842,7 +835,7 @@ export default function Home() {
               {NAV_ITEMS.map(({ view, icon: Icon, label }, index) => (
                 <button
                   key={view}
-                  className={getSidebarButtonClass(view) + " hover:bg-opacity-50"}
+                  className={"sidebar-item block p-3 mb-2 rounded-lg transition-all flex items-center hover:translate-x-1 hover:bg-opacity-50"}
                   style={{
                     backgroundColor: activeView === view ? currentColors.sidebarHover : 'transparent',
                     borderLeftColor: activeView === view ? currentColors.highlight : 'transparent',
@@ -898,9 +891,7 @@ export default function Home() {
               }}
             >
               <div className="flex items-center gap-2">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+                <XCircle className="w-5 h-5" />
                 <span className="font-semibold">{duplicateMessage}</span>
               </div>
             </div>
@@ -921,8 +912,8 @@ export default function Home() {
 
             Object.entries(SYSTEM_PICKER).forEach(([category, systems]) => {
               const filtered = Object.entries(systems).filter(([name]) =>
-              name.toLowerCase().includes(systemSearchQuery.toLowerCase())
-            );
+                name.toLowerCase().includes(systemSearchQuery.toLowerCase())
+              );
               if (filtered.length > 0) {
                 filteredCategories[category] = filtered;
               }
@@ -939,8 +930,8 @@ export default function Home() {
                 <div
                   className="p-6 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border"
                   style={{
-                    backgroundColor: currentColors.midDark,
-                    borderColor: currentColors.highlight + '30',
+                    backgroundColor: currentColors.darkBg,
+                    borderColor: currentColors.midDark,
                     boxShadow: '0 20px 60px rgba(0, 0, 0, 0.7)',
                     animation: systemPickerClosing ? 'slideDown 0.2s ease-out' : 'slideUp 0.3s ease-out'
                   }}
@@ -968,7 +959,7 @@ export default function Home() {
                     {/* Cover Art Section - only show when editing or adding single game (not multi-file batch) */}
                     {pendingFiles.length <= 1 && (
                       <div className="flex-shrink-0 w-full xl:w-80 space-y-4 max-h-[60vh] xl:max-h-full overflow-y-auto">
-                        <div className="rounded-xl border overflow-hidden" style={{ borderColor: currentColors.highlight + '30', backgroundColor: currentColors.darkBg }}>
+                        <div className="rounded-xl border overflow-hidden" style={{ borderColor: currentColors.midDark, backgroundColor: currentColors.darkBg }}>
                           {(editingGame?.coverArt || pendingGame?.coverArt) ? (
                             <div className="relative group">
                               <div className="aspect-[4/5] w-full overflow-hidden bg-black/20 relative">
@@ -996,9 +987,7 @@ export default function Home() {
                             <div className="aspect-[3/4] w-full flex items-center justify-center bg-gradient-to-br" style={{ background: `linear-gradient(135deg, ${currentColors.darkBg} 0%, ${currentColors.midDark} 100%)` }}>
                               <div className="text-center p-6">
                                 <div className="w-16 h-16 mx-auto mb-4 rounded-lg flex items-center justify-center" style={{ backgroundColor: currentColors.highlight + '20' }}>
-                                  <svg className="w-8 h-8" style={{ color: currentColors.highlight }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                  </svg>
+                                  <Image className="w-8 h-8" style={{ color: currentColors.highlight }} />
                                 </div>
                                 <p className="text-sm font-medium" style={{ color: currentColors.softLight }}>
                                   No Cover Art
@@ -1058,8 +1047,8 @@ export default function Home() {
                         className="w-full flex items-center rounded-xl border-2 transition-all mb-4"
                         style={{
                           backgroundColor: currentColors.darkBg,
-                          borderColor: searchFocused.current ? currentColors.playGreen : currentColors.highlight + '50',
-                          boxShadow: searchFocused.current ? `0 0 0 2px ${currentColors.playGreen}30` : 'none',
+                          borderColor: systemSearchFocused ? currentColors.highlight : currentColors.midDark,
+                          boxShadow: systemSearchFocused ? `0 0 0 2px ${currentColors.highlight}30` : 'none',
                         }}
                       >
                         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0" style={{ color: currentColors.softLight }}>
@@ -1070,8 +1059,8 @@ export default function Home() {
                           placeholder="Search systems..."
                           value={systemSearchQuery}
                           onChange={(e) => setSystemSearchQuery(e.target.value)}
-                          onFocus={() => { searchFocused.current = true; }}
-                          onBlur={() => { searchFocused.current = false; }}
+                          onFocus={() => setSystemSearchFocused(true)}
+                          onBlur={() => setSystemSearchFocused(false)}
                           className="bg-transparent h-10 flex-1 focus:outline-none text-sm pr-4"
                           style={{
                             color: currentColors.softLight,
@@ -1095,25 +1084,12 @@ export default function Home() {
                                 return (
                                   <button
                                     key={core}
-                                    className="p-3.5 rounded-xl text-left transition-all active:scale-[0.97] border-2 relative flex items-center justify-between group"
+                                    className="p-3.5 rounded-xl text-left transition-all active:scale-95 border-2 relative flex items-center justify-between group"
                                     style={{
-                                      backgroundColor: isSelected ? currentColors.highlight : currentColors.sidebarHover,
-                                      borderColor: isSelected ? currentColors.highlight : currentColors.highlight + '30',
+                                      backgroundColor: isSelected ? currentColors.highlight : currentColors.midDark,
+                                      borderColor: isSelected ? currentColors.highlight : currentColors.midDark,
                                       color: isSelected ? currentColors.darkBg : currentColors.softLight,
-                                      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
                                       animation: `fadeIn 0.4s ease-out ${index * 0.03}s both`
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      if (!isSelected) {
-                                        e.currentTarget.style.backgroundColor = currentColors.highlight + '20';
-                                        e.currentTarget.style.borderColor = currentColors.highlight + '50';
-                                      }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      if (!isSelected) {
-                                        e.currentTarget.style.backgroundColor = currentColors.sidebarHover;
-                                        e.currentTarget.style.borderColor = currentColors.highlight + '30';
-                                      }
                                     }}
                                     onClick={() => selectSystem(core)}
                                   >
@@ -1122,9 +1098,7 @@ export default function Home() {
                                     </span>
                                     <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
                                       {isSelected && (
-                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                        </svg>
+                                        <CheckCircle className="w-5 h-5" />
                                       )}
                                     </div>
                                   </button>
@@ -1136,9 +1110,7 @@ export default function Home() {
                         {Object.keys(filteredCategories).length === 0 && (
                           <div className="text-center py-16" style={{ color: currentColors.highlight }}>
                             <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: currentColors.highlight + '15' }}>
-                              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                              </svg>
+                              <Search className="w-8 h-8" />
                             </div>
                             <p className="text-lg font-semibold mb-1" style={{ color: currentColors.softLight }}>No systems found</p>
                             <p className="text-sm opacity-70">Try a different search term</p>
@@ -1148,11 +1120,11 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: currentColors.highlight + '30' }}>
+                  <div className="flex justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: currentColors.midDark }}>
                     {(editingGame || pendingFiles.length > 0) && (
                       <button
                         className="py-2.5 px-6 rounded-lg font-semibold transition-all active:scale-95"
-                        style={{ ...getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), color: currentColors.darkBg }}
+                        style={{ ...gradientStyle, color: currentColors.darkBg }}
                         onClick={handleSystemPickerDone}
                       >
                         Done

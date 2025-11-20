@@ -66,47 +66,8 @@ body {
 }
 
 @keyframes shake {
-
-  0%,
-  100% {
-    transform: rotate(0deg) translateX(0);
-  }
-
-  10% {
-    transform: rotate(-1deg) translateX(-2px);
-  }
-
-  20% {
-    transform: rotate(1deg) translateX(2px);
-  }
-
-  30% {
-    transform: rotate(-1deg) translateX(-2px);
-  }
-
-  40% {
-    transform: rotate(1deg) translateX(2px);
-  }
-
-  50% {
-    transform: rotate(-1deg) translateX(-2px);
-  }
-
-  60% {
-    transform: rotate(1deg) translateX(2px);
-  }
-
-  70% {
-    transform: rotate(-1deg) translateX(-2px);
-  }
-
-  80% {
-    transform: rotate(1deg) translateX(2px);
-  }
-
-  90% {
-    transform: rotate(-1deg) translateX(-2px);
-  }
+  from { transform: rotate(-1deg) translateX(-2px); }
+  to { transform: rotate(1deg) translateX(2px); }
 }
 
 .animate-border-breathe {
@@ -119,7 +80,7 @@ body {
 }
 
 .animate-shake {
-  animation: shake 0.5s ease-in-out infinite;
+  animation: shake 0.075s linear infinite alternate;
 }
 
 .animate-slideDown {
