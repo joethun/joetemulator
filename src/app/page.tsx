@@ -19,7 +19,7 @@ import { saveGameFile, getGameFile } from '@/lib/storage';
 import { SYSTEM_PICKER, getSystemNameByCore } from '@/lib/constants';
 import { Game, THEMES, getGradientStyle } from '@/types';
 import { GameCard } from '@/components/GameCardComponent';
-import { Gamepad2, Palette, Menu, X, Trash2, ArrowUp, ArrowDown, Search, Plus, CheckCircle, Image, XCircle } from 'lucide-react';
+import { Gamepad2, Palette, Menu, X, Trash2, ArrowUp, ArrowDown, Search, Plus, CircleCheck, Image, XCircle } from 'lucide-react';
 import { useGameLibrary } from '@/hooks/useGameLibrary';
 import { useUIState } from '@/hooks/useUIState';
 import { useGameOperations } from '@/hooks/useGameOperations';
@@ -635,7 +635,7 @@ export default function Home() {
                     {themeName}
                   </h3>
                   {selectedTheme === themeName && (
-                    <CheckCircle className="w-6 h-6" style={{ color: themeColors.playGreen }} />
+                    <CircleCheck className="w-6 h-6" style={{ color: themeColors.playGreen }} />
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -1096,11 +1096,9 @@ export default function Home() {
                                     <span className="font-medium text-sm leading-tight truncate pr-2 flex-1">
                                       {name}
                                     </span>
-                                    <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
-                                      {isSelected && (
-                                        <CheckCircle className="w-5 h-5" />
-                                      )}
-                                    </div>
+                                    {isSelected && (
+                                      <CircleCheck className="w-5 h-5 flex-shrink-0" style={{ color: currentColors.darkBg }} />
+                                    )}
                                   </button>
                                 );
                               })}

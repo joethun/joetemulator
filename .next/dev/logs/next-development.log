@@ -8060,3 +8060,5 @@ It can also happen if the client has a browser extension installed which messes 
 [05:19:16.886] Browser LOG     Loading language en
 [05:19:16.886] Browser LOG     Missing language en !!
 [05:19:19.158] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[05:47:11.641] Server  LOG      ✓ Compiled in 695ms
+[05:47:14.221] Server  LOG      ✓ Compiled in 539ms
