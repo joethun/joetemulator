@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo } from 'react';
 import { Trash2, Settings, Play } from 'lucide-react';
+// FIXED: Reverted to original relative path
 import { Game, THEMES, getGradientStyle } from '../types';
 
 interface GameCardProps {
@@ -13,7 +14,7 @@ interface GameCardProps {
   onEnterDeleteMode: () => void;
   onCoverArtClick?: (game: Game) => void;
   colors: typeof THEMES.default;
-  deletingGameIds?: Set<number>; 
+  // REMOVED: deletingGameIds was unused in this component
 }
 
 const SHADOW_TEXT = '0 2px 4px rgba(0,0,0,0.2)';
@@ -21,7 +22,7 @@ const SHADOW_OVERLAY = '0 2px 4px rgba(0,0,0,0.5)';
 
 const CARD_STYLES = {
   baseCover: "h-full flex items-center justify-center bg-cover bg-center bg-no-repeat relative",
-  // FIXED: Set to w-64 to maintain fixed size as requested
+  // FIXED: Kept w-64 as requested to maintain card size
   card: (isDeleteMode: boolean) => `group relative overflow-hidden w-64 h-80 rounded-xl transition-all duration-300 ease-in-out hover:shadow-lg hover:z-10 border animate-border-breathe ${isDeleteMode ? 'animate-shake' : 'hover:scale-[1.02]'}`,
   overlay: "absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent backdrop-brightness-75 flex flex-col justify-end p-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
   content: "transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 ease-out",

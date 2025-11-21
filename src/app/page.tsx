@@ -15,8 +15,9 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 // --- Constants & Pure Functions ---
 const TIME_UPDATE_INTERVAL = 60000;
-const FONT_FAMILY = 'Inter, sans-serif';
-const GRID_CLASS = "grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-6 justify-items-center";
+const FONT_FAMILY = 'Lexend, sans-serif';
+
+const GRID_CLASS = "grid grid-cols-[repeat(auto-fit,16rem)] justify-start gap-6";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const logError = (scope: string, error: unknown) => console.error(`[${scope}]`, error);
@@ -28,14 +29,14 @@ const NAV_ITEMS = [
 
 export default function Home() {
   // --- State Hooks ---
-  const { games, previousGameCountRef, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
+  const { games, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
 
   const uiState = useUIState();
   const {
     activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, currentTime, setCurrentTime,
     isMounted, setIsMounted, gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused,
     isDragActive, setIsDragActive, themeAnimationKey, setThemeAnimationKey,
-    gameListAnimationKey, setGameListAnimationKey, isDeleteMode, setIsDeleteMode, selectedGameIds, setSelectedGameIds,
+    isDeleteMode, setIsDeleteMode, selectedGameIds, setSelectedGameIds,
     deletingGameIds, setDeletingGameIds, gameSearchInputRef, dragCounterRef,
     toggleGameSelection, exitDeleteMode
   } = uiState;
@@ -53,6 +54,8 @@ export default function Home() {
   const [sortOrder, setSortOrder, isSortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
 
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // --- Derived State ---
   const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated;
@@ -70,9 +73,9 @@ export default function Home() {
   }, [loadGamesFromStorage, setCurrentTime, setIsMounted]);
 
   useEffect(() => {
-    if (games.length < previousGameCountRef.current) setGameListAnimationKey((key) => key + 1);
-    previousGameCountRef.current = games.length;
-  }, [games.length, previousGameCountRef, setGameListAnimationKey]);
+    const timer = setTimeout(() => setIsInitialLoad(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (activeView === 'themes') setThemeAnimationKey((key) => key + 1);
@@ -255,7 +258,6 @@ export default function Home() {
         file = new File([await res.blob()], game.fileName || game.title, { type: 'application/octet-stream' });
         await saveGameFile(game.id, file);
       }
-      // *** FIX: Pass 'selectedTheme' (the string name), NOT 'currentColors.highlight' ***
       if (file) await loadGame(file, game.core, selectedTheme);
       else logError('Load game: file not found', game);
     } catch (error) { logError('Load game', error); }
@@ -263,16 +265,9 @@ export default function Home() {
 
   const handleDeleteGame = async (game: Game) => {
     if (confirm(`Delete "${game.title}"?`)) {
-      // 1. Trigger fade-out animation class
       setDeletingGameIds(prev => new Set(prev).add(game.id));
-      
-      // 2. Wait 350ms for the opacity to hit 0
       await delay(350); 
-      
-      // 3. Remove the game from data
       await deleteGame(game.id);
-      
-      // 4. Cleanup state
       setDeletingGameIds(prev => { const n = new Set(prev); n.delete(game.id); return n; });
     }
   };
@@ -281,15 +276,69 @@ export default function Home() {
     if (!selectedGameIds.size || !confirm(`Delete ${selectedGameIds.size} games?`)) return;
 
     setDeletingGameIds(new Set(selectedGameIds));
-    await delay(350); // Wait for animation
+    await delay(350);
 
     for (const id of selectedGameIds) await deleteGame(id);
 
-    // setGameListAnimationKey(p => p + 1); // <--- REMOVE THIS
     setSelectedGameIds(new Set());
     setDeletingGameIds(new Set());
     setIsDeleteMode(false);
   };
+
+  // --- Memoized Callbacks for Props ---
+  
+  const handleEditGame = useCallback((g: Game) => {
+    setEditingGame(g);
+    setPendingGame({ ...g });
+    setCoverArtFit(g.coverArtFit || 'cover');
+    setSystemPickerOpen(true);
+  }, [setEditingGame, setPendingGame, setCoverArtFit, setSystemPickerOpen]);
+
+  const handleEnterDeleteMode = useCallback(() => {
+    setIsDeleteMode(true);
+  }, [setIsDeleteMode]);
+
+  const handleSystemSelect = useCallback(async (core: string) => {
+    const sysName = getSystemNameByCore(core);
+    if (pendingFiles.length > 1) {
+      setPendingBatchCore(core);
+    } else {
+      const update = { core, genre: sysName };
+      if (editingGame) {
+        updateGame(editingGame.id, update);
+        setEditingGame({ ...editingGame, ...update });
+      }
+      if (pendingGame) {
+        setPendingGame({ ...pendingGame, ...update });
+      }
+    }
+  }, [pendingFiles.length, editingGame, pendingGame, setPendingBatchCore, updateGame, setEditingGame, setPendingGame]);
+
+  const handleCoverArtFitChange = useCallback((f: 'cover' | 'contain') => {
+    setCoverArtFit(f);
+    if (editingGame) {
+      updateGame(editingGame.id, { coverArtFit: f });
+      setEditingGame({ ...editingGame, coverArtFit: f });
+    }
+  }, [editingGame, setCoverArtFit, updateGame, setEditingGame]);
+
+  const handleCoverArtUpload = useCallback((d: string) => {
+    if (editingGame) {
+      updateGame(editingGame.id, { coverArt: d, coverArtFit });
+      setEditingGame({ ...editingGame, coverArt: d });
+    } else if (pendingGame) {
+      setPendingGame({ ...pendingGame, coverArt: d });
+    }
+  }, [editingGame, pendingGame, coverArtFit, updateGame, setEditingGame, setPendingGame]);
+
+  const handleCoverArtRemove = useCallback(() => {
+    if (editingGame) {
+      updateGame(editingGame.id, { coverArt: undefined });
+      setEditingGame({ ...editingGame, coverArt: undefined });
+    } else if (pendingGame) {
+      setPendingGame({ ...pendingGame, coverArt: undefined });
+    }
+  }, [editingGame, pendingGame, updateGame, setEditingGame, setPendingGame]);
 
 
   // --- Memoized Lists ---
@@ -325,34 +374,21 @@ export default function Home() {
       onDelete: handleDeleteGame,
       onSelect: toggleGameSelection,
       isDeleteMode,
-      onEnterDeleteMode: () => setIsDeleteMode(true),
+      onEnterDeleteMode: handleEnterDeleteMode, // Use memoized callback
       colors: currentColors,
-      deletingGameIds: deletingGameIds,
-      onEdit: (g: Game) => {
-        setEditingGame(g); setPendingGame({ ...g });
-        setCoverArtFit(g.coverArtFit || 'cover'); setSystemPickerOpen(true);
-      }
+      onEdit: handleEditGame, // Use memoized callback
     };
-
-    // ... (Keep your empty state check here) ...
 
     const mapGame = (game: Game, idx: number) => {
       const isDeleting = deletingGameIds.has(game.id);
       
-      // Original stagger calculation: 0.05s per item
-      // We cap it at 1s so very large lists don't take forever
-      const delayTime = idx * 0.05;
+      const delayTime = isInitialLoad ? idx * 0.05 : 0;
 
       return (
         <div
-          // CRITICAL: Use game.id. This prevents the "choppy" list rebuild.
           key={game.id} 
-          
-          // USE ORIGINAL CLASSES:
-          className={isDeleting ? 'animate-fade-out' : 'animate-fade-in'}
-          
+          className={isDeleting ? 'animate-card-exit' : 'animate-card-enter'}
           style={{ 
-            // Stagger the entry, but make exit instant (the animation handles the timing)
             animationDelay: isDeleting ? '0s' : `${delayTime}s`
           }}
         >
@@ -422,36 +458,61 @@ export default function Home() {
             <ThemeGrid colors={currentColors} selectedTheme={selectedTheme} onSelectTheme={setSelectedTheme} animKey={themeAnimationKey} />
           ) : (
             <>
-              <h2 className="text-2xl font-bold mb-4" style={{ color: currentColors.softLight }}>Games ({sortedGames.length})</h2>
-              {games.length > 0 && (
-                <div className="flex flex-col gap-4 mb-6">
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                    <div className="flex flex-wrap gap-3 items-center flex-1 min-w-0">
-                      <div className="flex items-center rounded-xl border-2 transition-all w-[340px] h-12"
-                        style={{ backgroundColor: currentColors.darkBg, borderColor: gameSearchFocused ? currentColors.highlight : currentColors.midDark, boxShadow: gameSearchFocused ? `0 0 0 2px ${currentColors.highlight}30` : 'none' }}>
-                        <div className="w-12 h-full flex items-center justify-center" style={{ color: currentColors.softLight }}><Search className="w-4 h-4" /></div>
-                        <input ref={gameSearchInputRef} type="text" placeholder="Search games..." value={gameSearchQuery}
-                          onChange={(e) => setGameSearchQuery(e.target.value)} onFocus={() => setGameSearchFocused(true)} onBlur={() => setGameSearchFocused(false)}
-                          className="bg-transparent h-full flex-1 focus:outline-none text-sm pr-4" style={{ color: currentColors.softLight }} />
-                      </div>
-                      <SortControls colors={currentColors} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} />
+              <div className="flex items-center justify-between mb-6">
+                 <h2 className="text-2xl font-bold" style={{ color: currentColors.softLight }}>Games ({sortedGames.length})</h2>
+              </div>
+              
+              {games.length === 0 ? (
+                 // Empty State
+                 <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
+                    <div className="w-20 h-20 rounded-2xl mb-6 flex items-center justify-center shadow-lg transition-colors" 
+                         style={{ backgroundColor: currentColors.highlight + '15', color: currentColors.highlight }}>
+                       <Gamepad2 className="w-10 h-10" />
                     </div>
-                    <div className="flex flex-wrap gap-3 justify-end items-center">
-                      {isDeleteMode ? (
-                        <>
-                          <button onClick={handleMassDelete} disabled={!selectedGameIds.size} className="px-5 py-2.5 rounded-lg h-12 flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60">
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                          <button onClick={exitDeleteMode} className="px-5 py-2.5 rounded-lg font-semibold h-12 transition-all active:scale-95" style={{ backgroundColor: currentColors.highlight, color: currentColors.darkBg }}>Cancel</button>
-                        </>
-                      ) : (
-                        <AddGameButton onClick={handleFileSelect} colors={currentColors} gradient={gradientStyle} />
-                      )}
+                    <h3 className="text-xl font-bold mb-2" style={{ color: currentColors.softLight }}>No games found</h3>
+                    <p className="mb-8 opacity-70" style={{ color: currentColors.highlight }}>
+                      Add your first ROM to get started
+                    </p>
+                    <AddGameButton onClick={handleFileSelect} colors={currentColors} gradient={gradientStyle} />
+                 </div>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-4 mb-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                      <div className="flex flex-wrap gap-3 items-center flex-1 min-w-0">
+                        <div className="flex items-center rounded-xl border-2 transition-all w-[340px] h-12"
+                          style={{ backgroundColor: currentColors.darkBg, borderColor: gameSearchFocused ? currentColors.highlight : currentColors.midDark, boxShadow: gameSearchFocused ? `0 0 0 2px ${currentColors.highlight}30` : 'none' }}>
+                          <div className="w-12 h-full flex items-center justify-center" style={{ color: currentColors.softLight }}><Search className="w-4 h-4" /></div>
+                          <input ref={gameSearchInputRef} type="text" placeholder="Search games..." value={gameSearchQuery}
+                            onChange={(e) => setGameSearchQuery(e.target.value)} onFocus={() => setGameSearchFocused(true)} onBlur={() => setGameSearchFocused(false)}
+                            className="bg-transparent h-full flex-1 focus:outline-none text-sm pr-4" style={{ color: currentColors.softLight }} />
+                        </div>
+                        <SortControls colors={currentColors} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} />
+                      </div>
+                      <div className="flex flex-wrap gap-3 justify-end items-center">
+                        {isDeleteMode ? (
+                          <>
+                            <button onClick={handleMassDelete} disabled={!selectedGameIds.size} className="px-5 py-2.5 rounded-lg h-12 flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60">
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                            <button onClick={exitDeleteMode} className="px-5 py-2.5 rounded-lg font-semibold h-12 transition-all active:scale-95" style={{ backgroundColor: currentColors.highlight, color: currentColors.darkBg }}>Cancel</button>
+                          </>
+                        ) : (
+                          <AddGameButton onClick={handleFileSelect} colors={currentColors} gradient={gradientStyle} />
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                  
+                  {sortedGames.length === 0 ? (
+                     <div className="text-center py-20 opacity-60">
+                        <p style={{color: currentColors.softLight}}>No games found matching "{gameSearchQuery}"</p>
+                     </div>
+                  ) : (
+                     renderGameList()
+                  )}
+                </>
               )}
-              {renderGameList()}
             </>
           )}
         </main>
@@ -481,30 +542,13 @@ export default function Home() {
           onClose={closeSystemPicker} onDone={handleSystemPickerDone}
           isProcessing={isProcessing}
           pendingBatchCore={pendingBatchCore}
-          onSelectSystem={async (core: string) => {
-            const sysName = getSystemNameByCore(core);
-            if (pendingFiles.length > 1) setPendingBatchCore(core);
-            else {
-              const update = { core, genre: sysName };
-              if (editingGame) { updateGame(editingGame.id, update); setEditingGame({ ...editingGame, ...update }); }
-              if (pendingGame) setPendingGame({ ...pendingGame, ...update });
-            }
-          }}
+          onSelectSystem={handleSystemSelect} // Use memoized callback
           coverArtState={{
             file: editingGame?.coverArt || pendingGame?.coverArt,
             fit: coverArtFit,
-            onFitChange: (f: any) => {
-              setCoverArtFit(f);
-              if (editingGame) { updateGame(editingGame.id, { coverArtFit: f }); setEditingGame({ ...editingGame, coverArtFit: f }); }
-            },
-            onUpload: (d: any) => {
-              if (editingGame) { updateGame(editingGame.id, { coverArt: d, coverArtFit }); setEditingGame({ ...editingGame, coverArt: d }); }
-              else if (pendingGame) setPendingGame({ ...pendingGame, coverArt: d });
-            },
-            onRemove: () => {
-              if (editingGame) { updateGame(editingGame.id, { coverArt: undefined }); setEditingGame({ ...editingGame, coverArt: undefined }); }
-              else if (pendingGame) setPendingGame({ ...pendingGame, coverArt: undefined });
-            }
+            onFitChange: handleCoverArtFitChange, // Use memoized callback
+            onUpload: handleCoverArtUpload, // Use memoized callback
+            onRemove: handleCoverArtRemove // Use memoized callback
           }}
         />
       )}
@@ -570,7 +614,7 @@ const ThemeGrid = ({ colors, selectedTheme, onSelectTheme, animKey }: any) => (
     </div>
     <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {Object.entries(THEMES).map(([name, t]: [string, any], idx) => (
-        <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-2 relative overflow-hidden animate-fade-in text-left transition-all hover:shadow-lg"
+        <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-2 relative overflow-hidden animate-card-enter text-left transition-all hover:shadow-lg"
           style={{ backgroundColor: t.midDark, borderColor: selectedTheme === name ? t.playGreen : t.highlight + '40', boxShadow: selectedTheme === name ? `0 2px 8px ${t.playGreen}30` : '0 2px 4px rgba(0,0,0,0.2)', animationDelay: `${idx * 0.05}s` }}>
           <div className="flex justify-between mb-4">
             <h3 className="text-xl font-bold capitalize" style={{ color: t.softLight }}>{name}</h3>
@@ -694,6 +738,7 @@ const SystemPickerModal = ({ isOpen, isClosing, colors, gradient, editingGame, p
                     <Search className="w-8 h-8" />
                   </div>
                   <p className="text-lg font-semibold mb-1" style={{ color: colors.softLight }}>No systems found</p>
+
                   <p className="text-sm opacity-70">Try a different search term</p>
                 </div>
               )}
