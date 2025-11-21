@@ -7,7 +7,6 @@ export function useUIState() {
   const [isMounted, setIsMounted] = useState(false);
   const [gameSearchQuery, setGameSearchQuery] = useState('');
   const [gameSearchFocused, setGameSearchFocused] = useState(false);
-  const [gameSearchExpanded, setGameSearchExpanded] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [themeAnimationKey, setThemeAnimationKey] = useState(0);
   const [gameListAnimationKey, setGameListAnimationKey] = useState(0);
@@ -17,21 +16,6 @@ export function useUIState() {
 
   const gameSearchInputRef = useRef<HTMLInputElement | null>(null);
   const dragCounterRef = useRef(0);
-  const deleteButtonRef = useRef<HTMLButtonElement>(null);
-  const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isPressingRef = useRef(false);
-
-  const toggleGameSearch = useCallback(() => {
-    setGameSearchExpanded(prev => {
-      const next = !prev;
-      if (next) {
-        requestAnimationFrame(() => gameSearchInputRef.current?.focus());
-      } else {
-        setGameSearchQuery('');
-      }
-      return next;
-    });
-  }, []);
 
   const toggleGameSelection = useCallback((gameId: number) => {
     setSelectedGameIds(prev => {
@@ -45,32 +29,9 @@ export function useUIState() {
     });
   }, []);
 
-  const toggleSelectAll = useCallback((gameIds: number[]) => {
-    setSelectedGameIds(prev =>
-      prev.size === gameIds.length ? new Set() : new Set(gameIds)
-    );
-  }, []);
-
   const exitDeleteMode = useCallback(() => {
     setIsDeleteMode(false);
     setSelectedGameIds(new Set());
-  }, []);
-
-  const handleDeleteButtonMouseDown = useCallback(() => {
-    isPressingRef.current = true;
-    deleteTimeoutRef.current = setTimeout(() => {
-      if (isPressingRef.current) {
-        setIsDeleteMode(true);
-      }
-    }, 500);
-  }, []);
-
-  const handleDeleteButtonMouseUp = useCallback(() => {
-    isPressingRef.current = false;
-    if (deleteTimeoutRef.current) {
-      clearTimeout(deleteTimeoutRef.current);
-      deleteTimeoutRef.current = null;
-    }
   }, []);
 
   return {
@@ -86,8 +47,6 @@ export function useUIState() {
     setGameSearchQuery,
     gameSearchFocused,
     setGameSearchFocused,
-    gameSearchExpanded,
-    setGameSearchExpanded,
     isDragActive,
     setIsDragActive,
     themeAnimationKey,
@@ -102,14 +61,7 @@ export function useUIState() {
     setDeletingGameIds,
     gameSearchInputRef,
     dragCounterRef,
-    deleteButtonRef,
-    deleteTimeoutRef,
-    isPressingRef,
-    toggleGameSearch,
     toggleGameSelection,
-    toggleSelectAll,
     exitDeleteMode,
-    handleDeleteButtonMouseDown,
-    handleDeleteButtonMouseUp,
   };
 }

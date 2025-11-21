@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Game } from '@/types';
-import { saveGameFile } from '@/lib/storage';
-import { FILE_EXTENSIONS, getSystemNameByCore } from '@/lib/constants';
+import { FILE_EXTENSIONS } from '@/lib/constants';
 
 const DUPLICATE_MESSAGE_DURATION = 2500;
 const DUPLICATE_MESSAGE_CLEAR_DELAY = 3000;
@@ -61,31 +60,9 @@ export function useGameOperations() {
     return files;
   }, []);
 
-  const handleCoverArtFileUpload = useCallback(async (file: File): Promise<string | null> => {
-    return new Promise((resolve) => {
-      try {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string;
-          resolve(dataUrl);
-        };
-        reader.onerror = () => {
-          console.error('Error reading file');
-          resolve(null);
-        };
-        reader.readAsDataURL(file);
-      } catch (error) {
-        console.error('Error uploading cover art:', error);
-        resolve(null);
-      }
-    });
-  }, []);
-
   return {
     duplicateMessage,
-    setDuplicateMessage,
     showDuplicateMessage,
-    setShowDuplicateMessage,
     editingGame,
     setEditingGame,
     pendingGame,
@@ -95,7 +72,6 @@ export function useGameOperations() {
     systemPickerOpen,
     setSystemPickerOpen,
     systemPickerClosing,
-    setSystemPickerClosing,
     systemSearchQuery,
     setSystemSearchQuery,
     pendingBatchCore,
@@ -106,6 +82,5 @@ export function useGameOperations() {
     closeSystemPicker,
     getSystemFromExtension,
     extractFilesFromDataTransfer,
-    handleCoverArtFileUpload,
   };
 }

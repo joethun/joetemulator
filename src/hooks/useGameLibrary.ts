@@ -32,7 +32,6 @@ export function useGameLibrary() {
       let loadedGames: Game[] = JSON.parse(savedGames);
       const alreadyMigrated = localStorage.getItem(MIGRATION_KEY) === 'true';
 
-      // Migrate old games with fileData to IndexedDB (only if not already done)
       if (!alreadyMigrated) {
         for (const game of loadedGames) {
           if (game.fileData) {
@@ -49,7 +48,6 @@ export function useGameLibrary() {
         localStorage.setItem(MIGRATION_KEY, 'true');
       }
 
-      // Remove fileData and update genre
       loadedGames = loadedGames.map(game => {
         const { fileData, ...gameWithoutData } = game;
         if (game.genre === 'ROM' && game.core) {
@@ -100,21 +98,6 @@ export function useGameLibrary() {
     }
   }, [saveGamesToStorage]);
 
-  const deleteBatch = useCallback(async (gameIds: Set<number>) => {
-    try {
-      for (const gameId of gameIds) {
-        await deleteGameFile(gameId);
-      }
-      setGames(prev => {
-        const updated = prev.filter(g => !gameIds.has(g.id));
-        saveGamesToStorage(updated);
-        return updated;
-      });
-    } catch (error) {
-      console.error('Error deleting games:', error);
-    }
-  }, [saveGamesToStorage]);
-
   return {
     games,
     isLoadingGames,
@@ -124,6 +107,5 @@ export function useGameLibrary() {
     addGame,
     updateGame,
     deleteGame,
-    deleteBatch,
   };
 }

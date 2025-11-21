@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo } from 'react';
-import { Trash2, Settings } from 'lucide-react';
-import { Game, THEMES, getGradientStyle } from '@/types';
+import { Trash2, Settings, Play } from 'lucide-react';
+import { Game, THEMES, getGradientStyle } from '../types';
 
 interface GameCardProps {
   game: Game;
@@ -13,10 +13,15 @@ interface GameCardProps {
   onEnterDeleteMode: () => void;
   onCoverArtClick?: (game: Game) => void;
   colors: typeof THEMES.default;
+  deletingGameIds?: Set<number>; 
 }
+
+const SHADOW_TEXT = '0 2px 4px rgba(0,0,0,0.2)';
+const SHADOW_OVERLAY = '0 2px 4px rgba(0,0,0,0.5)';
 
 const CARD_STYLES = {
   baseCover: "h-full flex items-center justify-center bg-cover bg-center bg-no-repeat relative",
+  // FIXED: Set to w-64 to maintain fixed size as requested
   card: (isDeleteMode: boolean) => `group relative overflow-hidden w-64 h-80 rounded-xl transition-all duration-300 ease-in-out hover:shadow-lg hover:z-10 border animate-border-breathe ${isDeleteMode ? 'animate-shake' : 'hover:scale-[1.02]'}`,
   overlay: "absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent backdrop-brightness-75 flex flex-col justify-end p-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
   content: "transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 ease-out",
@@ -24,8 +29,6 @@ const CARD_STYLES = {
 } as const;
 
 function GameCardComponent({ game, onPlay, onEdit, onDelete, onSelect, isSelected, isDeleteMode, onEnterDeleteMode, onCoverArtClick, colors }: GameCardProps) {
-  const shadowText = '0 2px 4px rgba(0,0,0,0.2)';
-  const shadowOverlay = '0 2px 4px rgba(0,0,0,0.5)';
 
   const cardStyle = useMemo(() => ({
     backgroundColor: isDeleteMode && isSelected ? '#ef4444' : colors.midDark,
@@ -78,10 +81,11 @@ function GameCardComponent({ game, onPlay, onEdit, onDelete, onSelect, isSelecte
           </div>
         </div>
       )}
+
       <div className={CARD_STYLES.baseCover} style={coverStyle}>
         {!game.coverArt && (
           <div className="flex items-center justify-center w-full px-4" style={{ color: colors.darkBg }}>
-            <span className="block w-full max-w-full text-4xl font-bold tracking-wide text-center break-words whitespace-normal select-none" style={{ textShadow: shadowText, hyphens: 'auto' }}>
+            <span className="block w-full max-w-full text-4xl font-bold tracking-wide text-center break-words whitespace-normal select-none" style={{ textShadow: SHADOW_TEXT, hyphens: 'auto' }}>
               {game.title}
             </span>
             {onCoverArtClick && !isDeleteMode && (
@@ -95,13 +99,17 @@ function GameCardComponent({ game, onPlay, onEdit, onDelete, onSelect, isSelecte
       {!isDeleteMode && (
         <div className={CARD_STYLES.overlay}>
           <div className={CARD_STYLES.content}>
-            <h3 className="text-xl font-bold truncate mb-1.5" style={{ color: colors.softLight, textShadow: shadowOverlay }}>{game.title}</h3>
+            <h3 className="text-xl font-bold truncate mb-1.5" style={{ color: colors.softLight, textShadow: SHADOW_OVERLAY }}>{game.title}</h3>
             <p className="text-sm mb-3" style={{ color: colors.highlight }}>
               {game.genre}
             </p>
             <div className="flex gap-2.5 items-stretch mt-3">
-              <button className={CARD_STYLES.button + " flex-1"} style={{ ...getGradientStyle(colors.gradientFrom, colors.gradientTo), color: colors.darkBg }} onClick={withStop(() => onPlay(game))}>
-                PLAY
+              <button 
+                className={CARD_STYLES.button + " flex-1 flex items-center justify-center gap-2"} 
+                style={{ ...getGradientStyle(colors.gradientFrom, colors.gradientTo), color: colors.darkBg }} 
+                onClick={withStop(() => onPlay(game))}
+              >
+                <Play className="w-4 h-4 fill-current" /> PLAY
               </button>
               <button className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center" style={{ backgroundColor: colors.highlight, color: colors.darkBg }} onClick={withStop(() => onEdit(game))}>
                 <Settings className="w-5 h-5" />

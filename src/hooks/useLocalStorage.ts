@@ -4,7 +4,6 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
   const [value, setValue] = useState<T>(initialValue);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Initialize from localStorage on mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
@@ -18,7 +17,6 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     setIsHydrated(true);
   }, [key]);
 
-  // Persist to localStorage when value changes
   useEffect(() => {
     if (typeof window === 'undefined' || !isHydrated) return;
     try {
