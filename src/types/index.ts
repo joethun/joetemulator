@@ -16,7 +16,7 @@ type ThemeColors = {
   midDark: string;
   softLight: string;
   sidebarHover: string;
-  playGreen: string;
+  play: string;
   gradientFrom: string;
   gradientTo: string;
 };
@@ -28,7 +28,7 @@ export const THEMES: Record<string, ThemeColors> = {
     midDark: '#151520',
     softLight: '#e8eef5',
     sidebarHover: '#1f2535',
-    playGreen: '#4a90e2',
+    play: '#4a90e2',
     gradientFrom: '#4a90e2',
     gradientTo: '#2563eb'
   },
@@ -38,7 +38,7 @@ export const THEMES: Record<string, ThemeColors> = {
     midDark: '#201515',
     softLight: '#fef2f2',
     sidebarHover: '#351f1f',
-    playGreen: '#f87171',
+    play: '#f87171',
     gradientFrom: '#f87171',
     gradientTo: '#ef4444'
   },
@@ -48,7 +48,7 @@ export const THEMES: Record<string, ThemeColors> = {
     midDark: '#201810',
     softLight: '#fffbeb',
     sidebarHover: '#352a1f',
-    playGreen: '#fbbf24',
+    play: '#fbbf24',
     gradientFrom: '#fbbf24',
     gradientTo: '#f59e0b'
   },
@@ -58,7 +58,7 @@ export const THEMES: Record<string, ThemeColors> = {
     midDark: '#201e10',
     softLight: '#fefce8',
     sidebarHover: '#35321f',
-    playGreen: '#eab308',
+    play: '#eab308',
     gradientFrom: '#eab308',
     gradientTo: '#ca8a04'
   },
@@ -68,7 +68,7 @@ export const THEMES: Record<string, ThemeColors> = {
     midDark: '#102010',
     softLight: '#f0fdf4',
     sidebarHover: '#1f351f',
-    playGreen: '#4ade80',
+    play: '#4ade80',
     gradientFrom: '#4ade80',
     gradientTo: '#22c55e'
   },
@@ -78,7 +78,7 @@ export const THEMES: Record<string, ThemeColors> = {
     midDark: '#102020',
     softLight: '#f0fdfa',
     sidebarHover: '#1f3535',
-    playGreen: '#2dd4bf',
+    play: '#2dd4bf',
     gradientFrom: '#2dd4bf',
     gradientTo: '#14b8a6'
   },
@@ -88,7 +88,7 @@ export const THEMES: Record<string, ThemeColors> = {
     midDark: '#151525',
     softLight: '#eef2ff',
     sidebarHover: '#1f1f35',
-    playGreen: '#818cf8',
+    play: '#818cf8',
     gradientFrom: '#818cf8',
     gradientTo: '#6366f1'
   },
@@ -98,7 +98,7 @@ export const THEMES: Record<string, ThemeColors> = {
     midDark: '#1d1520',
     softLight: '#faf5ff',
     sidebarHover: '#2a1f35',
-    playGreen: '#c084fc',
+    play: '#c084fc',
     gradientFrom: '#c084fc',
     gradientTo: '#a855f7'
   },
@@ -108,7 +108,7 @@ export const THEMES: Record<string, ThemeColors> = {
     midDark: '#20151c',
     softLight: '#fdf2f8',
     sidebarHover: '#351f2a',
-    playGreen: '#ec4899',
+    play: '#ec4899',
     gradientFrom: '#ec4899',
     gradientTo: '#be185d'
   },

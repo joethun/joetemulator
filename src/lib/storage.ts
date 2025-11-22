@@ -2,7 +2,6 @@ const DB_NAME = 'joetemulator';
 const DB_VERSION = 1;
 const STORE_NAME = 'gameFiles';
 
-let db: IDBDatabase | null = null;
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 function openDB(): Promise<IDBDatabase> {
@@ -10,34 +9,19 @@ function openDB(): Promise<IDBDatabase> {
     return Promise.reject(new Error('IndexedDB not supported'));
   }
 
-  if (db) {
-    return Promise.resolve(db);
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME);
+        }
+      };
+    });
   }
-
-  if (dbPromise) {
-    return dbPromise;
-  }
-
-  dbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => {
-      dbPromise = null;
-      reject(request.error);
-    };
-    request.onsuccess = () => {
-      db = request.result;
-      resolve(db);
-    };
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result;
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        database.createObjectStore(STORE_NAME);
-      }
-    };
-  });
-
   return dbPromise;
 }
 
@@ -45,12 +29,10 @@ async function executeStoreOperation<T>(
   mode: IDBTransactionMode,
   operation: (store: IDBObjectStore) => IDBRequest<T>
 ): Promise<T> {
-  const database = await openDB();
+  const db = await openDB();
   return new Promise((resolve, reject) => {
-    const transaction = database.transaction([STORE_NAME], mode);
-    const store = transaction.objectStore(STORE_NAME);
-    const request = operation(store);
-
+    const transaction = db.transaction([STORE_NAME], mode);
+    const request = operation(transaction.objectStore(STORE_NAME));
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
   });
@@ -83,4 +65,3 @@ export async function deleteGameFile(gameId: number): Promise<void> {
     throw error;
   }
 }
-
