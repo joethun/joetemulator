@@ -1,91 +1,100 @@
-const DB_NAME = 'joetemulator';
-const DB_VERSION = 1;
-const STORE_NAME = 'gameFiles';
+// OPFS-based storage - much faster than IndexedDB for large files
+const GAME_DIR = 'games';
 
-let dbPromise: Promise<IDBDatabase> | null = null;
-
-// opens or returns existing db connection
-function openDB(): Promise<IDBDatabase> {
-  if (typeof window === 'undefined' || !window.indexedDB) {
-    return Promise.reject(new Error('indexeddb not supported'));
-  }
-
-  if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME);
-        }
-      };
-    });
-  }
-  return dbPromise;
+// Check if OPFS is supported
+function isOPFSSupported(): boolean {
+  return typeof navigator !== 'undefined' && 
+         'storage' in navigator && 
+         'getDirectory' in navigator.storage;
 }
 
-// helper for transaction operations
-async function executeStoreOperation<T>(
-  mode: IDBTransactionMode,
-  operation: (store: IDBObjectStore) => IDBRequest<T>
-): Promise<T> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], mode);
-    const store = transaction.objectStore(STORE_NAME);
-    let result: T;
-
-    const request = operation(store);
-
-    request.onerror = () => reject(request.error);
-    
-    // Capture the result immediately on success
-    request.onsuccess = () => {
-      result = request.result;
-    };
-    
-    // Resolve only when the transaction fully completes.
-    // This is the key to ensure the write lock is released before resolution.
-    transaction.oncomplete = () => {
-      // TEMPORARY DEBUG LOGGING: Shows when the transaction fully commits
-      console.log(`[IDB] Transaction ${mode} completed.`); 
-      resolve(result);
-    };
-
-    transaction.onerror = () => reject(transaction.error);
-    transaction.onabort = () => reject(new Error('Transaction aborted'));
-  });
+// Get the root directory handle
+async function getRootDirectory(): Promise<FileSystemDirectoryHandle> {
+  if (!isOPFSSupported()) {
+    throw new Error('OPFS not supported in this browser');
+  }
+  return await navigator.storage.getDirectory();
 }
 
-// saves file to indexeddb
+// Get or create the games directory
+async function getGamesDirectory(): Promise<FileSystemDirectoryHandle> {
+  const root = await getRootDirectory();
+  return await root.getDirectoryHandle(GAME_DIR, { create: true });
+}
+
+// Save file to OPFS
 export async function saveGameFile(gameId: number, file: File): Promise<void> {
   try {
-    await executeStoreOperation('readwrite', (store) => store.put(file, gameId));
+    const gamesDir = await getGamesDirectory();
+    const fileHandle = await gamesDir.getFileHandle(`${gameId}.rom`, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(file);
+    await writable.close();
   } catch (error) {
-    console.error(`failed to save game ${gameId}:`, error);
+    console.error(`Failed to save game ${gameId}:`, error);
     throw error;
   }
 }
 
-// retrieves file from indexeddb
+// Retrieve file from OPFS
 export async function getGameFile(gameId: number): Promise<File | null> {
   try {
-    const result = await executeStoreOperation('readonly', (store) => store.get(gameId));
-    return result || null;
+    const gamesDir = await getGamesDirectory();
+    const fileHandle = await gamesDir.getFileHandle(`${gameId}.rom`);
+    return await fileHandle.getFile();
   } catch (error) {
-    console.error(`failed to get game ${gameId}:`, error);
+    if ((error as any).name === 'NotFoundError') {
+      return null;
+    }
+    console.error(`Failed to get game ${gameId}:`, error);
     return null;
   }
 }
 
-// deletes file from indexeddb
+// Delete file from OPFS
 export async function deleteGameFile(gameId: number): Promise<void> {
   try {
-    await executeStoreOperation('readwrite', (store) => store.delete(gameId));
+    const gamesDir = await getGamesDirectory();
+    await gamesDir.removeEntry(`${gameId}.rom`);
   } catch (error) {
-    console.error(`failed to delete game ${gameId}:`, error);
+    if ((error as any).name === 'NotFoundError') {
+      return; // Already deleted
+    }
+    console.error(`Failed to delete game ${gameId}:`, error);
     throw error;
   }
+}
+
+// Check if a game file exists
+export async function gameFileExists(gameId: number): Promise<boolean> {
+  try {
+    const gamesDir = await getGamesDirectory();
+    await gamesDir.getFileHandle(`${gameId}.rom`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Get all game file names (for cleanup/debugging)
+export async function listAllGameFiles(): Promise<string[]> {
+  try {
+    const gamesDir = await getGamesDirectory();
+    const files: string[] = [];
+    // @ts-ignore - TypeScript may not recognize async iteration on FileSystemDirectoryHandle
+    for await (const [name, entry] of gamesDir.entries()) {
+      if (entry.kind === 'file') {
+        files.push(name);
+      }
+    }
+    return files;
+  } catch (error) {
+    console.error('Failed to list games:', error);
+    return [];
+  }
+}
+
+// Fallback check - returns true if OPFS is available
+export function canUseOPFS(): boolean {
+  return isOPFSSupported();
 }

@@ -32,19 +32,354 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const stripExtension = (filename: string) => filename.replace(/\.[^/.]+$/, '');
 const getFileExtension = (filename: string) => filename.split(".").pop()?.toLowerCase() || "";
 
-// --- SUB-COMPONENTS DEFINED FIRST TO PREVENT REFERENCE ERRORS ---
+export default function Home() {
+  const { games, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
+  
+  // ui state hooks
+  const {
+    activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
+    isMounted, setIsMounted, gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused,
+    setIsDragActive, themeAnimationKey, setThemeAnimationKey,
+    isDeleteMode, setIsDeleteMode, selectedGameIds, setSelectedGameIds,
+    deletingGameIds, setDeletingGameIds, gameSearchInputRef, dragCounterRef,
+    toggleGameSelection, exitDeleteMode
+  } = useUIState();
 
-const DebugConsole = memo(({ logs, colors }: any) => (
-  <div className="fixed bottom-0 left-0 right-0 z-[1000001] p-3 text-xs opacity-90 backdrop-blur-sm" style={{ backgroundColor: colors.midDark, borderTop: `1px solid ${colors.highlight}50`, fontFamily: 'JetBrains Mono, monospace' }}>
-    <div className="text-sm font-bold mb-1" style={{ color: colors.highlight }}>DEBUG CONSOLE (Shift+D to close)</div>
-    <div className="overflow-y-auto max-h-32">
-      {logs.map((log: string, index: number) => (
-        <pre key={index} className="whitespace-pre-wrap leading-tight" style={{ color: log.startsWith('[ERROR]') ? '#f87171' : log.startsWith('[WARN]') ? '#facc15' : colors.softLight }}>{log}</pre>
-      ))}
+  // game operations hooks
+  const {
+    duplicateMessage, showDuplicateMessage, editingGame, setEditingGame, pendingGame, setPendingGame,
+    pendingFiles, setPendingFiles, systemPickerOpen, setSystemPickerOpen, systemPickerClosing,
+    systemSearchQuery, setSystemSearchQuery, pendingBatchCore, setPendingBatchCore, coverArtFit, setCoverArtFit,
+    showDuplicateError, closeSystemPicker, getSystemFromExtension, extractFilesFromDataTransfer
+  } = useGameOperations();
+
+  // settings and storage hooks
+  const [selectedTheme, setSelectedTheme, isThemeHydrated] = useLocalStorage('theme', 'default');
+  const [sortBy, setSortBy, isSortByHydrated] = useLocalStorage<'title' | 'system'>('sortBy', 'title');
+  const [sortOrder, setSortOrder, isSortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
+  const [autoLoadState, setAutoLoadState, isAutoLoadHydrated] = useLocalStorage('autoLoadState', true);
+  const [autoLoadIcon, setAutoLoadIcon] = useLocalStorage('autoLoadIcon', true);
+  const [autoSaveState, setAutoSaveState, isAutoSaveHydrated] = useLocalStorage('autoSaveState', true);
+  const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 60);
+  const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated && isAutoLoadHydrated && isAutoSaveHydrated;
+  const currentColors = useMemo(() => THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default, [selectedTheme]);
+  const gradientStyle = useMemo(() => getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), [currentColors]);
+
+  // initialization
+  useEffect(() => {
+    setIsMounted(true);
+    loadGamesFromStorage();
+    const loadTimer = setTimeout(() => setIsInitialLoad(false), 2000);
+    return () => clearTimeout(loadTimer);
+  }, [loadGamesFromStorage, setIsMounted]);
+
+  useEffect(() => {
+    if (activeView === 'themes') setThemeAnimationKey(k => k + 1);
+  }, [activeView, setThemeAnimationKey]);
+
+  // game file processing
+  const isDuplicate = useCallback((fileName: string, list: Game[]) => 
+    list.some(g => g.fileName === fileName || g.filePath === fileName), []);
+
+  const processGameFile = useCallback(async (file: File, index: number, selectedCore?: string, currentGamesList: Game[] = games): Promise<Game[]> => {
+    if (isDuplicate(file.name, currentGamesList)) {
+      showDuplicateError(`"${file.name}" is already in your library`);
+      return currentGamesList;
+    }
+    const detectedCore = selectedCore || getSystemFromExtension(getFileExtension(file.name));
+    if (!detectedCore) return currentGamesList;
+
+    const gameId = Date.now() + index;
+    await saveGameFile(gameId, file);
+    const newGame: Game = {
+      id: gameId,
+      title: stripExtension(file.name),
+      genre: getSystemNameByCore(detectedCore),
+      filePath: file.name,
+      fileName: file.name,
+      core: detectedCore,
+    };
+    addGame(newGame);
+    return [...currentGamesList, newGame];
+  }, [games, isDuplicate, showDuplicateError, getSystemFromExtension, addGame]);
+
+  const handleIncomingFiles = useCallback(async (files: File[]) => {
+    if (!files.length) return;
+    const filesNeedingSystem: Array<{ file: File; index: number }> = [];
+    let currentGames = games;
+
+    for (let i = 0; i < files.length; i++) {
+      const detectedCore = getSystemFromExtension(getFileExtension(files[i].name));
+      if (detectedCore) {
+        currentGames = await processGameFile(files[i], i, detectedCore, currentGames);
+      } else {
+        filesNeedingSystem.push({ file: files[i], index: i });
+      }
+    }
+
+    const filteredNeeding = filesNeedingSystem.filter(({ file }) => !isDuplicate(file.name, currentGames));
+
+    if (filteredNeeding.length > 0) {
+      setPendingFiles(filteredNeeding);
+      if (filteredNeeding.length === 1) {
+        setPendingGame({ 
+          id: Date.now(), 
+          title: stripExtension(filteredNeeding[0].file.name), 
+          genre: 'Unknown', 
+          filePath: filteredNeeding[0].file.name, 
+          fileName: filteredNeeding[0].file.name 
+        });
+      } else {
+        setPendingGame(null);
+      }
+      setPendingBatchCore(null);
+      setCoverArtFit('cover');
+      setSystemPickerOpen(true);
+    } else if (filesNeedingSystem.length > 0) {
+      showDuplicateError(filesNeedingSystem.length === 1 ? 'File already in library' : 'All selected files are duplicates');
+    }
+  }, [games, isDuplicate, getSystemFromExtension, processGameFile, setPendingFiles, setPendingGame, setPendingBatchCore, setCoverArtFit, setSystemPickerOpen, showDuplicateError]);
+
+  const handleSystemPickerDone = useCallback(async () => {
+    if (editingGame) { closeSystemPicker(); return; }
+    const effectiveCore = pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core;
+
+    if (!effectiveCore) { showDuplicateError("Please select a system"); return; }
+    setIsProcessing(true);
+
+    try {
+      if (pendingFiles.length > 1) {
+        let currentGames = games;
+        for (const { file, index } of pendingFiles) {
+          currentGames = await processGameFile(file, index, effectiveCore, currentGames);
+        }
+        setPendingFiles([]); setPendingBatchCore(null);
+      } else if (pendingFiles.length === 1) {
+        const { file } = pendingFiles[0];
+        const gameId = pendingGame?.id ?? Date.now();
+        if (isDuplicate(file.name, games)) { 
+          showDuplicateError(`"${file.name}" is duplicate`); 
+          closeSystemPicker(); 
+          return; 
+        }
+
+        await saveGameFile(gameId, file);
+        addGame({
+          id: gameId,
+          title: pendingGame?.title || stripExtension(file.name),
+          genre: pendingGame?.genre || getSystemNameByCore(effectiveCore) || 'Unknown',
+          filePath: pendingGame?.filePath || file.name,
+          fileName: file.name,
+          core: effectiveCore,
+          coverArt: pendingGame?.coverArt,
+          coverArtFit: pendingGame?.coverArt ? (pendingGame.coverArtFit || coverArtFit) : undefined,
+        });
+      }
+      closeSystemPicker();
+    } catch (error) { console.error(error); } finally { setIsProcessing(false); }
+  }, [editingGame, pendingFiles, pendingBatchCore, pendingGame, games, isDuplicate, closeSystemPicker, showDuplicateError, processGameFile, addGame, coverArtFit]);
+
+  // interaction handlers
+  const handleDrag = useCallback((e: DragEvent<HTMLElement>, active: boolean) => {
+    e.preventDefault(); e.stopPropagation();
+    if (active && e.dataTransfer?.types.includes('Files')) {
+      dragCounterRef.current += 1; setIsDragActive(true); e.dataTransfer.dropEffect = 'copy';
+    } else if (!active) {
+      dragCounterRef.current -= 1; if (dragCounterRef.current === 0) setIsDragActive(false);
+    }
+  }, [setIsDragActive, dragCounterRef]);
+
+  const handleDrop = useCallback(async (e: DragEvent<HTMLElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    dragCounterRef.current = 0; setIsDragActive(false);
+    if (e.dataTransfer) await handleIncomingFiles(extractFilesFromDataTransfer(e.dataTransfer));
+  }, [setIsDragActive, dragCounterRef, handleIncomingFiles, extractFilesFromDataTransfer]);
+
+  const handleFileSelect = useCallback(async () => {
+    try {
+      let files: File[] = [];
+      if ('showOpenFilePicker' in window) {
+        const handles = await (window as any).showOpenFilePicker({ multiple: true });
+        files = await Promise.all(handles.map((fh: any) => fh.getFile()));
+      } else {
+        files = await new Promise<File[]>(r => {
+          const inp = document.createElement('input'); inp.type = 'file'; inp.multiple = true;
+          inp.onchange = (e: any) => r(Array.from(e.target.files || [])); inp.click();
+        });
+      }
+      await handleIncomingFiles(files);
+    } catch (err: any) { if (err?.name !== 'AbortError') console.error(err); }
+  }, [handleIncomingFiles]);
+
+  const handlePlayClick = useCallback(async (game: Game) => {
+    try {
+      let file = await getGameFile(game.id);
+      if (!file && game.fileData) {
+        const res = await fetch(game.fileData);
+        file = new File([await res.blob()], game.fileName || game.title, { type: 'application/octet-stream' });
+        await saveGameFile(game.id, file);
+      }
+      if (file) await loadGame(file, game.core, selectedTheme, autoLoadState, autoSaveState, autoSaveInterval * 1000);
+      else console.error('Game file missing', game);
+    } catch (e) { console.error('Launch failed', e); }
+  }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval]);
+
+  const handleDeleteGame = useCallback(async (game: Game) => {
+    if (!confirm(`Delete "${game.title}"?`)) return;
+    setDeletingGameIds(prev => new Set(prev).add(game.id));
+    await delay(350); await deleteGame(game.id);
+    setDeletingGameIds(prev => { const n = new Set(prev); n.delete(game.id); return n; });
+  }, [deleteGame, setDeletingGameIds]);
+
+  const handleMassDelete = useCallback(async () => {
+    if (!selectedGameIds.size || !confirm(`Delete ${selectedGameIds.size} games?`)) return;
+    setDeletingGameIds(new Set(selectedGameIds));
+    await delay(350);
+    await Promise.all([...selectedGameIds].map(id => deleteGame(id)));
+    setSelectedGameIds(new Set()); setDeletingGameIds(new Set()); setIsDeleteMode(false);
+  }, [selectedGameIds, deleteGame, setDeletingGameIds, setSelectedGameIds, setIsDeleteMode]);
+
+  const handleEditGame = useCallback((g: Game) => {
+    setEditingGame(g); setPendingGame({ ...g }); setCoverArtFit(g.coverArtFit || 'cover'); setSystemPickerOpen(true);
+  }, [setEditingGame, setPendingGame, setCoverArtFit, setSystemPickerOpen]);
+
+  // render calculations
+  const sortedGames = useMemo(() => {
+    let filtered = games;
+    if (gameSearchQuery.trim()) {
+      const q = gameSearchQuery.toLowerCase();
+      filtered = games.filter(g => 
+        g.title.toLowerCase().includes(q) || 
+        g.genre.toLowerCase().includes(q) || 
+        getSystemCategory(g.core).toLowerCase().includes(q)
+      );
+    }
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'title') cmp = a.title.localeCompare(b.title);
+      else {
+        cmp = getSystemCategory(a.core).localeCompare(getSystemCategory(b.core));
+        if (cmp === 0) cmp = a.genre.localeCompare(b.genre);
+        if (cmp === 0) cmp = a.title.localeCompare(b.title);
+      }
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+  }, [games, sortBy, sortOrder, gameSearchQuery]);
+
+  const groupedGames = useMemo(() => {
+    if (sortBy !== 'system') return null;
+    // group efficiently
+    const groups = sortedGames.reduce((acc, g) => {
+      const mfg = getSystemCategory(g.core);
+      const cat = mfg === 'Other' ? g.genre : `${mfg} ${g.genre}`;
+      (acc[cat] ||= []).push(g); 
+      return acc;
+    }, {} as Record<string, Game[]>);
+    
+    // sort keys and return simplified object
+    return Object.keys(groups)
+      .sort((a, b) => sortOrder === 'asc' ? a.localeCompare(b) : b.localeCompare(a))
+      .reduce((res, cat) => { res[cat] = groups[cat]; return res; }, {} as Record<string, Game[]>);
+  }, [sortedGames, sortBy, sortOrder]);
+
+  const renderCard = useCallback((game: Game, idx: number) => (
+    <div key={game.id} className={deletingGameIds.has(game.id) ? 'animate-card-exit' : 'animate-card-enter'} style={{ animationDelay: deletingGameIds.has(game.id) ? '0s' : `${isInitialLoad ? idx * 0.05 : 0}s` }}>
+      <GameCard game={game} isSelected={selectedGameIds.has(game.id)} onPlay={handlePlayClick} onDelete={handleDeleteGame} onSelect={toggleGameSelection} isDeleteMode={isDeleteMode} onEnterDeleteMode={() => setIsDeleteMode(true)} colors={currentColors} onEdit={handleEditGame} onCoverArtClick={handleEditGame} />
     </div>
-  </div>
-));
+  ), [deletingGameIds, isInitialLoad, selectedGameIds, handlePlayClick, handleDeleteGame, toggleGameSelection, isDeleteMode, currentColors, handleEditGame]);
 
+  if (!isMounted || !isHydrated) return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />;
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: currentColors.darkBg, fontFamily: FONT_FAMILY }}>
+      <div className={`fixed inset-0 z-40 transition-all duration-300 ${isSidebarOpen ? 'bg-black/60 backdrop-blur-sm' : 'bg-black/0 pointer-events-none'}`} onClick={() => setIsSidebarOpen(false)} />
+      <Sidebar isOpen={isSidebarOpen} activeView={activeView} colors={currentColors} onNavClick={(v: any) => { setActiveView(v); setIsSidebarOpen(false); }} />
+
+      <div className="flex-1 overflow-hidden">
+        <main className="p-8 overflow-y-auto pb-20 scrollbar-hide" style={{ minHeight: 'calc(100vh - 4rem)' }} onDragEnter={(e) => handleDrag(e, true)} onDragOver={(e) => e.dataTransfer && (e.dataTransfer.dropEffect = 'copy')} onDragLeave={(e) => handleDrag(e, false)} onDrop={handleDrop}>
+          <header className="mb-10 flex justify-between items-center">
+            <h1 className="text-4xl font-extrabold tracking-tight capitalize" style={{ color: currentColors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>{activeView}</h1>
+          </header>
+
+          {activeView === 'themes' ? (
+            <ThemeGrid colors={currentColors} selectedTheme={selectedTheme} onSelectTheme={setSelectedTheme} animKey={themeAnimationKey} />
+          ) : activeView === 'settings' ? (
+            <SettingsView 
+              colors={currentColors} gradient={gradientStyle} 
+              autoLoadState={autoLoadState} setAutoLoadState={setAutoLoadState} 
+              autoSaveState={autoSaveState} setAutoSaveState={setAutoSaveState}
+              autoSaveInterval={autoSaveInterval} setAutoSaveInterval={setAutoSaveInterval}
+              autoSaveIcon={autoSaveIcon} setAutoSaveIcon={setAutoSaveIcon}
+              autoLoadIcon={autoLoadIcon} setAutoLoadIcon={setAutoLoadIcon}
+            />
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: currentColors.softLight }}>Games ({sortedGames.length})</h2>
+              </div>
+              {games.length === 0 ? (
+                <EmptyState colors={currentColors} gradient={gradientStyle} onAddGame={handleFileSelect} />
+              ) : (
+                <>
+                  <GameControls colors={currentColors} gradient={gradientStyle} gameSearchQuery={gameSearchQuery} setGameSearchQuery={setGameSearchQuery} gameSearchFocused={gameSearchFocused} setGameSearchFocused={setGameSearchFocused} gameSearchInputRef={gameSearchInputRef} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} isDeleteMode={isDeleteMode} selectedGameIds={selectedGameIds} onMassDelete={handleMassDelete} onExitDeleteMode={exitDeleteMode} onAddGame={handleFileSelect} />
+                  {sortedGames.length === 0 ? (
+                    <div className="text-center py-20 opacity-60"><p style={{ color: currentColors.softLight }}>No games found matching "{gameSearchQuery}"</p></div>
+                  ) : groupedGames ? (
+                    Object.entries(groupedGames).map(([cat, catGames]) => (
+                      <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
+                        <div className="flex items-center mb-4">
+                          <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: currentColors.highlight }}>{cat}</h4>
+                          <div className="flex-1 h-px" style={{ backgroundColor: currentColors.highlight + '30' }} />
+                        </div>
+                        <div className={GRID_CLASS}>{catGames.map((g, i) => renderCard(g, i))}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className={GRID_CLASS}>{sortedGames.map((g, i) => renderCard(g, i))}</div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+
+      {duplicateMessage && <Toast message={duplicateMessage} isVisible={showDuplicateMessage} />}
+      <EmulatorNotification colors={currentColors} autoSaveIcon={autoSaveIcon} autoLoadIcon={autoLoadIcon} />
+      <Footer colors={currentColors} isSidebarOpen={isSidebarOpen} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+
+      {(systemPickerOpen || systemPickerClosing) && (
+        <SystemPickerModal
+          isOpen={systemPickerOpen} isClosing={systemPickerClosing} colors={currentColors} gradient={gradientStyle}
+          editingGame={editingGame} pendingGame={pendingGame} pendingFiles={pendingFiles} searchQuery={systemSearchQuery}
+          onSearchChange={setSystemSearchQuery} onClose={closeSystemPicker} onDone={handleSystemPickerDone}
+          isProcessing={isProcessing} pendingBatchCore={pendingBatchCore}
+          onSelectSystem={(core: string) => {
+            if (pendingFiles.length > 1) setPendingBatchCore(core);
+            else {
+              const update = { core, genre: getSystemNameByCore(core) };
+              if (editingGame) { updateGame(editingGame.id, update); setEditingGame({ ...editingGame, ...update }); }
+              if (pendingGame) setPendingGame({ ...pendingGame, ...update });
+            }
+          }}
+          coverArtState={{
+            file: editingGame ? editingGame.coverArt : pendingGame?.coverArt, fit: coverArtFit,
+            onFitChange: (f: any) => { setCoverArtFit(f); if (editingGame) { updateGame(editingGame.id, { coverArtFit: f }); setEditingGame({ ...editingGame, coverArtFit: f }); } },
+            onUpload: (d: any) => { if (editingGame) { updateGame(editingGame.id, { coverArt: d }); setEditingGame({ ...editingGame, coverArt: d }); } else if (pendingGame) setPendingGame({ ...pendingGame, coverArt: d }); },
+            onRemove: () => { if (editingGame) { updateGame(editingGame.id, { coverArt: undefined }); setEditingGame({ ...editingGame, coverArt: undefined }); } else if (pendingGame) setPendingGame({ ...pendingGame, coverArt: undefined }); }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// sub-components
 const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }: any) => {
   const [notification, setNotification] = useState<{ type: 'save' | 'load', id: number } | null>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -152,10 +487,6 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
   );
 });
 
-const AddGameButton = memo(({ onClick, colors, gradient }: any) => (
-  <button onClick={onClick} className="px-8 rounded-lg font-semibold transition-all hover:shadow-md active:scale-95 flex items-center gap-2 justify-center h-12" style={{ ...gradient, color: colors.darkBg }}><Plus className="w-5 h-5" /><span>Add Game</span></button>
-));
-
 const EmptyState = memo(({ colors, gradient, onAddGame }: any) => (
   <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
     <div className="w-20 h-20 rounded-2xl mb-6 flex items-center justify-center shadow-lg transition-colors" style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}><Gamepad2 className="w-10 h-10" /></div>
@@ -164,29 +495,6 @@ const EmptyState = memo(({ colors, gradient, onAddGame }: any) => (
     <AddGameButton onClick={onAddGame} colors={colors} gradient={gradient} />
   </div>
 ));
-
-const SearchBar = memo(({ colors, value, onChange, isFocused, onFocus, onBlur, inputRef }: any) => (
-  <div className="flex items-center rounded-xl border-2 transition-all w-[340px] h-12" style={{ backgroundColor: colors.darkBg, borderColor: isFocused ? colors.highlight : colors.midDark, boxShadow: isFocused ? `0 0 0 2px ${colors.highlight}30` : 'none' }}>
-    <div className="w-12 h-full flex items-center justify-center" style={{ color: colors.softLight }}><Search className="w-4 h-4" /></div>
-    <input ref={inputRef} type="text" placeholder="Search..." value={value} onChange={(e) => onChange(e.target.value)} onFocus={onFocus} onBlur={onBlur} className="bg-transparent h-full flex-1 focus:outline-none text-sm pr-4" style={{ color: colors.softLight }} />
-  </div>
-));
-
-const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder }: any) => {
-  const [isOpen, setIsOpen] = useState(false);
-  return (
-    <div className="flex items-center rounded-xl border-2 h-12 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark }}>
-      <button onClick={() => setIsOpen(!isOpen)} className="h-full px-3 flex items-center justify-center transition-colors" style={{ color: isOpen ? colors.highlight : colors.softLight }}><ListFilter className="w-5 h-5" /></button>
-      <div className="h-6 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.midDark, width: isOpen ? '1px' : '0px', marginRight: isOpen ? '0.75rem' : '0px' }} />
-      <div className="flex items-center overflow-hidden transition-all duration-300 ease-in-out" style={{ maxWidth: isOpen ? '300px' : '0px', opacity: isOpen ? 1 : 0, visibility: isOpen ? 'visible' : 'hidden' }}>
-        <div className="flex items-center pr-4 gap-1">
-          {['title', 'system'].map(opt => <button key={opt} onClick={() => setSortBy(opt)} className="px-3 py-1 rounded-lg text-sm font-medium h-9 capitalize transition-all active:scale-95" style={{ backgroundColor: sortBy === opt ? colors.highlight : colors.midDark, color: sortBy === opt ? colors.darkBg : colors.softLight }}>{opt}</button>)}
-          <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 h-9 rounded-lg flex items-center justify-center transition-all active:scale-95" style={{ backgroundColor: colors.midDark, color: colors.softLight }}>{sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}</button>
-        </div>
-      </div>
-    </div>
-  );
-});
 
 const GameControls = memo(({ colors, gradient, gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused, gameSearchInputRef, sortBy, setSortBy, sortOrder, setSortOrder, isDeleteMode, selectedGameIds, onMassDelete, onExitDeleteMode, onAddGame }: any) => (
   <div className="flex flex-col gap-4 mb-6">
@@ -206,6 +514,33 @@ const GameControls = memo(({ colors, gradient, gameSearchQuery, setGameSearchQue
     </div>
   </div>
 ));
+
+const SearchBar = memo(({ colors, value, onChange, isFocused, onFocus, onBlur, inputRef }: any) => (
+  <div className="flex items-center rounded-xl border-2 transition-all w-[340px] h-12" style={{ backgroundColor: colors.darkBg, borderColor: isFocused ? colors.highlight : colors.midDark, boxShadow: isFocused ? `0 0 0 2px ${colors.highlight}30` : 'none' }}>
+    <div className="w-12 h-full flex items-center justify-center" style={{ color: colors.softLight }}><Search className="w-4 h-4" /></div>
+    <input ref={inputRef} type="text" placeholder="Search..." value={value} onChange={(e) => onChange(e.target.value)} onFocus={onFocus} onBlur={onBlur} className="bg-transparent h-full flex-1 focus:outline-none text-sm pr-4" style={{ color: colors.softLight }} />
+  </div>
+));
+
+const AddGameButton = memo(({ onClick, colors, gradient }: any) => (
+  <button onClick={onClick} className="px-8 rounded-lg font-semibold transition-all hover:shadow-md active:scale-95 flex items-center gap-2 justify-center h-12" style={{ ...gradient, color: colors.darkBg }}><Plus className="w-5 h-5" /><span>Add Game</span></button>
+));
+
+const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder }: any) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="flex items-center rounded-xl border-2 h-12 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark }}>
+      <button onClick={() => setIsOpen(!isOpen)} className="h-full px-3 flex items-center justify-center transition-colors" style={{ color: isOpen ? colors.highlight : colors.softLight }}><ListFilter className="w-5 h-5" /></button>
+      <div className="h-6 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.midDark, width: isOpen ? '1px' : '0px', marginRight: isOpen ? '0.75rem' : '0px' }} />
+      <div className="flex items-center overflow-hidden transition-all duration-300 ease-in-out" style={{ maxWidth: isOpen ? '300px' : '0px', opacity: isOpen ? 1 : 0, visibility: isOpen ? 'visible' : 'hidden' }}>
+        <div className="flex items-center pr-4 gap-1">
+          {['title', 'system'].map(opt => <button key={opt} onClick={() => setSortBy(opt)} className="px-3 py-1 rounded-lg text-sm font-medium h-9 capitalize transition-all active:scale-95" style={{ backgroundColor: sortBy === opt ? colors.highlight : colors.midDark, color: sortBy === opt ? colors.darkBg : colors.softLight }}>{opt}</button>)}
+          <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 h-9 rounded-lg flex items-center justify-center transition-all active:scale-95" style={{ backgroundColor: colors.midDark, color: colors.softLight }}>{sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}</button>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const Toast = memo(({ message, isVisible }: any) => (
   <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-lg shadow-2xl z-60 bg-red-500 text-white flex items-center gap-2 transition-opacity duration-300 ${isVisible ? 'animate-fade-in' : 'animate-fade-out'}`} style={{ pointerEvents: isVisible ? 'auto' : 'none' }}><XCircle className="w-5 h-5" /><span className="font-semibold">{message}</span></div>
@@ -319,452 +654,3 @@ const SystemPickerModal = memo(({ isOpen, isClosing, colors, gradient, editingGa
     </div>
   );
 });
-
-// --- MAIN COMPONENT DEFINED LAST ---
-
-export default function Home() {
-  const { games, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
-  
-  // Custom Debug Console State and Logic
-  const [isConsoleVisible, setIsConsoleVisible] = useState(false);
-  const [fullDebugLog, setFullDebugLog] = useState<string[]>([]);
-  const originalConsole = useRef({ log: console.log, error: console.error, warn: console.warn });
-  
-  const logMessage = useCallback((...args: any[]) => {
-    const message = args.map(arg => {
-      if (typeof arg === 'object' && arg !== null) {
-        try { return JSON.stringify(arg); }
-        catch { return String(arg); }
-      }
-      return String(arg);
-    }).join(' ');
-
-    const now = new Date();
-    const timestamp = `${now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}.${String(now.getMilliseconds()).padStart(3, '0')}`;
-    const newEntry = `[LOG] [${timestamp}] ${message}`;
-
-    setFullDebugLog(prev => [newEntry, ...prev]);
-    originalConsole.current.log(...args); 
-  }, []);
-  
-  // ui state hooks
-  const {
-    activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
-    isMounted, setIsMounted, gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused,
-    setIsDragActive, themeAnimationKey, setThemeAnimationKey,
-    isDeleteMode, setIsDeleteMode, selectedGameIds, setSelectedGameIds,
-    deletingGameIds, setDeletingGameIds, gameSearchInputRef, dragCounterRef,
-    toggleGameSelection, exitDeleteMode
-  } = useUIState();
-
-  // game operations hooks
-  const {
-    duplicateMessage, showDuplicateMessage, editingGame, setEditingGame, pendingGame, setPendingGame,
-    pendingFiles, setPendingFiles, systemPickerOpen, setSystemPickerOpen, systemPickerClosing,
-    systemSearchQuery, setSystemSearchQuery, pendingBatchCore, setPendingBatchCore, coverArtFit, setCoverArtFit,
-    showDuplicateError, closeSystemPicker, getSystemFromExtension, extractFilesFromDataTransfer
-  } = useGameOperations();
-
-  // settings and storage hooks
-  const [selectedTheme, setSelectedTheme, isThemeHydrated] = useLocalStorage('theme', 'default');
-  const [sortBy, setSortBy, isSortByHydrated] = useLocalStorage<'title' | 'system'>('sortBy', 'title');
-  const [sortOrder, setSortOrder, isSortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
-  const [autoLoadState, setAutoLoadState, isAutoLoadHydrated] = useLocalStorage('autoLoadState', false);
-  const [autoLoadIcon, setAutoLoadIcon] = useLocalStorage('autoLoadIcon', true);
-  const [autoSaveState, setAutoSaveState, isAutoSaveHydrated] = useLocalStorage('autoSaveState', false);
-  const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 60);
-  const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
-
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-
-  const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated && isAutoLoadHydrated && isAutoSaveHydrated;
-  const currentColors = useMemo(() => THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default, [selectedTheme]);
-  const gradientStyle = useMemo(() => getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), [currentColors]);
-
-  // Intercept Console and Add Key Listener (Shift + D)
-  useEffect(() => {
-    // 1. Console Interception
-    const captureLog = (method: 'log' | 'error' | 'warn') => (...args: any[]) => {
-      const message = args.map(arg => {
-        if (typeof arg === 'object' && arg !== null) {
-          try { return JSON.stringify(arg); }
-          catch { return String(arg); }
-        }
-        return String(arg);
-      }).join(' ');
-      
-      const now = new Date();
-      const timestamp = `${now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}.${String(now.getMilliseconds()).padStart(3, '0')}`;
-      const prefix = method === 'error' ? '[ERROR]' : method === 'warn' ? '[WARN]' : '[LOG]';
-      const newEntry = `${prefix} [${timestamp}] ${message}`;
-      
-      setFullDebugLog(prev => [newEntry, ...prev]);
-      originalConsole.current[method](...args);
-    };
-
-    if (typeof window !== 'undefined') {
-      console.log = captureLog('log');
-      console.error = captureLog('error');
-      console.warn = captureLog('warn');
-    }
-
-    // 2. Key Listener (Shift + D)
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.shiftKey && event.key.toLowerCase() === 'd') {
-        event.preventDefault();
-        setIsConsoleVisible(prev => !prev);
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      // Clean up: Restore original console methods
-      if (typeof window !== 'undefined') {
-        console.log = originalConsole.current.log;
-        console.error = originalConsole.current.error;
-        console.warn = originalConsole.current.warn;
-      }
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [setFullDebugLog, setIsConsoleVisible]);
-
-  // initialization
-  useEffect(() => {
-    setIsMounted(true);
-    logMessage('App mounted, loading games from storage...');
-    loadGamesFromStorage();
-    const loadTimer = setTimeout(() => setIsInitialLoad(false), 2000);
-    return () => clearTimeout(loadTimer);
-  }, [loadGamesFromStorage, setIsMounted, logMessage]);
-
-  useEffect(() => {
-    if (activeView === 'themes') setThemeAnimationKey(k => k + 1);
-  }, [activeView, setThemeAnimationKey]);
-
-  // game file processing
-  const isDuplicate = useCallback((fileName: string, list: Game[]) => 
-    list.some(g => g.fileName === fileName || g.filePath === fileName), []);
-
-  const processGameFile = useCallback(async (file: File, index: number, selectedCore?: string, currentGamesList: Game[] = games): Promise<Game[]> => {
-    if (isDuplicate(file.name, currentGamesList)) {
-      showDuplicateError(`"${file.name}" is already in your library`);
-      return currentGamesList;
-    }
-    const detectedCore = selectedCore || getSystemFromExtension(getFileExtension(file.name));
-    if (!detectedCore) return currentGamesList;
-
-    const gameId = Date.now() + index;
-    logMessage(`Processing file: ${file.name}. Saving to IndexedDB (ID: ${gameId}).`);
-    await saveGameFile(gameId, file);
-    logMessage(`File ${file.name} successfully saved to IndexedDB.`);
-
-    const newGame: Game = {
-      id: gameId,
-      title: stripExtension(file.name),
-      genre: getSystemNameByCore(detectedCore),
-      filePath: file.name,
-      fileName: file.name,
-      core: detectedCore,
-    };
-    addGame(newGame);
-    logMessage(`Game ${newGame.title} added to library state.`);
-    return [...currentGamesList, newGame];
-  }, [games, isDuplicate, showDuplicateError, getSystemFromExtension, addGame, logMessage]);
-
-  const handleIncomingFiles = useCallback(async (files: File[]) => {
-    if (!files.length) return;
-    const filesNeedingSystem: Array<{ file: File; index: number }> = [];
-    let currentGames = games;
-
-    for (let i = 0; i < files.length; i++) {
-      const detectedCore = getSystemFromExtension(getFileExtension(files[i].name));
-      if (detectedCore) {
-        currentGames = await processGameFile(files[i], i, detectedCore, currentGames);
-      } else {
-        filesNeedingSystem.push({ file: files[i], index: i });
-      }
-    }
-
-    const filteredNeeding = filesNeedingSystem.filter(({ file }) => !isDuplicate(file.name, currentGames));
-
-    if (filteredNeeding.length > 0) {
-      setPendingFiles(filteredNeeding);
-      if (filteredNeeding.length === 1) {
-        setPendingGame({ 
-          id: Date.now(), 
-          title: stripExtension(filteredNeeding[0].file.name), 
-          genre: 'Unknown', 
-          filePath: filteredNeeding[0].file.name, 
-          fileName: filteredNeeding[0].file.name 
-        });
-      } else {
-        setPendingGame(null);
-      }
-      setPendingBatchCore(null);
-      setCoverArtFit('cover');
-      setSystemPickerOpen(true);
-    } else if (filesNeedingSystem.length > 0) {
-      showDuplicateError(filesNeedingSystem.length === 1 ? 'File already in library' : 'All selected files are duplicates');
-    }
-  }, [games, isDuplicate, getSystemFromExtension, processGameFile, setPendingFiles, setPendingGame, setPendingBatchCore, setCoverArtFit, setSystemPickerOpen, showDuplicateError]);
-
-  const handleSystemPickerDone = useCallback(async () => {
-    if (editingGame) { closeSystemPicker(); return; }
-    const effectiveCore = pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core;
-
-    if (!effectiveCore) { showDuplicateError("Please select a system"); return; }
-    setIsProcessing(true);
-
-    try {
-      if (pendingFiles.length > 1) {
-        let currentGames = games;
-        for (const { file, index } of pendingFiles) {
-          currentGames = await processGameFile(file, index, effectiveCore, currentGames);
-        }
-        setPendingFiles([]); setPendingBatchCore(null);
-      } else if (pendingFiles.length === 1) {
-        const { file } = pendingFiles[0];
-        const gameId = pendingGame?.id ?? Date.now();
-        if (isDuplicate(file.name, games)) { 
-          showDuplicateError(`"${file.name}" is duplicate`); 
-          closeSystemPicker(); 
-          return; 
-        }
-        
-        logMessage(`System Picker Done: Saving single file ${file.name} to IndexedDB (ID: ${gameId}).`);
-        await saveGameFile(gameId, file);
-        logMessage(`System Picker Done: File ${file.name} successfully saved.`);
-
-        addGame({
-          id: gameId,
-          title: pendingGame?.title || stripExtension(file.name),
-          genre: pendingGame?.genre || getSystemNameByCore(effectiveCore) || 'Unknown',
-          filePath: pendingGame?.filePath || file.name,
-          fileName: file.name,
-          core: effectiveCore,
-          coverArt: pendingGame?.coverArt,
-          coverArtFit: pendingGame?.coverArt ? (pendingGame.coverArtFit || coverArtFit) : undefined,
-        });
-        logMessage(`System Picker Done: Game added to library state.`);
-      }
-      closeSystemPicker();
-    } catch (error) { 
-      logMessage(`System Picker Done ERROR: ${error instanceof Error ? error.message : String(error)}`, 'error');
-      console.error(error); 
-    } finally { setIsProcessing(false); }
-  }, [editingGame, pendingFiles, pendingBatchCore, pendingGame, games, isDuplicate, closeSystemPicker, showDuplicateError, processGameFile, addGame, coverArtFit, logMessage]);
-
-  // interaction handlers
-  const handleDrag = useCallback((e: DragEvent<HTMLElement>, active: boolean) => {
-    e.preventDefault(); e.stopPropagation();
-    if (active && e.dataTransfer?.types.includes('Files')) {
-      dragCounterRef.current += 1; setIsDragActive(true); e.dataTransfer.dropEffect = 'copy';
-    } else if (!active) {
-      dragCounterRef.current -= 1; if (dragCounterRef.current === 0) setIsDragActive(false);
-    }
-  }, [setIsDragActive, dragCounterRef]);
-
-  const handleDrop = useCallback(async (e: DragEvent<HTMLElement>) => {
-    e.preventDefault(); e.stopPropagation();
-    dragCounterRef.current = 0; setIsDragActive(false);
-    if (e.dataTransfer) await handleIncomingFiles(extractFilesFromDataTransfer(e.dataTransfer));
-  }, [setIsDragActive, dragCounterRef, handleIncomingFiles, extractFilesFromDataTransfer]);
-
-  const handleFileSelect = useCallback(async () => {
-    try {
-      let files: File[] = [];
-      if ('showOpenFilePicker' in window) {
-        const handles = await (window as any).showOpenFilePicker({ multiple: true });
-        files = await Promise.all(handles.map((fh: any) => fh.getFile()));
-      } else {
-        files = await new Promise<File[]>(r => {
-          const inp = document.createElement('input'); inp.type = 'file'; inp.multiple = true;
-          inp.onchange = (e: any) => r(Array.from(e.target.files || [])); inp.click();
-        });
-      }
-      await handleIncomingFiles(files);
-    } catch (err: any) { if (err?.name !== 'AbortError') console.error(err); }
-  }, [handleIncomingFiles]);
-
-  const handlePlayClick = useCallback(async (game: Game) => {
-    try {
-      logMessage(`Play: Starting for ${game.title} (ID: ${game.id})`);
-      
-      let file = await getGameFile(game.id);
-      logMessage(`Play: File read attempt complete. File found: ${!!file}`);
-
-      if (!file && game.fileData) {
-        logMessage(`Play: Migrating legacy file for ${game.title}`);
-        const res = await fetch(game.fileData);
-        file = new File([await res.blob()], game.fileName || game.title, { type: 'application/octet-stream' });
-        await saveGameFile(game.id, file);
-        logMessage(`Play: Legacy file saved to IndexedDB`);
-      }
-      if (file) {
-        logMessage(`Play: Loading game ${game.title}`);
-        await loadGame(file, game.core, selectedTheme, autoLoadState, autoSaveState, autoSaveInterval * 1000);
-      }
-      else logMessage(`Play ERROR: Game file missing for ${game.title}`, 'error');
-    } catch (e) { 
-      logMessage(`Play ERROR: Launch failed: ${e instanceof Error ? e.message : String(e)}`, 'error');
-      console.error('Launch failed', e); 
-    }
-  }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval, logMessage]);
-
-  const handleDeleteGame = useCallback(async (game: Game) => {
-    if (!confirm(`Delete "${game.title}"?`)) return;
-    setDeletingGameIds(prev => new Set(prev).add(game.id));
-    logMessage(`Starting delete for ${game.title} (ID: ${game.id})`);
-    await delay(350); 
-    await deleteGame(game.id);
-    logMessage(`Successfully deleted ${game.title}.`);
-    setDeletingGameIds(prev => { const n = new Set(prev); n.delete(game.id); return n; });
-  }, [deleteGame, setDeletingGameIds, logMessage]);
-
-  const handleMassDelete = useCallback(async () => {
-    if (!selectedGameIds.size || !confirm(`Delete ${selectedGameIds.size} games?`)) return;
-    setDeletingGameIds(new Set(selectedGameIds));
-    logMessage(`Starting mass delete for ${selectedGameIds.size} games.`);
-    await delay(350);
-    await Promise.all([...selectedGameIds].map(id => deleteGame(id)));
-    logMessage(`Mass delete complete.`);
-    setSelectedGameIds(new Set()); setDeletingGameIds(new Set()); setIsDeleteMode(false);
-  }, [selectedGameIds, deleteGame, setDeletingGameIds, setSelectedGameIds, setIsDeleteMode, logMessage]);
-
-  const handleEditGame = useCallback((g: Game) => {
-    setEditingGame(g); setPendingGame({ ...g }); setCoverArtFit(g.coverArtFit || 'cover'); setSystemPickerOpen(true);
-  }, [setEditingGame, setPendingGame, setCoverArtFit, setSystemPickerOpen]);
-
-  // render calculations
-  const sortedGames = useMemo(() => {
-    let filtered = games;
-    if (gameSearchQuery.trim()) {
-      const q = gameSearchQuery.toLowerCase();
-      filtered = games.filter(g => 
-        g.title.toLowerCase().includes(q) || 
-        g.genre.toLowerCase().includes(q) || 
-        getSystemCategory(g.core).toLowerCase().includes(q)
-      );
-    }
-    return [...filtered].sort((a, b) => {
-      let cmp = 0;
-      if (sortBy === 'title') cmp = a.title.localeCompare(b.title);
-      else {
-        cmp = getSystemCategory(a.core).localeCompare(getSystemCategory(b.core));
-        if (cmp === 0) cmp = a.genre.localeCompare(b.genre);
-        if (cmp === 0) cmp = a.title.localeCompare(b.title);
-      }
-      return sortOrder === 'asc' ? cmp : -cmp;
-    });
-  }, [games, sortBy, sortOrder, gameSearchQuery]);
-
-  const groupedGames = useMemo(() => {
-    if (sortBy !== 'system') return null;
-    // group efficiently
-    const groups = sortedGames.reduce((acc, g) => {
-      const mfg = getSystemCategory(g.core);
-      const cat = mfg === 'Other' ? g.genre : `${mfg} ${g.genre}`;
-      (acc[cat] ||= []).push(g); 
-      return acc;
-    }, {} as Record<string, Game[]>);
-    
-    // sort keys and return simplified object
-    return Object.keys(groups)
-      .sort((a, b) => sortOrder === 'asc' ? a.localeCompare(b) : b.localeCompare(a))
-      .reduce((res, cat) => { res[cat] = groups[cat]; return res; }, {} as Record<string, Game[]>);
-  }, [sortedGames, sortBy, sortOrder]);
-
-  const renderCard = useCallback((game: Game, idx: number) => (
-    <div key={game.id} className={deletingGameIds.has(game.id) ? 'animate-card-exit' : 'animate-card-enter'} style={{ animationDelay: deletingGameIds.has(game.id) ? '0s' : `${isInitialLoad ? idx * 0.05 : 0}s` }}>
-      <GameCard game={game} isSelected={selectedGameIds.has(game.id)} onPlay={handlePlayClick} onDelete={handleDeleteGame} onSelect={toggleGameSelection} isDeleteMode={isDeleteMode} onEnterDeleteMode={() => setIsDeleteMode(true)} colors={currentColors} onEdit={handleEditGame} onCoverArtClick={handleEditGame} />
-    </div>
-  ), [deletingGameIds, isInitialLoad, selectedGameIds, handlePlayClick, handleDeleteGame, toggleGameSelection, isDeleteMode, currentColors, handleEditGame]);
-
-  if (!isMounted || !isHydrated) return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />;
-
-  return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: currentColors.darkBg, fontFamily: FONT_FAMILY }}>
-      <div className={`fixed inset-0 z-40 transition-all duration-300 ${isSidebarOpen ? 'bg-black/60 backdrop-blur-sm' : 'bg-black/0 pointer-events-none'}`} onClick={() => setIsSidebarOpen(false)} />
-      <Sidebar isOpen={isSidebarOpen} activeView={activeView} colors={currentColors} onNavClick={(v: any) => { setActiveView(v); setIsSidebarOpen(false); }} />
-
-      <div className="flex-1 overflow-hidden">
-        <main className="p-8 overflow-y-auto pb-20 scrollbar-hide" style={{ minHeight: 'calc(100vh - 4rem)' }} onDragEnter={(e) => handleDrag(e, true)} onDragOver={(e) => e.dataTransfer && (e.dataTransfer.dropEffect = 'copy')} onDragLeave={(e) => handleDrag(e, false)} onDrop={handleDrop}>
-          <header className="mb-10 flex justify-between items-center">
-            <h1 className="text-4xl font-extrabold tracking-tight capitalize" style={{ color: currentColors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>{activeView}</h1>
-          </header>
-
-          {activeView === 'themes' ? (
-            <ThemeGrid colors={currentColors} selectedTheme={selectedTheme} onSelectTheme={setSelectedTheme} animKey={themeAnimationKey} />
-          ) : activeView === 'settings' ? (
-            <SettingsView 
-              colors={currentColors} gradient={gradientStyle} 
-              autoLoadState={autoLoadState} setAutoLoadState={setAutoLoadState} 
-              autoSaveState={autoSaveState} setAutoSaveState={setAutoSaveState}
-              autoSaveInterval={autoSaveInterval} setAutoSaveInterval={setAutoSaveInterval}
-              autoSaveIcon={autoSaveIcon} setAutoSaveIcon={setAutoSaveIcon}
-              autoLoadIcon={autoLoadIcon} setAutoLoadIcon={setAutoLoadIcon}
-            />
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold" style={{ color: currentColors.softLight }}>Games ({sortedGames.length})</h2>
-              </div>
-              {games.length === 0 ? (
-                <EmptyState colors={currentColors} gradient={gradientStyle} onAddGame={handleFileSelect} />
-              ) : (
-                <>
-                  <GameControls colors={currentColors} gradient={gradientStyle} gameSearchQuery={gameSearchQuery} setGameSearchQuery={setGameSearchQuery} gameSearchFocused={gameSearchFocused} setGameSearchFocused={setGameSearchFocused} gameSearchInputRef={gameSearchInputRef} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} isDeleteMode={isDeleteMode} selectedGameIds={selectedGameIds} onMassDelete={handleMassDelete} onExitDeleteMode={exitDeleteMode} onAddGame={handleFileSelect} />
-                  {sortedGames.length === 0 ? (
-                    <div className="text-center py-20 opacity-60"><p style={{ color: currentColors.softLight }}>No games found matching "{gameSearchQuery}"</p></div>
-                  ) : groupedGames ? (
-                    Object.entries(groupedGames).map(([cat, catGames]) => (
-                      <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
-                        <div className="flex items-center mb-4">
-                          <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: currentColors.highlight }}>{cat}</h4>
-                          <div className="flex-1 h-px" style={{ backgroundColor: currentColors.highlight + '30' }} />
-                        </div>
-                        <div className={GRID_CLASS}>{catGames.map((g, i) => renderCard(g, i))}</div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className={GRID_CLASS}>{sortedGames.map((g, i) => renderCard(g, i))}</div>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </main>
-      </div>
-
-      {duplicateMessage && <Toast message={duplicateMessage} isVisible={showDuplicateMessage} />}
-      <EmulatorNotification colors={currentColors} autoSaveIcon={autoSaveIcon} autoLoadIcon={autoLoadIcon} />
-      <Footer colors={currentColors} isSidebarOpen={isSidebarOpen} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-      {isConsoleVisible && <DebugConsole logs={fullDebugLog} colors={currentColors} />}
-
-      {(systemPickerOpen || systemPickerClosing) && (
-        <SystemPickerModal
-          isOpen={systemPickerOpen} isClosing={systemPickerClosing} colors={currentColors} gradient={gradientStyle}
-          editingGame={editingGame} pendingGame={pendingGame} pendingFiles={pendingFiles} searchQuery={systemSearchQuery}
-          onSearchChange={setSystemSearchQuery} onClose={closeSystemPicker} onDone={handleSystemPickerDone}
-          isProcessing={isProcessing} pendingBatchCore={pendingBatchCore}
-          onSelectSystem={(core: string) => {
-            if (pendingFiles.length > 1) setPendingBatchCore(core);
-            else {
-              const update = { core, genre: getSystemNameByCore(core) };
-              if (editingGame) { updateGame(editingGame.id, update); setEditingGame({ ...editingGame, ...update }); }
-              if (pendingGame) setPendingGame({ ...pendingGame, ...update });
-            }
-          }}
-          coverArtState={{
-            file: editingGame ? editingGame.coverArt : pendingGame?.coverArt, fit: coverArtFit,
-            onFitChange: (f: any) => { setCoverArtFit(f); if (editingGame) { updateGame(editingGame.id, { coverArtFit: f }); setEditingGame({ ...editingGame, coverArtFit: f }); } },
-            onUpload: (d: any) => { if (editingGame) { updateGame(editingGame.id, { coverArt: d }); setEditingGame({ ...editingGame, coverArt: d }); } else if (pendingGame) setPendingGame({ ...pendingGame, coverArt: d }); },
-            onRemove: () => { if (editingGame) { updateGame(editingGame.id, { coverArt: undefined }); setEditingGame({ ...editingGame, coverArt: undefined }); } else if (pendingGame) setPendingGame({ ...pendingGame, coverArt: undefined }); }
-          }}
-        />
-      )}
-    </div>
-  );
-}
