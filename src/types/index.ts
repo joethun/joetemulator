@@ -8,6 +8,8 @@ export interface Game {
   core?: string;
   coverArt?: string;
   coverArtFit?: 'cover' | 'contain';
+  progress?: number; // upload progress (0-100)
+  isComplete?: boolean; // trigger completion animation
 }
 
 type ThemeColors = {
@@ -72,7 +74,7 @@ export const THEMES: Record<string, ThemeColors> = {
 
 export type ThemeConfig = ThemeColors;
 
-// helper for css gradients
+// css gradient helper
 export const getGradientStyle = (from: string, to: string) => ({
   backgroundImage: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`
 });

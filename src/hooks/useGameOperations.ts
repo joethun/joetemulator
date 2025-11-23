@@ -6,7 +6,7 @@ const DUPLICATE_MESSAGE_DURATION = 2500;
 const DUPLICATE_MESSAGE_CLEAR_DELAY = 3000;
 
 export function useGameOperations() {
-  // game manipulation state
+  // game state
   const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
   const [showDuplicateMessage, setShowDuplicateMessage] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
@@ -20,7 +20,7 @@ export function useGameOperations() {
   const [pendingBatchCore, setPendingBatchCore] = useState<string | null>(null);
   const [coverArtFit, setCoverArtFit] = useState<'cover' | 'contain'>('cover');
 
-  // displays duplicate file error toast
+  // displays duplicate error toast
   const showDuplicateError = useCallback((message: string) => {
     setDuplicateMessage(message);
     setShowDuplicateMessage(true);
@@ -28,7 +28,7 @@ export function useGameOperations() {
     setTimeout(() => setDuplicateMessage(null), DUPLICATE_MESSAGE_CLEAR_DELAY);
   }, []);
 
-  // handles closing the system picker modal with animation
+  // closes system picker with animation
   const closeSystemPicker = useCallback(() => {
     setSystemPickerClosing(true);
     setTimeout(() => {
@@ -42,12 +42,12 @@ export function useGameOperations() {
     }, 200);
   }, []);
 
-  // detects system core from filename
+  // detects core from extension
   const getSystemFromExtension = useCallback((extension: string): string | null => {
     return FILE_EXTENSIONS[extension.toLowerCase()] || null;
   }, []);
 
-  // extracts files from drop event
+  // extracts files from drag event
   const extractFilesFromDataTransfer = useCallback((dataTransfer: DataTransfer): File[] => {
     if (dataTransfer.items?.length) {
       return Array.from(dataTransfer.items)

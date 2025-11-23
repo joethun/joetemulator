@@ -18,7 +18,6 @@ import { useUIState } from '@/hooks/useUIState';
 import { useGameOperations } from '@/hooks/useGameOperations';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
-// constants
 const FONT_FAMILY = 'Lexend, sans-serif';
 const GRID_CLASS = "grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-6";
 const NAV_ITEMS = [
@@ -35,7 +34,7 @@ const getFileExtension = (filename: string) => filename.split(".").pop()?.toLowe
 export default function Home() {
   const { games, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
   
-  // ui state hooks
+  // ui state
   const {
     activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
     isMounted, setIsMounted, gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused,
@@ -45,7 +44,7 @@ export default function Home() {
     toggleGameSelection, exitDeleteMode
   } = useUIState();
 
-  // game operations hooks
+  // ops state
   const {
     duplicateMessage, showDuplicateMessage, editingGame, setEditingGame, pendingGame, setPendingGame,
     pendingFiles, setPendingFiles, systemPickerOpen, setSystemPickerOpen, systemPickerClosing,
@@ -53,7 +52,7 @@ export default function Home() {
     showDuplicateError, closeSystemPicker, getSystemFromExtension, extractFilesFromDataTransfer
   } = useGameOperations();
 
-  // settings and storage hooks
+  // preferences
   const [selectedTheme, setSelectedTheme, isThemeHydrated] = useLocalStorage('theme', 'default');
   const [sortBy, setSortBy, isSortByHydrated] = useLocalStorage<'title' | 'system'>('sortBy', 'title');
   const [sortOrder, setSortOrder, isSortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
@@ -65,12 +64,15 @@ export default function Home() {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  // separate upload state to prevent full list re-sorts
+  const [uploads, setUploads] = useState<Record<number, Game>>({});
 
   const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated && isAutoLoadHydrated && isAutoSaveHydrated;
   const currentColors = useMemo(() => THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default, [selectedTheme]);
   const gradientStyle = useMemo(() => getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), [currentColors]);
 
-  // initialization
+  // load initial data
   useEffect(() => {
     setIsMounted(true);
     loadGamesFromStorage();
@@ -82,10 +84,11 @@ export default function Home() {
     if (activeView === 'themes') setThemeAnimationKey(k => k + 1);
   }, [activeView, setThemeAnimationKey]);
 
-  // game file processing
+  // check duplicates
   const isDuplicate = useCallback((fileName: string, list: Game[]) => 
     list.some(g => g.fileName === fileName || g.filePath === fileName), []);
 
+  // process single file
   const processGameFile = useCallback(async (file: File, index: number, selectedCore?: string, currentGamesList: Game[] = games): Promise<Game[]> => {
     if (isDuplicate(file.name, currentGamesList)) {
       showDuplicateError(`"${file.name}" is already in your library`);
@@ -95,19 +98,81 @@ export default function Home() {
     if (!detectedCore) return currentGamesList;
 
     const gameId = Date.now() + index;
-    await saveGameFile(gameId, file);
-    const newGame: Game = {
+    const tempGame: Game = {
       id: gameId,
       title: stripExtension(file.name),
       genre: getSystemNameByCore(detectedCore),
       filePath: file.name,
       fileName: file.name,
       core: detectedCore,
+      progress: 0
     };
+
+    // optimistic update
+    setUploads(prev => ({ ...prev, [gameId]: tempGame }));
+
+    // throttling ref for progress updates
+    let lastUpdate = 0;
+
+    try {
+      await saveGameFile(gameId, file, (progress) => {
+        const now = Date.now();
+        // throttle updates to 100ms to avoid freezing main thread
+        if (now - lastUpdate > 100 || progress === 100 || progress === 0) {
+          setUploads(prev => {
+            const existing = prev[gameId];
+            if (!existing) return prev;
+            return { ...prev, [gameId]: { ...existing, progress } };
+          });
+          lastUpdate = now;
+        }
+      });
+
+      // 1. force 100% visible state
+      setUploads(prev => ({
+        ...prev,
+        [gameId]: { ...prev[gameId], progress: 100 }
+      }));
+      
+      // 2. wait 800ms to let user see 100%
+      await delay(800);
+
+      // 3. trigger fade out animation
+      setUploads(prev => ({
+        ...prev,
+        [gameId]: { ...prev[gameId], isComplete: true }
+      }));
+
+      // 4. wait for animation to finish
+      await delay(300);
+
+    } catch (e) {
+      console.error("upload failed", e);
+      setUploads(prev => {
+        const next = { ...prev };
+        delete next[gameId];
+        return next;
+      });
+      return currentGamesList;
+    }
+
+    // cleanup upload state and add real game
+    const newGame: Game = { ...tempGame };
+    delete newGame.progress;
+    delete newGame.isComplete;
+
     addGame(newGame);
+    
+    setUploads(prev => {
+        const next = { ...prev };
+        delete next[gameId];
+        return next;
+    });
+
     return [...currentGamesList, newGame];
   }, [games, isDuplicate, showDuplicateError, getSystemFromExtension, addGame]);
 
+  // batch file handler
   const handleIncomingFiles = useCallback(async (files: File[]) => {
     if (!files.length) return;
     const filesNeedingSystem: Array<{ file: File; index: number }> = [];
@@ -116,6 +181,7 @@ export default function Home() {
     for (let i = 0; i < files.length; i++) {
       const detectedCore = getSystemFromExtension(getFileExtension(files[i].name));
       if (detectedCore) {
+        // process known cores immediately
         currentGames = await processGameFile(files[i], i, detectedCore, currentGames);
       } else {
         filesNeedingSystem.push({ file: files[i], index: i });
@@ -145,46 +211,113 @@ export default function Home() {
     }
   }, [games, isDuplicate, getSystemFromExtension, processGameFile, setPendingFiles, setPendingGame, setPendingBatchCore, setCoverArtFit, setSystemPickerOpen, showDuplicateError]);
 
+  // system picker completion
   const handleSystemPickerDone = useCallback(async () => {
-    if (editingGame) { closeSystemPicker(); return; }
+    if (editingGame) { 
+        closeSystemPicker(); 
+        return; 
+    }
+    
     const effectiveCore = pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core;
 
-    if (!effectiveCore) { showDuplicateError("Please select a system"); return; }
-    setIsProcessing(true);
-
-    try {
-      if (pendingFiles.length > 1) {
-        let currentGames = games;
-        for (const { file, index } of pendingFiles) {
-          currentGames = await processGameFile(file, index, effectiveCore, currentGames);
+    if (!effectiveCore) { 
+        showDuplicateError("Please select a system"); 
+        return; 
+    }
+    
+    // validate single file duplicate check before closing
+    if (pendingFiles.length === 1) {
+        if (isDuplicate(pendingFiles[0].file.name, games)) {
+            showDuplicateError(`"${pendingFiles[0].file.name}" is duplicate`);
+            closeSystemPicker();
+            return;
         }
-        setPendingFiles([]); setPendingBatchCore(null);
-      } else if (pendingFiles.length === 1) {
-        const { file } = pendingFiles[0];
-        const gameId = pendingGame?.id ?? Date.now();
-        if (isDuplicate(file.name, games)) { 
-          showDuplicateError(`"${file.name}" is duplicate`); 
-          closeSystemPicker(); 
-          return; 
-        }
+    }
 
-        await saveGameFile(gameId, file);
-        addGame({
-          id: gameId,
-          title: pendingGame?.title || stripExtension(file.name),
-          genre: pendingGame?.genre || getSystemNameByCore(effectiveCore) || 'Unknown',
-          filePath: pendingGame?.filePath || file.name,
-          fileName: file.name,
-          core: effectiveCore,
-          coverArt: pendingGame?.coverArt,
-          coverArtFit: pendingGame?.coverArt ? (pendingGame.coverArtFit || coverArtFit) : undefined,
-        });
-      }
-      closeSystemPicker();
-    } catch (error) { console.error(error); } finally { setIsProcessing(false); }
+    // capture state for background processing
+    const filesToProcess = [...pendingFiles];
+    const meta = pendingGame ? { ...pendingGame } : null;
+    const core = effectiveCore;
+    const fit = coverArtFit;
+
+    // fire and forget: close modal immediately
+    closeSystemPicker();
+    
+    // async background upload
+    (async () => {
+        setIsProcessing(true);
+        try {
+            if (filesToProcess.length > 1) {
+                let currentGames = games;
+                for (const { file, index } of filesToProcess) {
+                    currentGames = await processGameFile(file, index, core, currentGames);
+                }
+            } else if (filesToProcess.length === 1) {
+                // logic duplicated from processGameFile for single manual uploads with meta
+                const { file } = filesToProcess[0];
+                const gameId = meta?.id ?? Date.now();
+                
+                const tempGame: Game = {
+                    id: gameId,
+                    title: meta?.title || stripExtension(file.name),
+                    genre: meta?.genre || getSystemNameByCore(core) || 'Unknown',
+                    filePath: meta?.filePath || file.name,
+                    fileName: file.name,
+                    core: core,
+                    coverArt: meta?.coverArt,
+                    coverArtFit: meta?.coverArt ? (meta.coverArtFit || fit) : undefined,
+                    progress: 0
+                };
+
+                setUploads(prev => ({ ...prev, [gameId]: tempGame }));
+                
+                let lastUpdate = 0;
+                await saveGameFile(gameId, file, (progress) => {
+                    const now = Date.now();
+                    if (now - lastUpdate > 100 || progress === 100 || progress === 0) {
+                        setUploads(prev => {
+                            const existing = prev[gameId];
+                            if (!existing) return prev;
+                            return { ...prev, [gameId]: { ...existing, progress } };
+                        });
+                        lastUpdate = now;
+                    }
+                });
+
+                // 1. force 100% visible state
+                setUploads(prev => ({
+                    ...prev, 
+                    [gameId]: { ...prev[gameId], progress: 100 } 
+                }));
+                
+                // 2. wait 800ms
+                await delay(800);
+
+                // 3. trigger fade
+                setUploads(prev => ({
+                    ...prev, 
+                    [gameId]: { ...prev[gameId], isComplete: true } 
+                }));
+
+                // 4. wait animation
+                await delay(300);
+
+                const newGame = { ...tempGame };
+                delete newGame.progress;
+                delete newGame.isComplete;
+                
+                addGame(newGame);
+                setUploads(prev => { const n = { ...prev }; delete n[gameId]; return n; });
+            }
+        } catch (e) {
+            console.error("background processing error:", e);
+        } finally {
+            setIsProcessing(false);
+        }
+    })();
   }, [editingGame, pendingFiles, pendingBatchCore, pendingGame, games, isDuplicate, closeSystemPicker, showDuplicateError, processGameFile, addGame, coverArtFit]);
 
-  // interaction handlers
+  // drag handlers
   const handleDrag = useCallback((e: DragEvent<HTMLElement>, active: boolean) => {
     e.preventDefault(); e.stopPropagation();
     if (active && e.dataTransfer?.types.includes('Files')) {
@@ -200,11 +333,13 @@ export default function Home() {
     if (e.dataTransfer) await handleIncomingFiles(extractFilesFromDataTransfer(e.dataTransfer));
   }, [setIsDragActive, dragCounterRef, handleIncomingFiles, extractFilesFromDataTransfer]);
 
+  // file input handler
   const handleFileSelect = useCallback(async () => {
     try {
       let files: File[] = [];
       if ('showOpenFilePicker' in window) {
-        const handles = await (window as any).showOpenFilePicker({ multiple: true });
+        // @ts-ignore
+        const handles = await window.showOpenFilePicker({ multiple: true });
         files = await Promise.all(handles.map((fh: any) => fh.getFile()));
       } else {
         files = await new Promise<File[]>(r => {
@@ -216,6 +351,7 @@ export default function Home() {
     } catch (err: any) { if (err?.name !== 'AbortError') console.error(err); }
   }, [handleIncomingFiles]);
 
+  // game actions
   const handlePlayClick = useCallback(async (game: Game) => {
     try {
       let file = await getGameFile(game.id);
@@ -225,8 +361,8 @@ export default function Home() {
         await saveGameFile(game.id, file);
       }
       if (file) await loadGame(file, game.core, selectedTheme, autoLoadState, autoSaveState, autoSaveInterval * 1000);
-      else console.error('Game file missing', game);
-    } catch (e) { console.error('Launch failed', e); }
+      else console.error('game file missing', game);
+    } catch (e) { console.error('launch failed', e); }
   }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval]);
 
   const handleDeleteGame = useCallback(async (game: Game) => {
@@ -250,10 +386,14 @@ export default function Home() {
 
   // render calculations
   const sortedGames = useMemo(() => {
-    let filtered = games;
+    // combine uploads and games
+    const activeUploads = Object.values(uploads).filter(u => !games.some(g => g.id === u.id));
+    const allGames = [...games, ...activeUploads];
+
+    let filtered = allGames;
     if (gameSearchQuery.trim()) {
       const q = gameSearchQuery.toLowerCase();
-      filtered = games.filter(g => 
+      filtered = allGames.filter(g => 
         g.title.toLowerCase().includes(q) || 
         g.genre.toLowerCase().includes(q) || 
         getSystemCategory(g.core).toLowerCase().includes(q)
@@ -269,7 +409,7 @@ export default function Home() {
       }
       return sortOrder === 'asc' ? cmp : -cmp;
     });
-  }, [games, sortBy, sortOrder, gameSearchQuery]);
+  }, [games, uploads, sortBy, sortOrder, gameSearchQuery]);
 
   const groupedGames = useMemo(() => {
     if (sortBy !== 'system') return null;
@@ -322,7 +462,7 @@ export default function Home() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold" style={{ color: currentColors.softLight }}>Games ({sortedGames.length})</h2>
               </div>
-              {games.length === 0 ? (
+              {games.length === 0 && Object.keys(uploads).length === 0 ? (
                 <EmptyState colors={currentColors} gradient={gradientStyle} onAddGame={handleFileSelect} />
               ) : (
                 <>

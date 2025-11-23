@@ -11,17 +11,17 @@ export function useGameLibrary() {
   const [isLoadingGames, setIsLoadingGames] = useState(true);
   const migrationCheckedRef = useRef(false);
 
-  // Persists game list to localstorage
+  // persists to localstorage
   const saveGamesToStorage = useCallback((updatedGames: Game[]) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedGames));
       setGames(updatedGames);
     } catch (error) {
-      console.error('Failed to save games to storage:', error);
+      console.error('failed to save games:', error);
     }
   }, []);
 
-  // Loads games and handles legacy data migration
+  // loads and migrates legacy data
   const loadGamesFromStorage = useCallback(async () => {
     if (migrationCheckedRef.current) return;
     migrationCheckedRef.current = true;
@@ -37,9 +37,9 @@ export function useGameLibrary() {
       let loadedGames: Game[] = JSON.parse(savedGames);
       const alreadyMigrated = localStorage.getItem(MIGRATION_KEY) === 'true';
 
-      // Migrate legacy base64 games to indexeddb
+      // migrate base64 to indexeddb
       if (!alreadyMigrated) {
-        console.log('Migrating legacy games...');
+        console.log('migrating games...');
         for (const game of loadedGames) {
           if (game.fileData) {
             try {
@@ -48,24 +48,21 @@ export function useGameLibrary() {
               const file = new File([blob], game.fileName || game.title, { type: 'application/octet-stream' });
               await saveGameFile(game.id, file);
             } catch (error) {
-              console.error('Migration error for game:', game.title, error);
+              console.error('migration failed for:', game.title, error);
             }
           }
         }
         localStorage.setItem(MIGRATION_KEY, 'true');
       }
 
-      // Clean up game objects
+      // cleanup game objects
       loadedGames = loadedGames.map(game => {
-        // Remove legacy fileData from localstorage object to save space
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { fileData, ...gameWithoutData } = game;
         
-        // Fix missing genre names
         if (game.genre === 'ROM' && game.core) {
           gameWithoutData.genre = getSystemNameByCore(game.core);
         }
-        // Default cover art fit
         if (game.coverArt && !game.coverArtFit) {
           gameWithoutData.coverArtFit = 'cover';
         }
@@ -73,18 +70,17 @@ export function useGameLibrary() {
       });
 
       setGames(loadedGames);
-      // Save cleaned up version back to storage
       localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedGames));
       
     } catch (error) {
-      console.error('Load games failed', error);
+      console.error('load failed', error);
       setGames([]);
     } finally {
       setIsLoadingGames(false);
     }
   }, []);
 
-  // CRUD operations
+  // crud operations
   const addGame = useCallback((newGame: Game) => {
     setGames(prev => {
       const updated = [...prev, newGame];
@@ -110,7 +106,7 @@ export function useGameLibrary() {
         return updated;
       });
     } catch (error) {
-      console.error('Delete failed:', error);
+      console.error('delete failed:', error);
     }
   }, []);
 
