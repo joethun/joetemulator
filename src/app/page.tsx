@@ -32,14 +32,304 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const stripExtension = (filename: string) => filename.replace(/\.[^/.]+$/, '');
 const getFileExtension = (filename: string) => filename.split(".").pop()?.toLowerCase() || "";
 
+// --- SUB-COMPONENTS DEFINED FIRST TO PREVENT REFERENCE ERRORS ---
+
+const DebugConsole = memo(({ logs, colors }: any) => (
+  <div className="fixed bottom-0 left-0 right-0 z-[1000001] p-3 text-xs opacity-90 backdrop-blur-sm" style={{ backgroundColor: colors.midDark, borderTop: `1px solid ${colors.highlight}50`, fontFamily: 'JetBrains Mono, monospace' }}>
+    <div className="text-sm font-bold mb-1" style={{ color: colors.highlight }}>DEBUG CONSOLE (Shift+D to close)</div>
+    <div className="overflow-y-auto max-h-32">
+      {logs.map((log: string, index: number) => (
+        <pre key={index} className="whitespace-pre-wrap leading-tight" style={{ color: log.startsWith('[ERROR]') ? '#f87171' : log.startsWith('[WARN]') ? '#facc15' : colors.softLight }}>{log}</pre>
+      ))}
+    </div>
+  </div>
+));
+
+const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }: any) => {
+  const [notification, setNotification] = useState<{ type: 'save' | 'load', id: number } | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => { setMountNode(document.body); }, []);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      const { type, source } = e.detail;
+      if (source === 'auto') {
+        if (type === 'save' && !autoSaveIcon) return;
+        if (type === 'load' && !autoLoadIcon) return;
+      }
+      if (timerRef.current) clearTimeout(timerRef.current);
+      
+      const gameEl = document.getElementById('game');
+      setMountNode((gameEl && window.getComputedStyle(gameEl).display !== 'none') ? gameEl : document.body);
+
+      setIsVisible(false);
+      setTimeout(() => {
+        setNotification({ type, id: Date.now() });
+        requestAnimationFrame(() => setIsVisible(true));
+        timerRef.current = setTimeout(() => {
+          setIsVisible(false);
+          setTimeout(() => setNotification(null), 300);
+        }, 1500);
+      }, 10);
+    };
+    window.addEventListener('emulator_notification', handler);
+    return () => {
+      window.removeEventListener('emulator_notification', handler);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [autoSaveIcon, autoLoadIcon]);
+
+  if (!notification || !mountNode) return null;
+  return createPortal(
+    <div className={`fixed top-4 left-4 z-[1000000] pointer-events-none transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="w-10 h-10 rounded-lg flex items-center justify-center backdrop-blur-sm shadow-lg"
+           style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}>
+        {notification.type === 'save' ? <Save className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
+      </div>
+    </div>, mountNode
+  );
+});
+
+const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon }: any) => {
+  const getSwitchStyle = (isActive: boolean) => ({
+    ...(isActive ? gradient : { backgroundColor: colors.darkBg }),
+    borderColor: isActive ? 'transparent' : colors.midDark,
+    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
+  });
+
+  return (
+    <div className="animate-fade-in w-full grid gap-4">
+      <div className="p-6 rounded-xl border-2 transition-all flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }}>
+        <div className="flex items-center justify-between gap-6 relative z-10">
+          <div className="flex items-center gap-5 overflow-hidden">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Clock className="w-6 h-6" /></div>
+            <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Save State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Automatically save your game state periodically.</p></div>
+          </div>
+          <button onClick={() => setAutoSaveState(!autoSaveState)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoSaveState)}>
+            <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveState ? colors.darkBg : colors.softLight }} />
+          </button>
+        </div>
+        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoSaveState ? '200px' : '0px', opacity: autoSaveState ? 1 : 0, marginTop: autoSaveState ? '1.5rem' : '0px', visibility: autoSaveState ? 'visible' : 'hidden' }}>
+          <div className="pt-4 border-t space-y-4 pl-16" style={{ borderColor: colors.highlight + '30' }}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3"><Timer className="w-4 h-4" style={{ color: colors.highlight }} /><span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span></div>
+              <div className="flex items-center gap-2">{[15, 30, 45, 60].map(v => <button key={v} onClick={() => setAutoSaveInterval(v)} className="px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all active:scale-95" style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, borderColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>{v}s</button>)}</div>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">{autoSaveIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Save Icon</span></div>
+              <button onClick={() => setAutoSaveIcon(!autoSaveIcon)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoSaveIcon)}>
+                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveIcon ? colors.darkBg : colors.softLight }} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="p-6 rounded-xl border-2 transition-all flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animationDelay: '0.1s' }}>
+        <div className="flex items-center justify-between gap-6 relative z-10">
+          <div className="flex items-center gap-5 overflow-hidden">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Save className="w-6 h-6" /></div>
+            <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Load State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Resume gameplay from your last save automatically.</p></div>
+          </div>
+          <button onClick={() => setAutoLoadState(!autoLoadState)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoLoadState)}>
+            <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadState ? colors.darkBg : colors.softLight }} />
+          </button>
+        </div>
+        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoLoadState ? '100px' : '0px', opacity: autoLoadState ? 1 : 0, marginTop: autoLoadState ? '1.5rem' : '0px', visibility: autoLoadState ? 'visible' : 'hidden' }}>
+          <div className="pt-4 border-t pl-16" style={{ borderColor: colors.highlight + '30' }}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">{autoLoadIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Load Icon</span></div>
+              <button onClick={() => setAutoLoadIcon(!autoLoadIcon)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoLoadIcon)}>
+                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadIcon ? colors.darkBg : colors.softLight }} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const AddGameButton = memo(({ onClick, colors, gradient }: any) => (
+  <button onClick={onClick} className="px-8 rounded-lg font-semibold transition-all hover:shadow-md active:scale-95 flex items-center gap-2 justify-center h-12" style={{ ...gradient, color: colors.darkBg }}><Plus className="w-5 h-5" /><span>Add Game</span></button>
+));
+
+const EmptyState = memo(({ colors, gradient, onAddGame }: any) => (
+  <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
+    <div className="w-20 h-20 rounded-2xl mb-6 flex items-center justify-center shadow-lg transition-colors" style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}><Gamepad2 className="w-10 h-10" /></div>
+    <h3 className="text-xl font-bold mb-2" style={{ color: colors.softLight }}>No games found</h3>
+    <p className="mb-8 opacity-70" style={{ color: colors.highlight }}>Add your first ROM to get started</p>
+    <AddGameButton onClick={onAddGame} colors={colors} gradient={gradient} />
+  </div>
+));
+
+const SearchBar = memo(({ colors, value, onChange, isFocused, onFocus, onBlur, inputRef }: any) => (
+  <div className="flex items-center rounded-xl border-2 transition-all w-[340px] h-12" style={{ backgroundColor: colors.darkBg, borderColor: isFocused ? colors.highlight : colors.midDark, boxShadow: isFocused ? `0 0 0 2px ${colors.highlight}30` : 'none' }}>
+    <div className="w-12 h-full flex items-center justify-center" style={{ color: colors.softLight }}><Search className="w-4 h-4" /></div>
+    <input ref={inputRef} type="text" placeholder="Search..." value={value} onChange={(e) => onChange(e.target.value)} onFocus={onFocus} onBlur={onBlur} className="bg-transparent h-full flex-1 focus:outline-none text-sm pr-4" style={{ color: colors.softLight }} />
+  </div>
+));
+
+const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder }: any) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="flex items-center rounded-xl border-2 h-12 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark }}>
+      <button onClick={() => setIsOpen(!isOpen)} className="h-full px-3 flex items-center justify-center transition-colors" style={{ color: isOpen ? colors.highlight : colors.softLight }}><ListFilter className="w-5 h-5" /></button>
+      <div className="h-6 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.midDark, width: isOpen ? '1px' : '0px', marginRight: isOpen ? '0.75rem' : '0px' }} />
+      <div className="flex items-center overflow-hidden transition-all duration-300 ease-in-out" style={{ maxWidth: isOpen ? '300px' : '0px', opacity: isOpen ? 1 : 0, visibility: isOpen ? 'visible' : 'hidden' }}>
+        <div className="flex items-center pr-4 gap-1">
+          {['title', 'system'].map(opt => <button key={opt} onClick={() => setSortBy(opt)} className="px-3 py-1 rounded-lg text-sm font-medium h-9 capitalize transition-all active:scale-95" style={{ backgroundColor: sortBy === opt ? colors.highlight : colors.midDark, color: sortBy === opt ? colors.darkBg : colors.softLight }}>{opt}</button>)}
+          <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 h-9 rounded-lg flex items-center justify-center transition-all active:scale-95" style={{ backgroundColor: colors.midDark, color: colors.softLight }}>{sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}</button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const GameControls = memo(({ colors, gradient, gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused, gameSearchInputRef, sortBy, setSortBy, sortOrder, setSortOrder, isDeleteMode, selectedGameIds, onMassDelete, onExitDeleteMode, onAddGame }: any) => (
+  <div className="flex flex-col gap-4 mb-6">
+    <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+      <div className="flex flex-wrap gap-3 items-center flex-1 min-w-0">
+        <SearchBar colors={colors} value={gameSearchQuery} onChange={setGameSearchQuery} isFocused={gameSearchFocused} onFocus={() => setGameSearchFocused(true)} onBlur={() => setGameSearchFocused(false)} inputRef={gameSearchInputRef} />
+        <SortControls colors={colors} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} />
+      </div>
+      <div className="flex flex-wrap gap-3 justify-end items-center">
+        {isDeleteMode ? (
+          <>
+            <button onClick={onMassDelete} disabled={!selectedGameIds.size} className="px-5 py-2.5 rounded-lg h-12 flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60"><Trash2 className="w-5 h-5" /></button>
+            <button onClick={onExitDeleteMode} className="px-5 py-2.5 rounded-lg font-semibold h-12 transition-all active:scale-95" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>Cancel</button>
+          </>
+        ) : <AddGameButton onClick={onAddGame} colors={colors} gradient={gradient} />}
+      </div>
+    </div>
+  </div>
+));
+
+const Toast = memo(({ message, isVisible }: any) => (
+  <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-lg shadow-2xl z-60 bg-red-500 text-white flex items-center gap-2 transition-opacity duration-300 ${isVisible ? 'animate-fade-in' : 'animate-fade-out'}`} style={{ pointerEvents: isVisible ? 'auto' : 'none' }}><XCircle className="w-5 h-5" /><span className="font-semibold">{message}</span></div>
+));
+
+const Footer = memo(({ colors, isSidebarOpen, onToggleSidebar }: any) => (
+  <footer className="fixed bottom-0 left-0 right-0 h-16 border-t flex items-center px-6 z-50" style={{ backgroundColor: colors.midDark, borderColor: colors.sidebarHover, boxShadow: '0 -4px 12px rgba(0,0,0,0.3)' }}>
+    <button className="p-2.5 rounded-lg transition-all hover:bg-opacity-50" onClick={onToggleSidebar} style={{ color: colors.softLight, backgroundColor: isSidebarOpen ? colors.sidebarHover : 'transparent' }}>{isSidebarOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}</button>
+  </footer>
+));
+
+const Sidebar = memo(({ isOpen, activeView, colors, onNavClick }: any) => (
+  <aside className={`w-64 p-6 flex flex-col shadow-xl fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out ${isOpen ? "translate-x-0" : "-translate-x-full"}`} style={{ backgroundColor: colors.midDark, boxShadow: '4px 0 12px rgba(0,0,0,0.3)' }}>
+    <div className="flex items-center gap-3 mb-12 pb-6 border-b animate-fade-in" style={{ borderColor: colors.highlight + '30' }}>
+      <img src="/favicon.ico" alt="Joe T" className="w-12 h-12 flex-shrink-0" />
+      <h2 className="text-2xl font-extrabold bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(135deg, ${colors.softLight}, ${colors.highlight})` }}>Joe T Emulator</h2>
+    </div>
+    <nav>
+      {NAV_ITEMS.map(({ view, icon: Icon, label }, idx) => (
+        <button key={view} onClick={() => onNavClick(view)} className="w-full p-3 mb-2 rounded-lg transition-all flex items-center hover:translate-x-1 hover:bg-opacity-50" style={{ backgroundColor: activeView === view ? colors.sidebarHover : 'transparent', borderLeft: activeView === view ? `4px solid ${colors.highlight}` : '4px solid transparent', color: colors.softLight, animation: `fadeInSlide 0.3s ease-out ${idx * 0.1}s both` }}>
+          <Icon className="w-6 h-6 mr-3 transition-transform" /><span className="font-semibold">{label}</span>
+        </button>
+      ))}
+    </nav>
+  </aside>
+));
+
+const ThemeGrid = memo(({ colors, selectedTheme, onSelectTheme, animKey }: any) => (
+  <div>
+    <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {Object.entries(THEMES).map(([name, t]: [string, any], idx) => (
+        <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-2 relative overflow-hidden animate-card-enter text-left transition-all hover:shadow-lg"
+          style={{ backgroundColor: t.midDark, borderColor: selectedTheme === name ? t.play : t.highlight + '40', boxShadow: selectedTheme === name ? `0 2px 8px ${t.play}30` : '0 2px 4px rgba(0,0,0,0.2)', animationDelay: `${idx * 0.05}s` }}>
+          <div className="flex justify-between mb-4">
+            <h3 className="text-xl font-bold capitalize" style={{ color: t.softLight }}>{name}</h3>
+            {selectedTheme === name && <CircleCheck className="w-6 h-6" style={{ color: t.play }} />}
+          </div>
+          <div className="flex gap-2">
+            {[t.darkBg, t.midDark, t.play, t.highlight].map((c, i) => <div key={i} className="flex-1 h-12 rounded-lg" style={{ backgroundColor: c }} />)}
+          </div>
+        </button>
+      ))}
+    </div>
+  </div>
+));
+
+const SystemPickerModal = memo(({ isOpen, isClosing, colors, gradient, editingGame, pendingGame, pendingFiles, searchQuery, onSearchChange, onClose, onDone, onSelectSystem, coverArtState, isProcessing, pendingBatchCore }: any) => {
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const categories = useMemo(() => {
+    const filtered: Record<string, Array<[string, string]>> = {};
+    Object.entries(SYSTEM_PICKER).forEach(([cat, systems]) => {
+      const matches = Object.entries(systems).filter(([name]) => name.toLowerCase().includes(searchQuery.toLowerCase()));
+      if (matches.length) filtered[cat] = matches;
+    });
+    return filtered;
+  }, [searchQuery]);
+
+  const currentCore = editingGame?.core || (pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core);
+  const showCoverArt = pendingFiles.length <= 1;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose} style={{ animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.2s ease-out forwards' }}>
+      <div className="p-6 rounded-2xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl border overflow-hidden" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 20px 60px rgba(0,0,0,0.7)', animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.3s ease-out forwards' }} onClick={e => e.stopPropagation()}>
+        <div className="mb-6"><h3 className="text-3xl font-bold mb-2" style={{ color: colors.softLight }}>{editingGame ? editingGame.title : pendingFiles.length > 1 ? `Add ${pendingFiles.length} Games` : 'Select System'}</h3><p className="text-sm opacity-70" style={{ color: colors.highlight }}>{editingGame ? 'Choose system and cover art' : pendingFiles.length > 1 ? `Choose system for ${pendingFiles.length} files` : 'Select a system'}</p></div>
+        <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 overflow-hidden">
+          {showCoverArt && (
+            <div className="flex-shrink-0 w-full xl:w-80 space-y-4 max-h-[60vh] xl:max-h-full overflow-y-auto">
+              <div className="rounded-xl border overflow-hidden" style={{ borderColor: colors.midDark, backgroundColor: colors.darkBg }}>
+                {coverArtState.file ? (
+                  <div className="relative group aspect-[4/5] bg-black/20">
+                    <img src={coverArtState.file} alt="Cover" className="w-full h-full" style={{ objectFit: coverArtState.fit, objectPosition: 'center' }} />
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={coverArtState.onRemove} className="p-2.5 rounded-lg hover:shadow-md active:scale-95 transition-all" style={{ backgroundColor: '#ef4444', color: colors.softLight }}><Trash2 className="w-5 h-5" /></button></div>
+                  </div>
+                ) : (
+                  <div className="aspect-[3/4] flex items-center justify-center p-6 text-center" style={{ backgroundColor: colors.midDark }}><div><Image className="w-8 h-8 mx-auto mb-4" style={{ color: colors.highlight }} /><p className="text-sm font-medium" style={{ color: colors.softLight }}>No Cover Art</p></div></div>
+                )}
+                {coverArtState.file && <div className="p-4 border-t" style={{ borderColor: colors.highlight + '30' }}><button onClick={() => coverArtState.onFitChange(coverArtState.fit === 'contain' ? 'cover' : 'contain')} className="w-full py-2.5 rounded-lg text-sm font-semibold active:scale-95 transition-all" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>{coverArtState.fit === 'contain' ? 'Zoom to Fill' : 'Shrink to Fit'}</button></div>}
+                <div className="p-4 border-t" style={{ borderColor: colors.highlight + '30' }}>
+                  <input type="file" accept="image/*" className="hidden" id="art-upload" onChange={e => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = ev => coverArtState.onUpload(ev.target?.result); r.readAsDataURL(f); } e.target.value = ''; }} />
+                  <label htmlFor="art-upload" className="block w-full py-2.5 rounded-lg text-sm font-semibold text-center active:scale-95 transition-all" style={{ ...(coverArtState.file ? { backgroundColor: colors.highlight } : gradient), color: colors.darkBg }}>{coverArtState.file ? 'Change Image' : 'Upload Cover Art'}</label>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="flex-1 flex flex-col min-w-0">
+            <SearchBar colors={colors} value={searchQuery} onChange={onSearchChange} isFocused={isSearchFocused} onFocus={() => setIsSearchFocused(true)} onBlur={() => setIsSearchFocused(false)} inputRef={null} />
+            <div className="flex-1 overflow-y-auto pr-2 scrollbar-hide mt-4">
+              {Object.entries(categories).map(([cat, systems]) => (
+                <div key={cat} className="mb-6 last:mb-0">
+                  <div className="flex items-center mb-3"><h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: colors.highlight }}>{cat}</h4><div className="flex-1 h-px" style={{ backgroundColor: colors.highlight + '30' }} /></div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {systems.map(([name, core]: any, idx) => {
+                      const isSel = currentCore === core;
+                      return (
+                        <button key={core} onClick={() => onSelectSystem(core)} className="p-3.5 rounded-xl text-left border-2 flex items-center justify-between group transition-all active:scale-95" style={{ backgroundColor: isSel ? colors.highlight : colors.midDark, borderColor: isSel ? colors.highlight : colors.midDark, color: isSel ? colors.darkBg : colors.softLight, animation: `fadeIn 0.4s ease-out ${idx * 0.03}s both` }}>
+                          <span className="font-medium text-sm truncate pr-2 flex-1">{name}</span>{isSel && <CircleCheck className="w-5 h-5 flex-shrink-0 transition-all" style={{ color: colors.darkBg }} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: colors.midDark }}>
+          {(editingGame || pendingFiles.length > 0) && <button onClick={onDone} disabled={isProcessing} className="py-2.5 px-6 rounded-lg font-semibold active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50" style={{ ...gradient, color: colors.darkBg }}><span>Done</span></button>}
+          <button onClick={onClose} disabled={isProcessing} className="py-2.5 px-6 rounded-lg font-semibold active:scale-95 transition-all disabled:opacity-50" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>{editingGame ? 'Cancel' : 'Close'}</button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// --- MAIN COMPONENT DEFINED LAST ---
+
 export default function Home() {
   const { games, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
   
   // Custom Debug Console State and Logic
   const [isConsoleVisible, setIsConsoleVisible] = useState(false);
   const [fullDebugLog, setFullDebugLog] = useState<string[]>([]);
+  const originalConsole = useRef({ log: console.log, error: console.error, warn: console.warn });
   
-  // This function allows manual logging if needed, bypassing the interceptor
   const logMessage = useCallback((...args: any[]) => {
     const message = args.map(arg => {
       if (typeof arg === 'object' && arg !== null) {
@@ -49,12 +339,12 @@ export default function Home() {
       return String(arg);
     }).join(' ');
 
-    const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', millisecond: '3-digit' });
+    const now = new Date();
+    const timestamp = `${now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}.${String(now.getMilliseconds()).padStart(3, '0')}`;
     const newEntry = `[LOG] [${timestamp}] ${message}`;
 
     setFullDebugLog(prev => [newEntry, ...prev]);
-    // We still log to the real console just in case
-    if (typeof window !== 'undefined') console.log(...args);
+    originalConsole.current.log(...args); 
   }, []);
   
   // ui state hooks
@@ -94,11 +384,8 @@ export default function Home() {
 
   // Intercept Console and Add Key Listener (Shift + D)
   useEffect(() => {
-    const originalLog = console.log;
-    const originalError = console.error;
-    const originalWarn = console.warn;
-
-    const captureLog = (method: 'log' | 'error' | 'warn', originalMethod: Function) => (...args: any[]) => {
+    // 1. Console Interception
+    const captureLog = (method: 'log' | 'error' | 'warn') => (...args: any[]) => {
       const message = args.map(arg => {
         if (typeof arg === 'object' && arg !== null) {
           try { return JSON.stringify(arg); }
@@ -107,20 +394,22 @@ export default function Home() {
         return String(arg);
       }).join(' ');
       
-      const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', millisecond: '3-digit' });
+      const now = new Date();
+      const timestamp = `${now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}.${String(now.getMilliseconds()).padStart(3, '0')}`;
       const prefix = method === 'error' ? '[ERROR]' : method === 'warn' ? '[WARN]' : '[LOG]';
       const newEntry = `${prefix} [${timestamp}] ${message}`;
       
       setFullDebugLog(prev => [newEntry, ...prev]);
-      originalMethod.apply(console, args);
+      originalConsole.current[method](...args);
     };
 
     if (typeof window !== 'undefined') {
-      console.log = captureLog('log', originalLog);
-      console.error = captureLog('error', originalError);
-      console.warn = captureLog('warn', originalWarn);
+      console.log = captureLog('log');
+      console.error = captureLog('error');
+      console.warn = captureLog('warn');
     }
 
+    // 2. Key Listener (Shift + D)
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.shiftKey && event.key.toLowerCase() === 'd') {
         event.preventDefault();
@@ -131,21 +420,24 @@ export default function Home() {
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      console.log = originalLog;
-      console.error = originalError;
-      console.warn = originalWarn;
+      // Clean up: Restore original console methods
+      if (typeof window !== 'undefined') {
+        console.log = originalConsole.current.log;
+        console.error = originalConsole.current.error;
+        console.warn = originalConsole.current.warn;
+      }
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [setFullDebugLog, setIsConsoleVisible]);
 
   // initialization
   useEffect(() => {
     setIsMounted(true);
-    console.log('App mounted, loading games from storage...');
+    logMessage('App mounted, loading games from storage...');
     loadGamesFromStorage();
     const loadTimer = setTimeout(() => setIsInitialLoad(false), 2000);
     return () => clearTimeout(loadTimer);
-  }, [loadGamesFromStorage, setIsMounted]);
+  }, [loadGamesFromStorage, setIsMounted, logMessage]);
 
   useEffect(() => {
     if (activeView === 'themes') setThemeAnimationKey(k => k + 1);
@@ -164,9 +456,9 @@ export default function Home() {
     if (!detectedCore) return currentGamesList;
 
     const gameId = Date.now() + index;
-    console.log(`Processing file: ${file.name}. Saving to IndexedDB (ID: ${gameId}).`);
+    logMessage(`Processing file: ${file.name}. Saving to IndexedDB (ID: ${gameId}).`);
     await saveGameFile(gameId, file);
-    console.log(`File ${file.name} successfully saved to IndexedDB.`);
+    logMessage(`File ${file.name} successfully saved to IndexedDB.`);
 
     const newGame: Game = {
       id: gameId,
@@ -177,9 +469,9 @@ export default function Home() {
       core: detectedCore,
     };
     addGame(newGame);
-    console.log(`Game ${newGame.title} added to library state.`);
+    logMessage(`Game ${newGame.title} added to library state.`);
     return [...currentGamesList, newGame];
-  }, [games, isDuplicate, showDuplicateError, getSystemFromExtension, addGame]);
+  }, [games, isDuplicate, showDuplicateError, getSystemFromExtension, addGame, logMessage]);
 
   const handleIncomingFiles = useCallback(async (files: File[]) => {
     if (!files.length) return;
@@ -241,9 +533,9 @@ export default function Home() {
           return; 
         }
         
-        console.log(`System Picker Done: Saving single file ${file.name} to IndexedDB (ID: ${gameId}).`);
+        logMessage(`System Picker Done: Saving single file ${file.name} to IndexedDB (ID: ${gameId}).`);
         await saveGameFile(gameId, file);
-        console.log(`System Picker Done: File ${file.name} successfully saved.`);
+        logMessage(`System Picker Done: File ${file.name} successfully saved.`);
 
         addGame({
           id: gameId,
@@ -255,13 +547,14 @@ export default function Home() {
           coverArt: pendingGame?.coverArt,
           coverArtFit: pendingGame?.coverArt ? (pendingGame.coverArtFit || coverArtFit) : undefined,
         });
-        console.log(`System Picker Done: Game added to library state.`);
+        logMessage(`System Picker Done: Game added to library state.`);
       }
       closeSystemPicker();
     } catch (error) { 
-      console.error(`System Picker Done ERROR:`, error);
+      logMessage(`System Picker Done ERROR: ${error instanceof Error ? error.message : String(error)}`, 'error');
+      console.error(error); 
     } finally { setIsProcessing(false); }
-  }, [editingGame, pendingFiles, pendingBatchCore, pendingGame, games, isDuplicate, closeSystemPicker, showDuplicateError, processGameFile, addGame, coverArtFit]);
+  }, [editingGame, pendingFiles, pendingBatchCore, pendingGame, games, isDuplicate, closeSystemPicker, showDuplicateError, processGameFile, addGame, coverArtFit, logMessage]);
 
   // interaction handlers
   const handleDrag = useCallback((e: DragEvent<HTMLElement>, active: boolean) => {
@@ -297,47 +590,48 @@ export default function Home() {
 
   const handlePlayClick = useCallback(async (game: Game) => {
     try {
-      console.log(`Play: Starting for ${game.title} (ID: ${game.id})`);
+      logMessage(`Play: Starting for ${game.title} (ID: ${game.id})`);
       
       let file = await getGameFile(game.id);
-      console.log(`Play: File read attempt complete. File found: ${!!file}`);
+      logMessage(`Play: File read attempt complete. File found: ${!!file}`);
 
       if (!file && game.fileData) {
-        console.log(`Play: Migrating legacy file for ${game.title}`);
+        logMessage(`Play: Migrating legacy file for ${game.title}`);
         const res = await fetch(game.fileData);
         file = new File([await res.blob()], game.fileName || game.title, { type: 'application/octet-stream' });
         await saveGameFile(game.id, file);
-        console.log(`Play: Legacy file saved to IndexedDB`);
+        logMessage(`Play: Legacy file saved to IndexedDB`);
       }
       if (file) {
-        console.log(`Play: Loading game ${game.title}`);
+        logMessage(`Play: Loading game ${game.title}`);
         await loadGame(file, game.core, selectedTheme, autoLoadState, autoSaveState, autoSaveInterval * 1000);
       }
-      else console.error(`Play ERROR: Game file missing for ${game.title}`);
+      else logMessage(`Play ERROR: Game file missing for ${game.title}`, 'error');
     } catch (e) { 
-      console.error(`Play ERROR: Launch failed`, e);
+      logMessage(`Play ERROR: Launch failed: ${e instanceof Error ? e.message : String(e)}`, 'error');
+      console.error('Launch failed', e); 
     }
-  }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval]);
+  }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval, logMessage]);
 
   const handleDeleteGame = useCallback(async (game: Game) => {
     if (!confirm(`Delete "${game.title}"?`)) return;
     setDeletingGameIds(prev => new Set(prev).add(game.id));
-    console.log(`Starting delete for ${game.title} (ID: ${game.id})`);
+    logMessage(`Starting delete for ${game.title} (ID: ${game.id})`);
     await delay(350); 
     await deleteGame(game.id);
-    console.log(`Successfully deleted ${game.title}.`);
+    logMessage(`Successfully deleted ${game.title}.`);
     setDeletingGameIds(prev => { const n = new Set(prev); n.delete(game.id); return n; });
-  }, [deleteGame, setDeletingGameIds]);
+  }, [deleteGame, setDeletingGameIds, logMessage]);
 
   const handleMassDelete = useCallback(async () => {
     if (!selectedGameIds.size || !confirm(`Delete ${selectedGameIds.size} games?`)) return;
     setDeletingGameIds(new Set(selectedGameIds));
-    console.log(`Starting mass delete for ${selectedGameIds.size} games.`);
+    logMessage(`Starting mass delete for ${selectedGameIds.size} games.`);
     await delay(350);
     await Promise.all([...selectedGameIds].map(id => deleteGame(id)));
-    console.log(`Mass delete complete.`);
+    logMessage(`Mass delete complete.`);
     setSelectedGameIds(new Set()); setDeletingGameIds(new Set()); setIsDeleteMode(false);
-  }, [selectedGameIds, deleteGame, setDeletingGameIds, setSelectedGameIds, setIsDeleteMode]);
+  }, [selectedGameIds, deleteGame, setDeletingGameIds, setSelectedGameIds, setIsDeleteMode, logMessage]);
 
   const handleEditGame = useCallback((g: Game) => {
     setEditingGame(g); setPendingGame({ ...g }); setCoverArtFit(g.coverArtFit || 'cover'); setSystemPickerOpen(true);
@@ -474,292 +768,3 @@ export default function Home() {
     </div>
   );
 }
-
-// sub-components
-
-const DebugConsole = memo(({ logs, colors }: any) => (
-  <div className="fixed bottom-0 left-0 right-0 z-[1000001] p-3 text-xs opacity-90 backdrop-blur-sm" style={{ backgroundColor: colors.midDark, borderTop: `1px solid ${colors.highlight}50`, fontFamily: 'JetBrains Mono, monospace' }}>
-    <div className="text-sm font-bold mb-1" style={{ color: colors.highlight }}>DEBUG CONSOLE (Shift+D to close)</div>
-    <div className="overflow-y-auto max-h-32">
-      {logs.map((log: string, index: number) => (
-        <pre key={index} className="whitespace-pre-wrap leading-tight" style={{ color: log.startsWith('[ERROR]') ? '#f87171' : log.startsWith('[WARN]') ? '#facc15' : colors.softLight }}>{log}</pre>
-      ))}
-    </div>
-  </div>
-));
-
-
-const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }: any) => {
-  const [notification, setNotification] = useState<{ type: 'save' | 'load', id: number } | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => { setMountNode(document.body); }, []);
-
-  useEffect(() => {
-    const handler = (e: any) => {
-      const { type, source } = e.detail;
-      if (source === 'auto') {
-        if (type === 'save' && !autoSaveIcon) return;
-        if (type === 'load' && !autoLoadIcon) return;
-      }
-      if (timerRef.current) clearTimeout(timerRef.current);
-      
-      const gameEl = document.getElementById('game');
-      setMountNode((gameEl && window.getComputedStyle(gameEl).display !== 'none') ? gameEl : document.body);
-
-      setIsVisible(false);
-      setTimeout(() => {
-        setNotification({ type, id: Date.now() });
-        requestAnimationFrame(() => setIsVisible(true));
-        timerRef.current = setTimeout(() => {
-          setIsVisible(false);
-          setTimeout(() => setNotification(null), 300);
-        }, 1500);
-      }, 10);
-    };
-    window.addEventListener('emulator_notification', handler);
-    return () => {
-      window.removeEventListener('emulator_notification', handler);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [autoSaveIcon, autoLoadIcon]);
-
-  if (!notification || !mountNode) return null;
-  return createPortal(
-    <div className={`fixed top-4 left-4 z-[1000000] pointer-events-none transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <div className="w-10 h-10 rounded-lg flex items-center justify-center backdrop-blur-sm shadow-lg"
-           style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}>
-        {notification.type === 'save' ? <Save className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
-      </div>
-    </div>, mountNode
-  );
-});
-
-const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon }: any) => {
-  const getSwitchStyle = (isActive: boolean) => ({
-    ...(isActive ? gradient : { backgroundColor: colors.darkBg }),
-    borderColor: isActive ? 'transparent' : colors.midDark,
-    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
-  });
-
-  return (
-    <div className="animate-fade-in w-full grid gap-4">
-      <div className="p-6 rounded-xl border-2 transition-all flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }}>
-        <div className="flex items-center justify-between gap-6 relative z-10">
-          <div className="flex items-center gap-5 overflow-hidden">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Clock className="w-6 h-6" /></div>
-            <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Save State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Automatically save your game state periodically.</p></div>
-          </div>
-          <button onClick={() => setAutoSaveState(!autoSaveState)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoSaveState)}>
-            <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveState ? colors.darkBg : colors.softLight }} />
-          </button>
-        </div>
-        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoSaveState ? '200px' : '0px', opacity: autoSaveState ? 1 : 0, marginTop: autoSaveState ? '1.5rem' : '0px', visibility: autoSaveState ? 'visible' : 'hidden' }}>
-          <div className="pt-4 border-t space-y-4 pl-16" style={{ borderColor: colors.highlight + '30' }}>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3"><Timer className="w-4 h-4" style={{ color: colors.highlight }} /><span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span></div>
-              <div className="flex items-center gap-2">{[15, 30, 45, 60].map(v => <button key={v} onClick={() => setAutoSaveInterval(v)} className="px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all active:scale-95" style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, borderColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>{v}s</button>)}</div>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">{autoSaveIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Save Icon</span></div>
-              <button onClick={() => setAutoSaveIcon(!autoSaveIcon)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoSaveIcon)}>
-                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveIcon ? colors.darkBg : colors.softLight }} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="p-6 rounded-xl border-2 transition-all flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animationDelay: '0.1s' }}>
-        <div className="flex items-center justify-between gap-6 relative z-10">
-          <div className="flex items-center gap-5 overflow-hidden">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Save className="w-6 h-6" /></div>
-            <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Load State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Resume gameplay from your last save automatically.</p></div>
-          </div>
-          <button onClick={() => setAutoLoadState(!autoLoadState)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoLoadState)}>
-            <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadState ? colors.darkBg : colors.softLight }} />
-          </button>
-        </div>
-        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoLoadState ? '100px' : '0px', opacity: autoLoadState ? 1 : 0, marginTop: autoLoadState ? '1.5rem' : '0px', visibility: autoLoadState ? 'visible' : 'hidden' }}>
-          <div className="pt-4 border-t pl-16" style={{ borderColor: colors.highlight + '30' }}>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">{autoLoadIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Load Icon</span></div>
-              <button onClick={() => setAutoLoadIcon(!autoLoadIcon)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoLoadIcon)}>
-                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadIcon ? colors.darkBg : colors.softLight }} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-const EmptyState = memo(({ colors, gradient, onAddGame }: any) => (
-  <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
-    <div className="w-20 h-20 rounded-2xl mb-6 flex items-center justify-center shadow-lg transition-colors" style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}><Gamepad2 className="w-10 h-10" /></div>
-    <h3 className="text-xl font-bold mb-2" style={{ color: colors.softLight }}>No games found</h3>
-    <p className="mb-8 opacity-70" style={{ color: colors.highlight }}>Add your first ROM to get started</p>
-    <AddGameButton onClick={onAddGame} colors={colors} gradient={gradient} />
-  </div>
-));
-
-const GameControls = memo(({ colors, gradient, gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused, gameSearchInputRef, sortBy, setSortBy, sortOrder, setSortOrder, isDeleteMode, selectedGameIds, onMassDelete, onExitDeleteMode, onAddGame }: any) => (
-  <div className="flex flex-col gap-4 mb-6">
-    <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-      <div className="flex flex-wrap gap-3 items-center flex-1 min-w-0">
-        <SearchBar colors={colors} value={gameSearchQuery} onChange={setGameSearchQuery} isFocused={gameSearchFocused} onFocus={() => setGameSearchFocused(true)} onBlur={() => setGameSearchFocused(false)} inputRef={gameSearchInputRef} />
-        <SortControls colors={colors} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} />
-      </div>
-      <div className="flex flex-wrap gap-3 justify-end items-center">
-        {isDeleteMode ? (
-          <>
-            <button onClick={onMassDelete} disabled={!selectedGameIds.size} className="px-5 py-2.5 rounded-lg h-12 flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60"><Trash2 className="w-5 h-5" /></button>
-            <button onClick={onExitDeleteMode} className="px-5 py-2.5 rounded-lg font-semibold h-12 transition-all active:scale-95" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>Cancel</button>
-          </>
-        ) : <AddGameButton onClick={onAddGame} colors={colors} gradient={gradient} />}
-      </div>
-    </div>
-  </div>
-));
-
-const SearchBar = memo(({ colors, value, onChange, isFocused, onFocus, onBlur, inputRef }: any) => (
-  <div className="flex items-center rounded-xl border-2 transition-all w-[340px] h-12" style={{ backgroundColor: colors.darkBg, borderColor: isFocused ? colors.highlight : colors.midDark, boxShadow: isFocused ? `0 0 0 2px ${colors.highlight}30` : 'none' }}>
-    <div className="w-12 h-full flex items-center justify-center" style={{ color: colors.softLight }}><Search className="w-4 h-4" /></div>
-    <input ref={inputRef} type="text" placeholder="Search..." value={value} onChange={(e) => onChange(e.target.value)} onFocus={onFocus} onBlur={onBlur} className="bg-transparent h-full flex-1 focus:outline-none text-sm pr-4" style={{ color: colors.softLight }} />
-  </div>
-));
-
-const AddGameButton = memo(({ onClick, colors, gradient }: any) => (
-  <button onClick={onClick} className="px-8 rounded-lg font-semibold transition-all hover:shadow-md active:scale-95 flex items-center gap-2 justify-center h-12" style={{ ...gradient, color: colors.darkBg }}><Plus className="w-5 h-5" /><span>Add Game</span></button>
-));
-
-const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder }: any) => {
-  const [isOpen, setIsOpen] = useState(false);
-  return (
-    <div className="flex items-center rounded-xl border-2 h-12 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark }}>
-      <button onClick={() => setIsOpen(!isOpen)} className="h-full px-3 flex items-center justify-center transition-colors" style={{ color: isOpen ? colors.highlight : colors.softLight }}><ListFilter className="w-5 h-5" /></button>
-      <div className="h-6 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.midDark, width: isOpen ? '1px' : '0px', marginRight: isOpen ? '0.75rem' : '0px' }} />
-      <div className="flex items-center overflow-hidden transition-all duration-300 ease-in-out" style={{ maxWidth: isOpen ? '300px' : '0px', opacity: isOpen ? 1 : 0, visibility: isOpen ? 'visible' : 'hidden' }}>
-        <div className="flex items-center pr-4 gap-1">
-          {['title', 'system'].map(opt => <button key={opt} onClick={() => setSortBy(opt)} className="px-3 py-1 rounded-lg text-sm font-medium h-9 capitalize transition-all active:scale-95" style={{ backgroundColor: sortBy === opt ? colors.highlight : colors.midDark, color: sortBy === opt ? colors.darkBg : colors.softLight }}>{opt}</button>)}
-          <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 h-9 rounded-lg flex items-center justify-center transition-all active:scale-95" style={{ backgroundColor: colors.midDark, color: colors.softLight }}>{sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}</button>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-const Toast = memo(({ message, isVisible }: any) => (
-  <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-lg shadow-2xl z-60 bg-red-500 text-white flex items-center gap-2 transition-opacity duration-300 ${isVisible ? 'animate-fade-in' : 'animate-fade-out'}`} style={{ pointerEvents: isVisible ? 'auto' : 'none' }}><XCircle className="w-5 h-5" /><span className="font-semibold">{message}</span></div>
-));
-
-const Footer = memo(({ colors, isSidebarOpen, onToggleSidebar }: any) => (
-  <footer className="fixed bottom-0 left-0 right-0 h-16 border-t flex items-center px-6 z-50" style={{ backgroundColor: colors.midDark, borderColor: colors.sidebarHover, boxShadow: '0 -4px 12px rgba(0,0,0,0.3)' }}>
-    <button className="p-2.5 rounded-lg transition-all hover:bg-opacity-50" onClick={onToggleSidebar} style={{ color: colors.softLight, backgroundColor: isSidebarOpen ? colors.sidebarHover : 'transparent' }}>{isSidebarOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}</button>
-  </footer>
-));
-
-const Sidebar = memo(({ isOpen, activeView, colors, onNavClick }: any) => (
-  <aside className={`w-64 p-6 flex flex-col shadow-xl fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out ${isOpen ? "translate-x-0" : "-translate-x-full"}`} style={{ backgroundColor: colors.midDark, boxShadow: '4px 0 12px rgba(0,0,0,0.3)' }}>
-    <div className="flex items-center gap-3 mb-12 pb-6 border-b animate-fade-in" style={{ borderColor: colors.highlight + '30' }}>
-      <img src="/favicon.ico" alt="Joe T" className="w-12 h-12 flex-shrink-0" />
-      <h2 className="text-2xl font-extrabold bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(135deg, ${colors.softLight}, ${colors.highlight})` }}>Joe T Emulator</h2>
-    </div>
-    <nav>
-      {NAV_ITEMS.map(({ view, icon: Icon, label }, idx) => (
-        <button key={view} onClick={() => onNavClick(view)} className="w-full p-3 mb-2 rounded-lg transition-all flex items-center hover:translate-x-1 hover:bg-opacity-50" style={{ backgroundColor: activeView === view ? colors.sidebarHover : 'transparent', borderLeft: activeView === view ? `4px solid ${colors.highlight}` : '4px solid transparent', color: colors.softLight, animation: `fadeInSlide 0.3s ease-out ${idx * 0.1}s both` }}>
-          <Icon className="w-6 h-6 mr-3 transition-transform" /><span className="font-semibold">{label}</span>
-        </button>
-      ))}
-    </nav>
-  </aside>
-));
-
-const ThemeGrid = memo(({ colors, selectedTheme, onSelectTheme, animKey }: any) => (
-  <div>
-    <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Object.entries(THEMES).map(([name, t]: [string, any], idx) => (
-        <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-2 relative overflow-hidden animate-card-enter text-left transition-all hover:shadow-lg"
-          style={{ backgroundColor: t.midDark, borderColor: selectedTheme === name ? t.play : t.highlight + '40', boxShadow: selectedTheme === name ? `0 2px 8px ${t.play}30` : '0 2px 4px rgba(0,0,0,0.2)', animationDelay: `${idx * 0.05}s` }}>
-          <div className="flex justify-between mb-4">
-            <h3 className="text-xl font-bold capitalize" style={{ color: t.softLight }}>{name}</h3>
-            {selectedTheme === name && <CircleCheck className="w-6 h-6" style={{ color: t.play }} />}
-          </div>
-          <div className="flex gap-2">
-            {[t.darkBg, t.midDark, t.play, t.highlight].map((c, i) => <div key={i} className="flex-1 h-12 rounded-lg" style={{ backgroundColor: c }} />)}
-          </div>
-        </button>
-      ))}
-    </div>
-  </div>
-));
-
-const SystemPickerModal = memo(({ isOpen, isClosing, colors, gradient, editingGame, pendingGame, pendingFiles, searchQuery, onSearchChange, onClose, onDone, onSelectSystem, coverArtState, isProcessing, pendingBatchCore }: any) => {
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const categories = useMemo(() => {
-    const filtered: Record<string, Array<[string, string]>> = {};
-    Object.entries(SYSTEM_PICKER).forEach(([cat, systems]) => {
-      const matches = Object.entries(systems).filter(([name]) => name.toLowerCase().includes(searchQuery.toLowerCase()));
-      if (matches.length) filtered[cat] = matches;
-    });
-    return filtered;
-  }, [searchQuery]);
-
-  const currentCore = editingGame?.core || (pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core);
-  const showCoverArt = pendingFiles.length <= 1;
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose} style={{ animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.2s ease-out forwards' }}>
-      <div className="p-6 rounded-2xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl border overflow-hidden" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 20px 60px rgba(0,0,0,0.7)', animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.3s ease-out forwards' }} onClick={e => e.stopPropagation()}>
-        <div className="mb-6"><h3 className="text-3xl font-bold mb-2" style={{ color: colors.softLight }}>{editingGame ? editingGame.title : pendingFiles.length > 1 ? `Add ${pendingFiles.length} Games` : 'Select System'}</h3><p className="text-sm opacity-70" style={{ color: colors.highlight }}>{editingGame ? 'Choose system and cover art' : pendingFiles.length > 1 ? `Choose system for ${pendingFiles.length} files` : 'Select a system'}</p></div>
-        <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 overflow-hidden">
-          {showCoverArt && (
-            <div className="flex-shrink-0 w-full xl:w-80 space-y-4 max-h-[60vh] xl:max-h-full overflow-y-auto">
-              <div className="rounded-xl border overflow-hidden" style={{ borderColor: colors.midDark, backgroundColor: colors.darkBg }}>
-                {coverArtState.file ? (
-                  <div className="relative group aspect-[4/5] bg-black/20">
-                    <img src={coverArtState.file} alt="Cover" className="w-full h-full" style={{ objectFit: coverArtState.fit, objectPosition: 'center' }} />
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={coverArtState.onRemove} className="p-2.5 rounded-lg hover:shadow-md active:scale-95 transition-all" style={{ backgroundColor: '#ef4444', color: colors.softLight }}><Trash2 className="w-5 h-5" /></button></div>
-                  </div>
-                ) : (
-                  <div className="aspect-[3/4] flex items-center justify-center p-6 text-center" style={{ backgroundColor: colors.midDark }}><div><Image className="w-8 h-8 mx-auto mb-4" style={{ color: colors.highlight }} /><p className="text-sm font-medium" style={{ color: colors.softLight }}>No Cover Art</p></div></div>
-                )}
-                {coverArtState.file && <div className="p-4 border-t" style={{ borderColor: colors.highlight + '30' }}><button onClick={() => coverArtState.onFitChange(coverArtState.fit === 'contain' ? 'cover' : 'contain')} className="w-full py-2.5 rounded-lg text-sm font-semibold active:scale-95 transition-all" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>{coverArtState.fit === 'contain' ? 'Zoom to Fill' : 'Shrink to Fit'}</button></div>}
-                <div className="p-4 border-t" style={{ borderColor: colors.highlight + '30' }}>
-                  <input type="file" accept="image/*" className="hidden" id="art-upload" onChange={e => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = ev => coverArtState.onUpload(ev.target?.result); r.readAsDataURL(f); } e.target.value = ''; }} />
-                  <label htmlFor="art-upload" className="block w-full py-2.5 rounded-lg text-sm font-semibold text-center active:scale-95 transition-all" style={{ ...(coverArtState.file ? { backgroundColor: colors.highlight } : gradient), color: colors.darkBg }}>{coverArtState.file ? 'Change Image' : 'Upload Cover Art'}</label>
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="flex-1 flex flex-col min-w-0">
-            <SearchBar colors={colors} value={searchQuery} onChange={onSearchChange} isFocused={isSearchFocused} onFocus={() => setIsSearchFocused(true)} onBlur={() => setIsSearchFocused(false)} inputRef={null} />
-            <div className="flex-1 overflow-y-auto pr-2 scrollbar-hide mt-4">
-              {Object.entries(categories).map(([cat, systems]) => (
-                <div key={cat} className="mb-6 last:mb-0">
-                  <div className="flex items-center mb-3"><h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: colors.highlight }}>{cat}</h4><div className="flex-1 h-px" style={{ backgroundColor: colors.highlight + '30' }} /></div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {systems.map(([name, core]: any, idx) => {
-                      const isSel = currentCore === core;
-                      return (
-                        <button key={core} onClick={() => onSelectSystem(core)} className="p-3.5 rounded-xl text-left border-2 flex items-center justify-between group transition-all active:scale-95" style={{ backgroundColor: isSel ? colors.highlight : colors.midDark, borderColor: isSel ? colors.highlight : colors.midDark, color: isSel ? colors.darkBg : colors.softLight, animation: `fadeIn 0.4s ease-out ${idx * 0.03}s both` }}>
-                          <span className="font-medium text-sm truncate pr-2 flex-1">{name}</span>{isSel && <CircleCheck className="w-5 h-5 flex-shrink-0 transition-all" style={{ color: colors.darkBg }} />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: colors.midDark }}>
-          {(editingGame || pendingFiles.length > 0) && <button onClick={onDone} disabled={isProcessing} className="py-2.5 px-6 rounded-lg font-semibold active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50" style={{ ...gradient, color: colors.darkBg }}><span>Done</span></button>}
-          <button onClick={onClose} disabled={isProcessing} className="py-2.5 px-6 rounded-lg font-semibold active:scale-95 transition-all disabled:opacity-50" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>{editingGame ? 'Cancel' : 'Close'}</button>
-        </div>
-      </div>
-    </div>
-  );
-});
