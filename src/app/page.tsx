@@ -57,9 +57,9 @@ export default function Home() {
   const [selectedTheme, setSelectedTheme, isThemeHydrated] = useLocalStorage('theme', 'default');
   const [sortBy, setSortBy, isSortByHydrated] = useLocalStorage<'title' | 'system'>('sortBy', 'title');
   const [sortOrder, setSortOrder, isSortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
-  const [autoLoadState, setAutoLoadState, isAutoLoadHydrated] = useLocalStorage('autoLoadState', false);
+  const [autoLoadState, setAutoLoadState, isAutoLoadHydrated] = useLocalStorage('autoLoadState', true);
   const [autoLoadIcon, setAutoLoadIcon] = useLocalStorage('autoLoadIcon', true);
-  const [autoSaveState, setAutoSaveState, isAutoSaveHydrated] = useLocalStorage('autoSaveState', false);
+  const [autoSaveState, setAutoSaveState, isAutoSaveHydrated] = useLocalStorage('autoSaveState', true);
   const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 60);
   const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
 
