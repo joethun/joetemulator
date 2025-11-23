@@ -583,8 +583,8 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
             <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Clock className="w-6 h-6" /></div>
             <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Save State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Automatically save your game state periodically.</p></div>
           </div>
-          <button onClick={() => setAutoSaveState(!autoSaveState)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoSaveState)}>
-            <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveState ? colors.darkBg : colors.softLight }} />
+          <button onClick={() => setAutoSaveState(!autoSaveState)} className="w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0 flex items-center p-0.5" style={getSwitchStyle(autoSaveState)}>
+            <span className={`w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveState ? colors.darkBg : colors.softLight }} />
           </button>
         </div>
         <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoSaveState ? '200px' : '0px', opacity: autoSaveState ? 1 : 0, marginTop: autoSaveState ? '1.5rem' : '0px', visibility: autoSaveState ? 'visible' : 'hidden' }}>
@@ -595,8 +595,8 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
             </div>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">{autoSaveIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Save Icon</span></div>
-              <button onClick={() => setAutoSaveIcon(!autoSaveIcon)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoSaveIcon)}>
-                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveIcon ? colors.darkBg : colors.softLight }} />
+              <button onClick={() => setAutoSaveIcon(!autoSaveIcon)} className="w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0 flex items-center p-0.5" style={getSwitchStyle(autoSaveIcon)}>
+                <span className={`w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveIcon ? colors.darkBg : colors.softLight }} />
               </button>
             </div>
           </div>
@@ -608,16 +608,16 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
             <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Save className="w-6 h-6" /></div>
             <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Load State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Resume gameplay from your last save automatically.</p></div>
           </div>
-          <button onClick={() => setAutoLoadState(!autoLoadState)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoLoadState)}>
-            <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadState ? colors.darkBg : colors.softLight }} />
+          <button onClick={() => setAutoLoadState(!autoLoadState)} className="w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0 flex items-center p-0.5" style={getSwitchStyle(autoLoadState)}>
+            <span className={`w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadState ? colors.darkBg : colors.softLight }} />
           </button>
         </div>
         <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoLoadState ? '100px' : '0px', opacity: autoLoadState ? 1 : 0, marginTop: autoLoadState ? '1.5rem' : '0px', visibility: autoLoadState ? 'visible' : 'hidden' }}>
           <div className="pt-4 border-t pl-16" style={{ borderColor: colors.highlight + '30' }}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">{autoLoadIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Load Icon</span></div>
-              <button onClick={() => setAutoLoadIcon(!autoLoadIcon)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoLoadIcon)}>
-                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadIcon ? colors.darkBg : colors.softLight }} />
+              <button onClick={() => setAutoLoadIcon(!autoLoadIcon)} className="w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0 flex items-center p-0.5" style={getSwitchStyle(autoLoadIcon)}>
+                <span className={`w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadIcon ? colors.darkBg : colors.softLight }} />
               </button>
             </div>
           </div>
