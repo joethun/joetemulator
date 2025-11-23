@@ -35,6 +35,28 @@ const getFileExtension = (filename: string) => filename.split(".").pop()?.toLowe
 export default function Home() {
   const { games, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
   
+  // Custom Debug Console State and Logic
+  const [isConsoleVisible, setIsConsoleVisible] = useState(false);
+  const [fullDebugLog, setFullDebugLog] = useState<string[]>([]);
+  
+  // This function allows manual logging if needed, bypassing the interceptor
+  const logMessage = useCallback((...args: any[]) => {
+    const message = args.map(arg => {
+      if (typeof arg === 'object' && arg !== null) {
+        try { return JSON.stringify(arg); }
+        catch { return String(arg); }
+      }
+      return String(arg);
+    }).join(' ');
+
+    const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', millisecond: '3-digit' });
+    const newEntry = `[LOG] [${timestamp}] ${message}`;
+
+    setFullDebugLog(prev => [newEntry, ...prev]);
+    // We still log to the real console just in case
+    if (typeof window !== 'undefined') console.log(...args);
+  }, []);
+  
   // ui state hooks
   const {
     activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
@@ -70,9 +92,56 @@ export default function Home() {
   const currentColors = useMemo(() => THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default, [selectedTheme]);
   const gradientStyle = useMemo(() => getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), [currentColors]);
 
+  // Intercept Console and Add Key Listener (Shift + D)
+  useEffect(() => {
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    const captureLog = (method: 'log' | 'error' | 'warn', originalMethod: Function) => (...args: any[]) => {
+      const message = args.map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+          try { return JSON.stringify(arg); }
+          catch { return String(arg); }
+        }
+        return String(arg);
+      }).join(' ');
+      
+      const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', millisecond: '3-digit' });
+      const prefix = method === 'error' ? '[ERROR]' : method === 'warn' ? '[WARN]' : '[LOG]';
+      const newEntry = `${prefix} [${timestamp}] ${message}`;
+      
+      setFullDebugLog(prev => [newEntry, ...prev]);
+      originalMethod.apply(console, args);
+    };
+
+    if (typeof window !== 'undefined') {
+      console.log = captureLog('log', originalLog);
+      console.error = captureLog('error', originalError);
+      console.warn = captureLog('warn', originalWarn);
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.shiftKey && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        setIsConsoleVisible(prev => !prev);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      console.log = originalLog;
+      console.error = originalError;
+      console.warn = originalWarn;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   // initialization
   useEffect(() => {
     setIsMounted(true);
+    console.log('App mounted, loading games from storage...');
     loadGamesFromStorage();
     const loadTimer = setTimeout(() => setIsInitialLoad(false), 2000);
     return () => clearTimeout(loadTimer);
@@ -95,8 +164,10 @@ export default function Home() {
     if (!detectedCore) return currentGamesList;
 
     const gameId = Date.now() + index;
+    console.log(`Processing file: ${file.name}. Saving to IndexedDB (ID: ${gameId}).`);
     await saveGameFile(gameId, file);
-    await delay(200); // FIX: Add delay to ensure IDB transaction completes before allowing immediate read.
+    console.log(`File ${file.name} successfully saved to IndexedDB.`);
+
     const newGame: Game = {
       id: gameId,
       title: stripExtension(file.name),
@@ -106,6 +177,7 @@ export default function Home() {
       core: detectedCore,
     };
     addGame(newGame);
+    console.log(`Game ${newGame.title} added to library state.`);
     return [...currentGamesList, newGame];
   }, [games, isDuplicate, showDuplicateError, getSystemFromExtension, addGame]);
 
@@ -168,9 +240,11 @@ export default function Home() {
           closeSystemPicker(); 
           return; 
         }
-
+        
+        console.log(`System Picker Done: Saving single file ${file.name} to IndexedDB (ID: ${gameId}).`);
         await saveGameFile(gameId, file);
-        await delay(200); // FIX: Add delay to ensure IDB transaction completes before allowing immediate read.
+        console.log(`System Picker Done: File ${file.name} successfully saved.`);
+
         addGame({
           id: gameId,
           title: pendingGame?.title || stripExtension(file.name),
@@ -181,9 +255,12 @@ export default function Home() {
           coverArt: pendingGame?.coverArt,
           coverArtFit: pendingGame?.coverArt ? (pendingGame.coverArtFit || coverArtFit) : undefined,
         });
+        console.log(`System Picker Done: Game added to library state.`);
       }
       closeSystemPicker();
-    } catch (error) { console.error(error); } finally { setIsProcessing(false); }
+    } catch (error) { 
+      console.error(`System Picker Done ERROR:`, error);
+    } finally { setIsProcessing(false); }
   }, [editingGame, pendingFiles, pendingBatchCore, pendingGame, games, isDuplicate, closeSystemPicker, showDuplicateError, processGameFile, addGame, coverArtFit]);
 
   // interaction handlers
@@ -220,29 +297,45 @@ export default function Home() {
 
   const handlePlayClick = useCallback(async (game: Game) => {
     try {
+      console.log(`Play: Starting for ${game.title} (ID: ${game.id})`);
+      
       let file = await getGameFile(game.id);
+      console.log(`Play: File read attempt complete. File found: ${!!file}`);
+
       if (!file && game.fileData) {
+        console.log(`Play: Migrating legacy file for ${game.title}`);
         const res = await fetch(game.fileData);
         file = new File([await res.blob()], game.fileName || game.title, { type: 'application/octet-stream' });
         await saveGameFile(game.id, file);
+        console.log(`Play: Legacy file saved to IndexedDB`);
       }
-      if (file) await loadGame(file, game.core, selectedTheme, autoLoadState, autoSaveState, autoSaveInterval * 1000);
-      else console.error('Game file missing', game);
-    } catch (e) { console.error('Launch failed', e); }
+      if (file) {
+        console.log(`Play: Loading game ${game.title}`);
+        await loadGame(file, game.core, selectedTheme, autoLoadState, autoSaveState, autoSaveInterval * 1000);
+      }
+      else console.error(`Play ERROR: Game file missing for ${game.title}`);
+    } catch (e) { 
+      console.error(`Play ERROR: Launch failed`, e);
+    }
   }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval]);
 
   const handleDeleteGame = useCallback(async (game: Game) => {
     if (!confirm(`Delete "${game.title}"?`)) return;
     setDeletingGameIds(prev => new Set(prev).add(game.id));
-    await delay(350); await deleteGame(game.id);
+    console.log(`Starting delete for ${game.title} (ID: ${game.id})`);
+    await delay(350); 
+    await deleteGame(game.id);
+    console.log(`Successfully deleted ${game.title}.`);
     setDeletingGameIds(prev => { const n = new Set(prev); n.delete(game.id); return n; });
   }, [deleteGame, setDeletingGameIds]);
 
   const handleMassDelete = useCallback(async () => {
     if (!selectedGameIds.size || !confirm(`Delete ${selectedGameIds.size} games?`)) return;
     setDeletingGameIds(new Set(selectedGameIds));
+    console.log(`Starting mass delete for ${selectedGameIds.size} games.`);
     await delay(350);
     await Promise.all([...selectedGameIds].map(id => deleteGame(id)));
+    console.log(`Mass delete complete.`);
     setSelectedGameIds(new Set()); setDeletingGameIds(new Set()); setIsDeleteMode(false);
   }, [selectedGameIds, deleteGame, setDeletingGameIds, setSelectedGameIds, setIsDeleteMode]);
 
@@ -354,6 +447,7 @@ export default function Home() {
       {duplicateMessage && <Toast message={duplicateMessage} isVisible={showDuplicateMessage} />}
       <EmulatorNotification colors={currentColors} autoSaveIcon={autoSaveIcon} autoLoadIcon={autoLoadIcon} />
       <Footer colors={currentColors} isSidebarOpen={isSidebarOpen} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+      {isConsoleVisible && <DebugConsole logs={fullDebugLog} colors={currentColors} />}
 
       {(systemPickerOpen || systemPickerClosing) && (
         <SystemPickerModal
@@ -382,6 +476,19 @@ export default function Home() {
 }
 
 // sub-components
+
+const DebugConsole = memo(({ logs, colors }: any) => (
+  <div className="fixed bottom-0 left-0 right-0 z-[1000001] p-3 text-xs opacity-90 backdrop-blur-sm" style={{ backgroundColor: colors.midDark, borderTop: `1px solid ${colors.highlight}50`, fontFamily: 'JetBrains Mono, monospace' }}>
+    <div className="text-sm font-bold mb-1" style={{ color: colors.highlight }}>DEBUG CONSOLE (Shift+D to close)</div>
+    <div className="overflow-y-auto max-h-32">
+      {logs.map((log: string, index: number) => (
+        <pre key={index} className="whitespace-pre-wrap leading-tight" style={{ color: log.startsWith('[ERROR]') ? '#f87171' : log.startsWith('[WARN]') ? '#facc15' : colors.softLight }}>{log}</pre>
+      ))}
+    </div>
+  </div>
+));
+
+
 const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }: any) => {
   const [notification, setNotification] = useState<{ type: 'save' | 'load', id: number } | null>(null);
   const [isVisible, setIsVisible] = useState(false);

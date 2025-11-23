@@ -34,9 +34,28 @@ async function executeStoreOperation<T>(
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], mode);
-    const request = operation(transaction.objectStore(STORE_NAME));
+    const store = transaction.objectStore(STORE_NAME);
+    let result: T;
+
+    const request = operation(store);
+
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
+    
+    // Capture the result immediately on success
+    request.onsuccess = () => {
+      result = request.result;
+    };
+    
+    // Resolve only when the transaction fully completes.
+    // This is the key to ensure the write lock is released before resolution.
+    transaction.oncomplete = () => {
+      // TEMPORARY DEBUG LOGGING: Shows when the transaction fully commits
+      console.log(`[IDB] Transaction ${mode} completed.`); 
+      resolve(result);
+    };
+
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(new Error('Transaction aborted'));
   });
 }
 
