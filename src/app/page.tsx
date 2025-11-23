@@ -65,6 +65,7 @@ export default function Home() {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [loadingGameId, setLoadingGameId] = useState<number | null>(null);
 
   const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated && isAutoLoadHydrated && isAutoSaveHydrated;
   const currentColors = useMemo(() => THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default, [selectedTheme]);
@@ -217,6 +218,10 @@ export default function Home() {
   }, [handleIncomingFiles]);
 
   const handlePlayClick = useCallback(async (game: Game) => {
+    // PREVENT DOUBLE LAUNCH
+    if (loadingGameId !== null) return;
+    
+    setLoadingGameId(game.id);
     try {
       let file = await getGameFile(game.id);
       if (!file && game.fileData) {
@@ -226,8 +231,12 @@ export default function Home() {
       }
       if (file) await loadGame(file, game.core, selectedTheme, autoLoadState, autoSaveState, autoSaveInterval * 1000);
       else console.error('Game file missing', game);
-    } catch (e) { console.error('Launch failed', e); }
-  }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval]);
+    } catch (e) { 
+      console.error('Launch failed', e); 
+    } finally {
+      setLoadingGameId(null);
+    }
+  }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval, loadingGameId]);
 
   const handleDeleteGame = useCallback(async (game: Game) => {
     if (!confirm(`Delete "${game.title}"?`)) return;
@@ -289,9 +298,21 @@ export default function Home() {
 
   const renderCard = useCallback((game: Game, idx: number) => (
     <div key={game.id} className={deletingGameIds.has(game.id) ? 'animate-card-exit' : 'animate-card-enter'} style={{ animationDelay: deletingGameIds.has(game.id) ? '0s' : `${isInitialLoad ? idx * 0.05 : 0}s` }}>
-      <GameCard game={game} isSelected={selectedGameIds.has(game.id)} onPlay={handlePlayClick} onDelete={handleDeleteGame} onSelect={toggleGameSelection} isDeleteMode={isDeleteMode} onEnterDeleteMode={() => setIsDeleteMode(true)} colors={currentColors} onEdit={handleEditGame} onCoverArtClick={handleEditGame} />
+      <GameCard 
+        game={game} 
+        isSelected={selectedGameIds.has(game.id)} 
+        onPlay={handlePlayClick} 
+        onDelete={handleDeleteGame} 
+        onSelect={toggleGameSelection} 
+        isDeleteMode={isDeleteMode} 
+        onEnterDeleteMode={() => setIsDeleteMode(true)} 
+        colors={currentColors} 
+        onEdit={handleEditGame} 
+        onCoverArtClick={handleEditGame} 
+        isLoading={loadingGameId === game.id}
+      />
     </div>
-  ), [deletingGameIds, isInitialLoad, selectedGameIds, handlePlayClick, handleDeleteGame, toggleGameSelection, isDeleteMode, currentColors, handleEditGame]);
+  ), [deletingGameIds, isInitialLoad, selectedGameIds, handlePlayClick, handleDeleteGame, toggleGameSelection, isDeleteMode, currentColors, handleEditGame, loadingGameId]);
 
   if (!isMounted || !isHydrated) return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />;
 

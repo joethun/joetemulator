@@ -1,8 +1,9 @@
 'use client';
 
 import { memo, useCallback, useMemo, useRef } from 'react';
-import { Trash2, Settings, Play } from 'lucide-react';
+import { Trash2, Settings, Play, Loader2 } from 'lucide-react';
 import { Game, THEMES, getGradientStyle } from '@/types';
+import * as React from 'react';
 
 interface GameCardProps {
   game: Game;
@@ -15,16 +16,17 @@ interface GameCardProps {
   onEnterDeleteMode: () => void;
   onCoverArtClick?: (game: Game) => void;
   colors: typeof THEMES.default;
+  isLoading?: boolean;
 }
 
 const GameCardComponent = ({
   game, onPlay, onEdit, onDelete, onSelect, isSelected,
-  isDeleteMode, onEnterDeleteMode, onCoverArtClick, colors
+  isDeleteMode, onEnterDeleteMode, onCoverArtClick, colors, isLoading
 }: GameCardProps) => {
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // dynamic card styles based on selection/mode
-  const cardStyle = useMemo(() => ({
+  const cardStyle = useMemo((): React.CSSProperties => ({
     backgroundColor: isDeleteMode && isSelected ? '#ef4444' : colors.midDark,
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
     borderColor: 'rgb(31, 41, 55)',
@@ -45,14 +47,15 @@ const GameCardComponent = ({
   // helper for stop propagation
   const handleAction = useCallback((action: (game: Game) => void, g: Game) => (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
-    action(g);
-  }, []);
+    if (!isLoading) action(g);
+  }, [isLoading]);
 
   const handleStartLongPress = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
+    if (isLoading) return;
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(onEnterDeleteMode, 500);
-  }, [onEnterDeleteMode]);
+  }, [onEnterDeleteMode, isLoading]);
 
   const handleEndLongPress = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -70,12 +73,21 @@ const GameCardComponent = ({
 
   return (
     <div
-      className={`group relative overflow-hidden w-full aspect-[4/5] rounded-xl transition-all duration-300 ease-in-out hover:shadow-lg hover:z-10 border ${
-        isDeleteMode ? 'animate-shake' : 'hover:scale-[1.02]'
+      className={`group relative overflow-hidden w-full aspect-[4/5] rounded-xl transition-all duration-300 ease-in-out border ${
+        isDeleteMode ? 'animate-shake' : 'hover:scale-[1.02] hover:shadow-lg hover:z-10'
       }`}
       style={cardStyle}
-      onClick={() => isDeleteMode && onSelect(game.id)}
+      // Only allow selection when not loading and in delete mode
+      onClick={() => !isLoading && isDeleteMode && onSelect(game.id)}
     >
+      {/* Loading Overlay: Covers the entire card to block clicks, but allows hover scaling. */}
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/70 animate-fade-in pointer-events-auto">
+          <Loader2 className="w-10 h-10 animate-spin mb-2" style={{ color: colors.highlight }} />
+          <span className="text-xs font-bold tracking-widest uppercase" style={{ color: colors.softLight }}>Uploading...</span>
+        </div>
+      )}
+
       {/* delete mode overlay */}
       {isDeleteMode && (
         <>
@@ -101,7 +113,8 @@ const GameCardComponent = ({
       )}
 
       {/* cover art area */}
-      <div className="h-full flex items-center justify-center bg-cover bg-center bg-no-repeat relative" style={coverStyle}>
+      {/* Apply opacity when loading to indicate inactive state */}
+      <div className={`h-full flex items-center justify-center bg-cover bg-center bg-no-repeat relative transition-opacity duration-300 ${isLoading ? 'opacity-70' : 'opacity-100'}`} style={coverStyle}>
         {!game.coverArt && (
           <div className="flex items-center justify-center w-full px-4" style={{ color: colors.darkBg }}>
             <span
@@ -110,7 +123,7 @@ const GameCardComponent = ({
             >
               {game.title}
             </span>
-            {onCoverArtClick && !isDeleteMode && (
+            {onCoverArtClick && !isDeleteMode && !isLoading && (
               <button onClick={handleAction(onCoverArtClick, game)} className="absolute inset-0">
                 <span className="sr-only">Add cover art</span>
               </button>
