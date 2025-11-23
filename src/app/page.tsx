@@ -57,15 +57,14 @@ export default function Home() {
   const [selectedTheme, setSelectedTheme, isThemeHydrated] = useLocalStorage('theme', 'default');
   const [sortBy, setSortBy, isSortByHydrated] = useLocalStorage<'title' | 'system'>('sortBy', 'title');
   const [sortOrder, setSortOrder, isSortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
-  const [autoLoadState, setAutoLoadState, isAutoLoadHydrated] = useLocalStorage('autoLoadState', true);
+  const [autoLoadState, setAutoLoadState, isAutoLoadHydrated] = useLocalStorage('autoLoadState', false);
   const [autoLoadIcon, setAutoLoadIcon] = useLocalStorage('autoLoadIcon', true);
-  const [autoSaveState, setAutoSaveState, isAutoSaveHydrated] = useLocalStorage('autoSaveState', true);
+  const [autoSaveState, setAutoSaveState, isAutoSaveHydrated] = useLocalStorage('autoSaveState', false);
   const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 60);
   const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [loadingGameId, setLoadingGameId] = useState<number | null>(null);
 
   const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated && isAutoLoadHydrated && isAutoSaveHydrated;
   const currentColors = useMemo(() => THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default, [selectedTheme]);
@@ -97,6 +96,7 @@ export default function Home() {
 
     const gameId = Date.now() + index;
     await saveGameFile(gameId, file);
+    await delay(200); // FIX: Add delay to ensure IDB transaction completes before allowing immediate read.
     const newGame: Game = {
       id: gameId,
       title: stripExtension(file.name),
@@ -170,6 +170,7 @@ export default function Home() {
         }
 
         await saveGameFile(gameId, file);
+        await delay(200); // FIX: Add delay to ensure IDB transaction completes before allowing immediate read.
         addGame({
           id: gameId,
           title: pendingGame?.title || stripExtension(file.name),
@@ -218,10 +219,6 @@ export default function Home() {
   }, [handleIncomingFiles]);
 
   const handlePlayClick = useCallback(async (game: Game) => {
-    // PREVENT DOUBLE LAUNCH
-    if (loadingGameId !== null) return;
-    
-    setLoadingGameId(game.id);
     try {
       let file = await getGameFile(game.id);
       if (!file && game.fileData) {
@@ -231,12 +228,8 @@ export default function Home() {
       }
       if (file) await loadGame(file, game.core, selectedTheme, autoLoadState, autoSaveState, autoSaveInterval * 1000);
       else console.error('Game file missing', game);
-    } catch (e) { 
-      console.error('Launch failed', e); 
-    } finally {
-      setLoadingGameId(null);
-    }
-  }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval, loadingGameId]);
+    } catch (e) { console.error('Launch failed', e); }
+  }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval]);
 
   const handleDeleteGame = useCallback(async (game: Game) => {
     if (!confirm(`Delete "${game.title}"?`)) return;
@@ -298,21 +291,9 @@ export default function Home() {
 
   const renderCard = useCallback((game: Game, idx: number) => (
     <div key={game.id} className={deletingGameIds.has(game.id) ? 'animate-card-exit' : 'animate-card-enter'} style={{ animationDelay: deletingGameIds.has(game.id) ? '0s' : `${isInitialLoad ? idx * 0.05 : 0}s` }}>
-      <GameCard 
-        game={game} 
-        isSelected={selectedGameIds.has(game.id)} 
-        onPlay={handlePlayClick} 
-        onDelete={handleDeleteGame} 
-        onSelect={toggleGameSelection} 
-        isDeleteMode={isDeleteMode} 
-        onEnterDeleteMode={() => setIsDeleteMode(true)} 
-        colors={currentColors} 
-        onEdit={handleEditGame} 
-        onCoverArtClick={handleEditGame} 
-        isLoading={loadingGameId === game.id}
-      />
+      <GameCard game={game} isSelected={selectedGameIds.has(game.id)} onPlay={handlePlayClick} onDelete={handleDeleteGame} onSelect={toggleGameSelection} isDeleteMode={isDeleteMode} onEnterDeleteMode={() => setIsDeleteMode(true)} colors={currentColors} onEdit={handleEditGame} onCoverArtClick={handleEditGame} />
     </div>
-  ), [deletingGameIds, isInitialLoad, selectedGameIds, handlePlayClick, handleDeleteGame, toggleGameSelection, isDeleteMode, currentColors, handleEditGame, loadingGameId]);
+  ), [deletingGameIds, isInitialLoad, selectedGameIds, handlePlayClick, handleDeleteGame, toggleGameSelection, isDeleteMode, currentColors, handleEditGame]);
 
   if (!isMounted || !isHydrated) return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />;
 
