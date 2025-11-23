@@ -1,6 +1,8 @@
-import { memo, useCallback, useMemo } from 'react';
+'use client';
+
+import { memo, useCallback, useMemo, useRef } from 'react';
 import { Trash2, Settings, Play } from 'lucide-react';
-import { Game, THEMES, getGradientStyle } from '../types';
+import { Game, THEMES, getGradientStyle } from '@/types';
 
 interface GameCardProps {
   game: Game;
@@ -15,17 +17,18 @@ interface GameCardProps {
   colors: typeof THEMES.default;
 }
 
-function gamecard({
+const GameCardComponent = ({
   game, onPlay, onEdit, onDelete, onSelect, isSelected,
   isDeleteMode, onEnterDeleteMode, onCoverArtClick, colors
-}: GameCardProps) {
+}: GameCardProps) => {
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // dynamic card styles based on selection/mode
   const cardStyle = useMemo(() => ({
     backgroundColor: isDeleteMode && isSelected ? '#ef4444' : colors.midDark,
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-    borderColor: colors.highlight,
-  }), [isDeleteMode, isSelected, colors]);
+    borderColor: 'rgb(31, 41, 55)',
+  }), [isDeleteMode, isSelected, colors.midDark]);
 
   const coverStyle = useMemo(() => (
     game.coverArt
@@ -37,24 +40,37 @@ function gamecard({
         backgroundRepeat: 'no-repeat'
       }
       : getGradientStyle(colors.gradientFrom, colors.gradientTo)
-  ), [game.coverArt, game.coverArtFit, colors]);
+  ), [game.coverArt, game.coverArtFit, colors.gradientFrom, colors.gradientTo]);
 
-  const withStop = useCallback((fn: (e: any) => void) => (e: any) => {
+  // helper for stop propagation
+  const handleAction = useCallback((action: (game: Game) => void, g: Game) => (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
-    fn(e);
+    action(g);
   }, []);
 
-  const attachLongPress = useCallback((el: EventTarget) => {
-    const timeoutId = setTimeout(onEnterDeleteMode, 500);
-    const clear = () => clearTimeout(timeoutId);
-    ['mouseup', 'mouseleave', 'touchend'].forEach(evt => 
-      el.addEventListener(evt, clear, { once: true } as any)
-    );
+  const handleStartLongPress = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(onEnterDeleteMode, 500);
   }, [onEnterDeleteMode]);
+
+  const handleEndLongPress = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  // cleanup on unmount
+  useMemo(() => {
+    return () => {
+        if(longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    }
+  }, []);
 
   return (
     <div
-      className={`group relative overflow-hidden w-full aspect-[4/5] rounded-xl transition-all duration-300 ease-in-out hover:shadow-lg hover:z-10 border animate-border-breathe ${
+      className={`group relative overflow-hidden w-full aspect-[4/5] rounded-xl transition-all duration-300 ease-in-out hover:shadow-lg hover:z-10 border ${
         isDeleteMode ? 'animate-shake' : 'hover:scale-[1.02]'
       }`}
       style={cardStyle}
@@ -95,7 +111,7 @@ function gamecard({
               {game.title}
             </span>
             {onCoverArtClick && !isDeleteMode && (
-              <button onClick={withStop(() => onCoverArtClick(game))} className="absolute inset-0">
+              <button onClick={handleAction(onCoverArtClick, game)} className="absolute inset-0">
                 <span className="sr-only">Add cover art</span>
               </button>
             )}
@@ -118,7 +134,7 @@ function gamecard({
               <button
                 className="flex-1 flex items-center justify-center gap-2 w-full font-bold py-2.5 px-4 rounded-lg transition-all text-sm hover:shadow-md active:scale-[0.98]"
                 style={{ ...getGradientStyle(colors.gradientFrom, colors.gradientTo), color: colors.darkBg }}
-                onClick={withStop(() => onPlay(game))}
+                onClick={handleAction(onPlay, game)}
               >
                 <Play className="w-4 h-4 fill-current" />
                 PLAY
@@ -126,15 +142,18 @@ function gamecard({
               <button
                 className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center"
                 style={{ backgroundColor: colors.highlight, color: colors.darkBg }}
-                onClick={withStop(() => onEdit(game))}
+                onClick={handleAction(onEdit, game)}
               >
                 <Settings className="w-5 h-5" />
               </button>
               <button
                 className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center select-none bg-red-500 text-white"
-                onMouseDown={(e) => { e.stopPropagation(); attachLongPress(e.currentTarget); }}
-                onTouchStart={(e) => { e.stopPropagation(); attachLongPress(e.currentTarget); }}
-                onClick={withStop(() => onDelete(game))}
+                onMouseDown={handleStartLongPress}
+                onTouchStart={handleStartLongPress}
+                onMouseUp={handleEndLongPress}
+                onMouseLeave={handleEndLongPress}
+                onTouchEnd={handleEndLongPress}
+                onClick={handleAction(onDelete, game)}
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -144,6 +163,6 @@ function gamecard({
       )}
     </div>
   );
-}
+};
 
-export const GameCard = memo(gamecard);
+export const GameCard = memo(GameCardComponent);

@@ -6,17 +6,21 @@ const DUPLICATE_MESSAGE_DURATION = 2500;
 const DUPLICATE_MESSAGE_CLEAR_DELAY = 3000;
 
 export function useGameOperations() {
+  // game manipulation state
   const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
   const [showDuplicateMessage, setShowDuplicateMessage] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
   const [pendingGame, setPendingGame] = useState<Partial<Game> | null>(null);
   const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; index: number }>>([]);
+  
+  // modal state
   const [systemPickerOpen, setSystemPickerOpen] = useState(false);
   const [systemPickerClosing, setSystemPickerClosing] = useState(false);
   const [systemSearchQuery, setSystemSearchQuery] = useState('');
   const [pendingBatchCore, setPendingBatchCore] = useState<string | null>(null);
   const [coverArtFit, setCoverArtFit] = useState<'cover' | 'contain'>('cover');
 
+  // displays duplicate file error toast
   const showDuplicateError = useCallback((message: string) => {
     setDuplicateMessage(message);
     setShowDuplicateMessage(true);
@@ -24,6 +28,7 @@ export function useGameOperations() {
     setTimeout(() => setDuplicateMessage(null), DUPLICATE_MESSAGE_CLEAR_DELAY);
   }, []);
 
+  // handles closing the system picker modal with animation
   const closeSystemPicker = useCallback(() => {
     setSystemPickerClosing(true);
     setTimeout(() => {
@@ -37,27 +42,20 @@ export function useGameOperations() {
     }, 200);
   }, []);
 
+  // detects system core from filename
   const getSystemFromExtension = useCallback((extension: string): string | null => {
     return FILE_EXTENSIONS[extension.toLowerCase()] || null;
   }, []);
 
+  // extracts files from drop event
   const extractFilesFromDataTransfer = useCallback((dataTransfer: DataTransfer): File[] => {
-    const files: File[] = [];
-    const items = dataTransfer.items || [];
-    
-    if (items.length > 0) {
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].kind === 'file') {
-          const file = items[i].getAsFile();
-          if (file) files.push(file);
-        }
-      }
-    } else {
-      for (let i = 0; i < dataTransfer.files.length; i++) {
-        files.push(dataTransfer.files[i]);
-      }
+    if (dataTransfer.items?.length) {
+      return Array.from(dataTransfer.items)
+        .filter(item => item.kind === 'file')
+        .map(item => item.getAsFile())
+        .filter((file): file is File => file !== null);
     }
-    return files;
+    return Array.from(dataTransfer.files);
   }, []);
 
   return {

@@ -21,27 +21,30 @@ declare global {
 
 if (typeof window !== 'undefined') window.gameRunning = false;
 
+let autoSaveInterval: NodeJS.Timeout | null = null;
+
 function detectCore(extension: string): string {
   return FILE_EXTENSIONS[extension] || "nes";
 }
 
-// hide/show main ui elements when emulation toggles
 function toggleMenuElements(show: boolean): void {
   if (typeof document === 'undefined') return;
   const displayVal = show ? '' : 'display: none !important; visibility: hidden !important;';
+  const root = document.querySelector('div[style*="min-h-screen"]') as HTMLElement;
   
+  if (root) root.style.zIndex = show ? 'auto' : '-1';
+  
+  // toggle visibility of main ui elements
   ['aside', 'footer', 'main', 'header', 'nav'].forEach(sel => {
     const el = document.querySelector(sel) as HTMLElement;
     if (el) el.style.cssText = displayVal;
   });
-
-  const root = document.querySelector('div[style*="min-h-screen"]') as HTMLElement;
-  if (root) root.style.zIndex = show ? 'auto' : '-1';
 }
 
 function setupGameDisplay(): void {
   if (typeof document === 'undefined') return;
   let gameDiv = document.getElementById("game");
+  
   if (!gameDiv) {
     gameDiv = document.createElement("div");
     gameDiv.id = "game";
@@ -49,7 +52,6 @@ function setupGameDisplay(): void {
   }
   
   gameDiv.innerHTML = "";
-  gameDiv.style.cssText = 'width: 100%; height: 100vh; position: fixed; top: 0; left: 0; z-index: 999999; background-color: #000000; overflow: hidden; display: flex !important; align-items: center; justify-content: center;';
   document.body.style.overflow = "hidden";
   document.documentElement.style.overflow = "hidden";
 }
@@ -61,24 +63,38 @@ export function cleanupGame(): void {
     gameDiv.style.display = "none";
   }
 
+  if (autoSaveInterval) {
+    clearInterval(autoSaveInterval);
+    autoSaveInterval = null;
+  }
+
   document.querySelectorAll('script[src*="loader.js"]').forEach(s => s.remove());
   toggleMenuElements(true);
   window.gameRunning = false;
 
+  // clean up global ejs variables
   Object.keys(window).forEach(key => {
     if (key.startsWith('EJS_')) delete window[key];
   });
 }
 
-function configureEmulator(gameName: string, gameFile: File | string, core: string, themeName: string): void {
+function configureEmulator(
+  gameName: string, 
+  gameFile: File | string, 
+  core: string, 
+  themeName: string, 
+  autoLoad: boolean, 
+  autoSave: boolean,
+  autoSaveDelay: number
+): void {
   const retroarchCore = EJS_CORE_TO_RETROARCH[core];
   const themeKey = (themeName && THEMES[themeName]) ? themeName : 'default';
-  const ejsColor = THEMES[themeKey].gradientTo;
+  const theme = THEMES[themeKey];
 
-  console.log(`[Emulator] Theme: ${themeKey}, Color: ${ejsColor}`);
-
+  // configure emulator instance
   Object.assign(window, {
-    EJS_color: ejsColor,
+    EJS_color: theme.gradientTo,
+    EJS_backgroundColor: theme.darkBg,
     EJS_player: "#game",
     EJS_gameName: gameName,
     EJS_gameUrl: gameFile,
@@ -89,12 +105,15 @@ function configureEmulator(gameName: string, gameFile: File | string, core: stri
     EJS_threads: CORES_WITH_THREADS.includes(core),
     EJS_language: "en",
     EJS_defaultOptions: {
-      "save-save-interval": "60",
       "desmume_advanced_timing": "disabled",
       "webgl2Enabled": "enabled",
       ...(retroarchCore && { retroarch_core: retroarchCore })
     },
     EJS_ready: () => addEventListeners(),
+    EJS_onGameStart: () => {
+      if (autoLoad) loadState('auto');
+      if (autoSave) startAutoSave(autoSaveDelay);
+    },
     EJS_Buttons: {
       exitEmulation: false,
       cacheManager: false,
@@ -108,19 +127,18 @@ function loadEmulatorScript(): void {
   if (typeof document === 'undefined') return;
   const script = document.createElement("script");
   script.src = `${CDN_PATH}/loader.js`;
-  script.onerror = () => console.error("Failed to load EJS loader.");
-  script.onload = () => {
-    setTimeout(() => {
-      const canvas = document.querySelector('#game canvas') as HTMLElement;
-      if (canvas) {
-        canvas.style.cssText = 'display: block !important; visibility: visible !important; width: 100% !important; height: 100% !important;';
-      }
-    }, 100);
-  };
+  script.onerror = () => console.error("failed to load ejs loader");
   document.body.appendChild(script);
 }
 
-export async function loadGame(file: File | string, coreOverride?: string, themeName: string = 'default'): Promise<void> {
+export async function loadGame(
+  file: File | string, 
+  coreOverride?: string, 
+  themeName: string = 'default', 
+  autoLoad: boolean = false, 
+  autoSave: boolean = false,
+  autoSaveDelay: number = 60000
+): Promise<void> {
   const fileName = file instanceof File ? file.name : (file as string).split('/').pop() || 'game';
   const fileExtension = fileName.split(".").pop()?.toLowerCase() || "";
   const gameName = fileName.replace(/\.[^/.]+$/, "");
@@ -131,56 +149,66 @@ export async function loadGame(file: File | string, coreOverride?: string, theme
   setupGameDisplay();
   window.gameRunning = true;
 
-  configureEmulator(gameName, file, core, themeName);
+  configureEmulator(gameName, file, core, themeName, autoLoad, autoSave, autoSaveDelay);
   loadEmulatorScript();
 }
 
-// state management helpers
 function getEmulator(): any | null {
   return window.EJS_emulator?.started ? window.EJS_emulator : null;
 }
 
-async function saveState(): Promise<void> {
+async function saveState(source: 'manual' | 'auto' = 'manual'): Promise<void> {
   const emulator = getEmulator();
   if (!emulator) return;
   try {
     const state = emulator.gameManager.getState();
     await emulator.storage.states.put(`${emulator.getBaseFileName()}.state`, state);
-    emulator.displayMessage("SAVED STATE TO BROWSER");
+    window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type: 'save', source } }));
   } catch (error: any) {
-    console.error("Save failed:", error);
-    emulator.displayMessage(`Error saving: ${error.message}`);
+    console.error("save failed:", error);
+    emulator.displayMessage(`error saving: ${error.message}`);
   }
 }
 
-async function loadState(): Promise<void> {
+async function loadState(source: 'manual' | 'auto' = 'manual'): Promise<void> {
   const emulator = getEmulator();
   if (!emulator) return;
   try {
     const state = await emulator.storage.states.get(`${emulator.getBaseFileName()}.state`);
     if (state) {
       await emulator.gameManager.loadState(state);
-      emulator.displayMessage("LOADED STATE FROM BROWSER");
+      window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type: 'load', source } }));
     }
   } catch (error: any) {
-    console.error("Load failed:", error);
-    emulator.displayMessage(`Error loading: ${error.message}`);
+    console.error("load failed:", error);
+    emulator.displayMessage(`error loading: ${error.message}`);
   }
+}
+
+function startAutoSave(interval: number): void {
+  if (autoSaveInterval) clearInterval(autoSaveInterval);
+  const safeInterval = Math.max(15000, interval);
+  
+  autoSaveInterval = setInterval(() => {
+    if (window.gameRunning && getEmulator()) saveState('auto');
+  }, safeInterval);
 }
 
 let eventListenersAdded = false;
 function addEventListeners(): void {
   if (eventListenersAdded || typeof document === 'undefined') return;
-  eventListenersAdded = true;
-
-  document.addEventListener("keydown", (event: KeyboardEvent) => {
+  
+  const handleKeydown = (event: KeyboardEvent) => {
     if (!window.gameRunning || !getEmulator()) return;
-    if (event.key === 'F1') { event.preventDefault(); saveState(); }
-    else if (event.key === 'F2') { event.preventDefault(); loadState(); }
-  });
+    if (event.key === 'F1') { event.preventDefault(); saveState('manual'); }
+    else if (event.key === 'F2') { event.preventDefault(); loadState('manual'); }
+  };
+
+  document.addEventListener("keydown", handleKeydown);
+  eventListenersAdded = true;
 }
 
 if (typeof window !== 'undefined') {
-  window.saveToBrowserStorage = saveState;
-  window.loadFromBrowserStorage = loadState;
+  window.saveToBrowserStorage = () => saveState('manual');
+  window.loadFromBrowserStorage = () => loadState('manual');
 }

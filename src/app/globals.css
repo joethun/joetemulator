@@ -10,9 +10,34 @@ html, body {
 
 input::placeholder { opacity: 0.6; }
 
+/* game container override */
+#game {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  background-color: #000000 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  inset: 0 !important;
+}
+
+#game canvas {
+  display: block !important;
+  visibility: visible !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
 /* animations */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.animate-fade-in { animation: fadeIn 0.5s ease-out both; }
+.animate-fade-in { animation: fadeIn 0.3s ease-out both; }
 
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 .animate-fade-out { animation: fadeOut 0.3s ease-out forwards; }
@@ -31,10 +56,6 @@ input::placeholder { opacity: 0.6; }
 
 @keyframes slideDown { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(30px) scale(0.95); } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-
-@keyframes borderBreathe { 0%, 100% { border-color: rgb(31, 41, 55); } 50% { border-color: rgb(75, 85, 99); } }
-.animate-border-breathe { animation: borderBreathe 3s ease-in-out infinite; }
-.group.animate-border-breathe:hover { animation-play-state: paused; border-color: rgb(75, 85, 99) !important; }
 
 @keyframes shake { from { transform: rotate(-1deg) translateX(-2px); } to { transform: rotate(1deg) translateX(2px); } }
 .animate-shake { animation: shake 0.075s linear infinite alternate; }

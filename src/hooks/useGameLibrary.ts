@@ -9,17 +9,22 @@ const MIGRATION_KEY = 'games_migrated_v1';
 export function useGameLibrary() {
   const [games, setGames] = useState<Game[]>([]);
   const [isLoadingGames, setIsLoadingGames] = useState(true);
-  const previousGameCountRef = useRef(0);
-  const migrationRef = useRef(false);
+  const migrationCheckedRef = useRef(false);
 
+  // Persists game list to localstorage
   const saveGamesToStorage = useCallback((updatedGames: Game[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedGames));
-    setGames(updatedGames);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedGames));
+      setGames(updatedGames);
+    } catch (error) {
+      console.error('Failed to save games to storage:', error);
+    }
   }, []);
 
+  // Loads games and handles legacy data migration
   const loadGamesFromStorage = useCallback(async () => {
-    if (migrationRef.current) return;
-    migrationRef.current = true;
+    if (migrationCheckedRef.current) return;
+    migrationCheckedRef.current = true;
     
     setIsLoadingGames(true);
     try {
@@ -32,7 +37,9 @@ export function useGameLibrary() {
       let loadedGames: Game[] = JSON.parse(savedGames);
       const alreadyMigrated = localStorage.getItem(MIGRATION_KEY) === 'true';
 
+      // Migrate legacy base64 games to indexeddb
       if (!alreadyMigrated) {
+        console.log('Migrating legacy games...');
         for (const game of loadedGames) {
           if (game.fileData) {
             try {
@@ -41,67 +48,75 @@ export function useGameLibrary() {
               const file = new File([blob], game.fileName || game.title, { type: 'application/octet-stream' });
               await saveGameFile(game.id, file);
             } catch (error) {
-              console.error('Error migrating game to IndexedDB:', error);
+              console.error('Migration error for game:', game.title, error);
             }
           }
         }
         localStorage.setItem(MIGRATION_KEY, 'true');
       }
 
+      // Clean up game objects
       loadedGames = loadedGames.map(game => {
+        // Remove legacy fileData from localstorage object to save space
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { fileData, ...gameWithoutData } = game;
+        
+        // Fix missing genre names
         if (game.genre === 'ROM' && game.core) {
           gameWithoutData.genre = getSystemNameByCore(game.core);
         }
+        // Default cover art fit
         if (game.coverArt && !game.coverArtFit) {
           gameWithoutData.coverArtFit = 'cover';
         }
         return gameWithoutData;
       });
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedGames));
       setGames(loadedGames);
-      previousGameCountRef.current = loadedGames.length;
+      // Save cleaned up version back to storage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedGames));
+      
     } catch (error) {
-      console.error('Failed to load games from storage', error);
+      console.error('Load games failed', error);
+      setGames([]);
     } finally {
       setIsLoadingGames(false);
     }
   }, []);
 
+  // CRUD operations
   const addGame = useCallback((newGame: Game) => {
     setGames(prev => {
       const updated = [...prev, newGame];
-      saveGamesToStorage(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
-  }, [saveGamesToStorage]);
+  }, []);
 
   const updateGame = useCallback((gameId: number, updates: Partial<Game>) => {
     setGames(prev => {
       const updated = prev.map(g => g.id === gameId ? { ...g, ...updates } : g);
-      saveGamesToStorage(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
-  }, [saveGamesToStorage]);
+  }, []);
 
   const deleteGame = useCallback(async (gameId: number) => {
     try {
       await deleteGameFile(gameId);
       setGames(prev => {
         const updated = prev.filter(g => g.id !== gameId);
-        saveGamesToStorage(updated);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         return updated;
       });
     } catch (error) {
-      console.error('Error deleting game:', error);
+      console.error('Delete failed:', error);
     }
-  }, [saveGamesToStorage]);
+  }, []);
 
   return {
     games,
     isLoadingGames,
-    previousGameCountRef,
     loadGamesFromStorage,
     saveGamesToStorage,
     addGame,

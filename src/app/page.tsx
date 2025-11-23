@@ -1,23 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback, memo } from 'react';
+import { useEffect, useMemo, useState, useCallback, memo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { DragEvent } from 'react';
 import { loadGame } from '@/lib/emulator';
 import { saveGameFile, getGameFile } from '@/lib/storage';
 import { SYSTEM_PICKER, getSystemNameByCore, getSystemCategory } from '@/lib/constants';
 import { Game, THEMES, getGradientStyle } from '@/types';
 import { GameCard } from '@/components/gamecard';
-import { Gamepad2, Palette, Menu, X, Trash2, ArrowUp, ArrowDown, Search, Plus, CircleCheck, Image, XCircle, ListFilter } from 'lucide-react';
+import { 
+  Gamepad2, Palette, Menu, X, Trash2, ArrowUp, ArrowDown, Search, Plus, 
+  CircleCheck, Image, XCircle, ListFilter, Settings, Save, Clock, Upload, 
+  Eye, EyeOff, Timer 
+} from 'lucide-react';
 import { useGameLibrary } from '@/hooks/useGameLibrary';
 import { useUIState } from '@/hooks/useUIState';
 import { useGameOperations } from '@/hooks/useGameOperations';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 // constants
-const TIME_UPDATE_INTERVAL = 60000;
 const FONT_FAMILY = 'Lexend, sans-serif';
 const GRID_CLASS = "grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-6";
-const NAV_ITEMS = [{ view: 'library' as const, icon: Gamepad2, label: 'Library' }, { view: 'themes' as const, icon: Palette, label: 'Themes' }] as const;
+const NAV_ITEMS = [
+  { view: 'library' as const, icon: Gamepad2, label: 'Library' },
+  { view: 'themes' as const, icon: Palette, label: 'Themes' },
+  { view: 'settings' as const, icon: Settings, label: 'Settings' }
+] as const;
 
 // utils
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -26,52 +34,57 @@ const getFileExtension = (filename: string) => filename.split(".").pop()?.toLowe
 
 export default function Home() {
   const { games, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
-  const uiState = useUIState();
-  const ops = useGameOperations();
-
+  
+  // ui state hooks
   const {
-    activeView, setActiveView, isSidebarOpen, setIsSidebarOpen, currentTime, setCurrentTime,
+    activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
     isMounted, setIsMounted, gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused,
     setIsDragActive, themeAnimationKey, setThemeAnimationKey,
     isDeleteMode, setIsDeleteMode, selectedGameIds, setSelectedGameIds,
     deletingGameIds, setDeletingGameIds, gameSearchInputRef, dragCounterRef,
     toggleGameSelection, exitDeleteMode
-  } = uiState;
+  } = useUIState();
 
+  // game operations hooks
   const {
     duplicateMessage, showDuplicateMessage, editingGame, setEditingGame, pendingGame, setPendingGame,
     pendingFiles, setPendingFiles, systemPickerOpen, setSystemPickerOpen, systemPickerClosing,
     systemSearchQuery, setSystemSearchQuery, pendingBatchCore, setPendingBatchCore, coverArtFit, setCoverArtFit,
     showDuplicateError, closeSystemPicker, getSystemFromExtension, extractFilesFromDataTransfer
-  } = ops;
+  } = useGameOperations();
 
+  // settings and storage hooks
   const [selectedTheme, setSelectedTheme, isThemeHydrated] = useLocalStorage('theme', 'default');
   const [sortBy, setSortBy, isSortByHydrated] = useLocalStorage<'title' | 'system'>('sortBy', 'title');
   const [sortOrder, setSortOrder, isSortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
+  const [autoLoadState, setAutoLoadState, isAutoLoadHydrated] = useLocalStorage('autoLoadState', false);
+  const [autoLoadIcon, setAutoLoadIcon] = useLocalStorage('autoLoadIcon', true);
+  const [autoSaveState, setAutoSaveState, isAutoSaveHydrated] = useLocalStorage('autoSaveState', false);
+  const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 60);
+  const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated;
+  const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated && isAutoLoadHydrated && isAutoSaveHydrated;
   const currentColors = useMemo(() => THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default, [selectedTheme]);
   const gradientStyle = useMemo(() => getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), [currentColors]);
 
-  // init logic
+  // initialization
   useEffect(() => {
     setIsMounted(true);
     loadGamesFromStorage();
-    const updateTime = () => setCurrentTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
-    updateTime();
-    const interval = setInterval(updateTime, TIME_UPDATE_INTERVAL);
     const loadTimer = setTimeout(() => setIsInitialLoad(false), 2000);
-    return () => { clearInterval(interval); clearTimeout(loadTimer); };
-  }, [loadGamesFromStorage, setCurrentTime, setIsMounted]);
+    return () => clearTimeout(loadTimer);
+  }, [loadGamesFromStorage, setIsMounted]);
 
   useEffect(() => {
     if (activeView === 'themes') setThemeAnimationKey(k => k + 1);
   }, [activeView, setThemeAnimationKey]);
 
-  // game processing
-  const isDuplicate = useCallback((fileName: string, list: Game[]) => list.some(g => g.fileName === fileName || g.filePath === fileName), []);
+  // game file processing
+  const isDuplicate = useCallback((fileName: string, list: Game[]) => 
+    list.some(g => g.fileName === fileName || g.filePath === fileName), []);
 
   const processGameFile = useCallback(async (file: File, index: number, selectedCore?: string, currentGamesList: Game[] = games): Promise<Game[]> => {
     if (isDuplicate(file.name, currentGamesList)) {
@@ -102,8 +115,11 @@ export default function Home() {
 
     for (let i = 0; i < files.length; i++) {
       const detectedCore = getSystemFromExtension(getFileExtension(files[i].name));
-      if (detectedCore) currentGames = await processGameFile(files[i], i, detectedCore, currentGames);
-      else filesNeedingSystem.push({ file: files[i], index: i });
+      if (detectedCore) {
+        currentGames = await processGameFile(files[i], i, detectedCore, currentGames);
+      } else {
+        filesNeedingSystem.push({ file: files[i], index: i });
+      }
     }
 
     const filteredNeeding = filesNeedingSystem.filter(({ file }) => !isDuplicate(file.name, currentGames));
@@ -111,7 +127,13 @@ export default function Home() {
     if (filteredNeeding.length > 0) {
       setPendingFiles(filteredNeeding);
       if (filteredNeeding.length === 1) {
-        setPendingGame({ id: Date.now(), title: stripExtension(filteredNeeding[0].file.name), genre: 'Unknown', filePath: filteredNeeding[0].file.name, fileName: filteredNeeding[0].file.name });
+        setPendingGame({ 
+          id: Date.now(), 
+          title: stripExtension(filteredNeeding[0].file.name), 
+          genre: 'Unknown', 
+          filePath: filteredNeeding[0].file.name, 
+          fileName: filteredNeeding[0].file.name 
+        });
       } else {
         setPendingGame(null);
       }
@@ -133,13 +155,19 @@ export default function Home() {
     try {
       if (pendingFiles.length > 1) {
         let currentGames = games;
-        for (const { file, index } of pendingFiles) currentGames = await processGameFile(file, index, effectiveCore, currentGames);
+        for (const { file, index } of pendingFiles) {
+          currentGames = await processGameFile(file, index, effectiveCore, currentGames);
+        }
         setPendingFiles([]); setPendingBatchCore(null);
       } else if (pendingFiles.length === 1) {
         const { file } = pendingFiles[0];
         const gameId = pendingGame?.id ?? Date.now();
-        if (isDuplicate(file.name, games)) { showDuplicateError(`"${file.name}" is duplicate`); closeSystemPicker(); return; }
-        
+        if (isDuplicate(file.name, games)) { 
+          showDuplicateError(`"${file.name}" is duplicate`); 
+          closeSystemPicker(); 
+          return; 
+        }
+
         await saveGameFile(gameId, file);
         addGame({
           id: gameId,
@@ -196,10 +224,10 @@ export default function Home() {
         file = new File([await res.blob()], game.fileName || game.title, { type: 'application/octet-stream' });
         await saveGameFile(game.id, file);
       }
-      if (file) await loadGame(file, game.core, selectedTheme);
+      if (file) await loadGame(file, game.core, selectedTheme, autoLoadState, autoSaveState, autoSaveInterval * 1000);
       else console.error('Game file missing', game);
     } catch (e) { console.error('Launch failed', e); }
-  }, [selectedTheme]);
+  }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval]);
 
   const handleDeleteGame = useCallback(async (game: Game) => {
     if (!confirm(`Delete "${game.title}"?`)) return;
@@ -220,12 +248,16 @@ export default function Home() {
     setEditingGame(g); setPendingGame({ ...g }); setCoverArtFit(g.coverArtFit || 'cover'); setSystemPickerOpen(true);
   }, [setEditingGame, setPendingGame, setCoverArtFit, setSystemPickerOpen]);
 
-  // rendering data
+  // render calculations
   const sortedGames = useMemo(() => {
     let filtered = games;
     if (gameSearchQuery.trim()) {
       const q = gameSearchQuery.toLowerCase();
-      filtered = games.filter(g => g.title.toLowerCase().includes(q) || g.genre.toLowerCase().includes(q) || getSystemCategory(g.core).toLowerCase().includes(q));
+      filtered = games.filter(g => 
+        g.title.toLowerCase().includes(q) || 
+        g.genre.toLowerCase().includes(q) || 
+        getSystemCategory(g.core).toLowerCase().includes(q)
+      );
     }
     return [...filtered].sort((a, b) => {
       let cmp = 0;
@@ -241,19 +273,25 @@ export default function Home() {
 
   const groupedGames = useMemo(() => {
     if (sortBy !== 'system') return null;
+    // group efficiently
     const groups = sortedGames.reduce((acc, g) => {
       const mfg = getSystemCategory(g.core);
       const cat = mfg === 'Other' ? g.genre : `${mfg} ${g.genre}`;
-      (acc[cat] ||= []).push(g); return acc;
+      (acc[cat] ||= []).push(g); 
+      return acc;
     }, {} as Record<string, Game[]>);
-    return Object.keys(groups).sort((a, b) => sortOrder === 'asc' ? a.localeCompare(b) : b.localeCompare(a)).reduce((res, cat) => { res[cat] = groups[cat]; return res; }, {} as Record<string, Game[]>);
+    
+    // sort keys and return simplified object
+    return Object.keys(groups)
+      .sort((a, b) => sortOrder === 'asc' ? a.localeCompare(b) : b.localeCompare(a))
+      .reduce((res, cat) => { res[cat] = groups[cat]; return res; }, {} as Record<string, Game[]>);
   }, [sortedGames, sortBy, sortOrder]);
 
-  const renderCard = (game: Game, idx: number) => (
+  const renderCard = useCallback((game: Game, idx: number) => (
     <div key={game.id} className={deletingGameIds.has(game.id) ? 'animate-card-exit' : 'animate-card-enter'} style={{ animationDelay: deletingGameIds.has(game.id) ? '0s' : `${isInitialLoad ? idx * 0.05 : 0}s` }}>
       <GameCard game={game} isSelected={selectedGameIds.has(game.id)} onPlay={handlePlayClick} onDelete={handleDeleteGame} onSelect={toggleGameSelection} isDeleteMode={isDeleteMode} onEnterDeleteMode={() => setIsDeleteMode(true)} colors={currentColors} onEdit={handleEditGame} onCoverArtClick={handleEditGame} />
     </div>
-  );
+  ), [deletingGameIds, isInitialLoad, selectedGameIds, handlePlayClick, handleDeleteGame, toggleGameSelection, isDeleteMode, currentColors, handleEditGame]);
 
   if (!isMounted || !isHydrated) return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />;
 
@@ -266,11 +304,19 @@ export default function Home() {
         <main className="p-8 overflow-y-auto pb-20 scrollbar-hide" style={{ minHeight: 'calc(100vh - 4rem)' }} onDragEnter={(e) => handleDrag(e, true)} onDragOver={(e) => e.dataTransfer && (e.dataTransfer.dropEffect = 'copy')} onDragLeave={(e) => handleDrag(e, false)} onDrop={handleDrop}>
           <header className="mb-10 flex justify-between items-center">
             <h1 className="text-4xl font-extrabold tracking-tight capitalize" style={{ color: currentColors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>{activeView}</h1>
-            <div className="hidden sm:block text-sm font-medium px-3 py-1.5 rounded-lg" style={{ color: currentColors.softLight, backgroundColor: currentColors.midDark }}>{currentTime}</div>
           </header>
 
           {activeView === 'themes' ? (
             <ThemeGrid colors={currentColors} selectedTheme={selectedTheme} onSelectTheme={setSelectedTheme} animKey={themeAnimationKey} />
+          ) : activeView === 'settings' ? (
+            <SettingsView 
+              colors={currentColors} gradient={gradientStyle} 
+              autoLoadState={autoLoadState} setAutoLoadState={setAutoLoadState} 
+              autoSaveState={autoSaveState} setAutoSaveState={setAutoSaveState}
+              autoSaveInterval={autoSaveInterval} setAutoSaveInterval={setAutoSaveInterval}
+              autoSaveIcon={autoSaveIcon} setAutoSaveIcon={setAutoSaveIcon}
+              autoLoadIcon={autoLoadIcon} setAutoLoadIcon={setAutoLoadIcon}
+            />
           ) : (
             <>
               <div className="flex items-center justify-between mb-6">
@@ -304,8 +350,9 @@ export default function Home() {
       </div>
 
       {duplicateMessage && <Toast message={duplicateMessage} isVisible={showDuplicateMessage} />}
+      <EmulatorNotification colors={currentColors} autoSaveIcon={autoSaveIcon} autoLoadIcon={autoLoadIcon} />
       <Footer colors={currentColors} isSidebarOpen={isSidebarOpen} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-      
+
       {(systemPickerOpen || systemPickerClosing) && (
         <SystemPickerModal
           isOpen={systemPickerOpen} isClosing={systemPickerClosing} colors={currentColors} gradient={gradientStyle}
@@ -315,13 +362,13 @@ export default function Home() {
           onSelectSystem={(core: string) => {
             if (pendingFiles.length > 1) setPendingBatchCore(core);
             else {
-               const update = { core, genre: getSystemNameByCore(core) };
-               if (editingGame) { updateGame(editingGame.id, update); setEditingGame({ ...editingGame, ...update }); }
-               if (pendingGame) setPendingGame({ ...pendingGame, ...update });
+              const update = { core, genre: getSystemNameByCore(core) };
+              if (editingGame) { updateGame(editingGame.id, update); setEditingGame({ ...editingGame, ...update }); }
+              if (pendingGame) setPendingGame({ ...pendingGame, ...update });
             }
           }}
           coverArtState={{
-            file: editingGame?.coverArt || pendingGame?.coverArt, fit: coverArtFit,
+            file: editingGame ? editingGame.coverArt : pendingGame?.coverArt, fit: coverArtFit,
             onFitChange: (f: any) => { setCoverArtFit(f); if (editingGame) { updateGame(editingGame.id, { coverArtFit: f }); setEditingGame({ ...editingGame, coverArtFit: f }); } },
             onUpload: (d: any) => { if (editingGame) { updateGame(editingGame.id, { coverArt: d }); setEditingGame({ ...editingGame, coverArt: d }); } else if (pendingGame) setPendingGame({ ...pendingGame, coverArt: d }); },
             onRemove: () => { if (editingGame) { updateGame(editingGame.id, { coverArt: undefined }); setEditingGame({ ...editingGame, coverArt: undefined }); } else if (pendingGame) setPendingGame({ ...pendingGame, coverArt: undefined }); }
@@ -332,7 +379,114 @@ export default function Home() {
   );
 }
 
-// components
+// sub-components
+const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }: any) => {
+  const [notification, setNotification] = useState<{ type: 'save' | 'load', id: number } | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => { setMountNode(document.body); }, []);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      const { type, source } = e.detail;
+      if (source === 'auto') {
+        if (type === 'save' && !autoSaveIcon) return;
+        if (type === 'load' && !autoLoadIcon) return;
+      }
+      if (timerRef.current) clearTimeout(timerRef.current);
+      
+      const gameEl = document.getElementById('game');
+      setMountNode((gameEl && window.getComputedStyle(gameEl).display !== 'none') ? gameEl : document.body);
+
+      setIsVisible(false);
+      setTimeout(() => {
+        setNotification({ type, id: Date.now() });
+        requestAnimationFrame(() => setIsVisible(true));
+        timerRef.current = setTimeout(() => {
+          setIsVisible(false);
+          setTimeout(() => setNotification(null), 300);
+        }, 1500);
+      }, 10);
+    };
+    window.addEventListener('emulator_notification', handler);
+    return () => {
+      window.removeEventListener('emulator_notification', handler);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [autoSaveIcon, autoLoadIcon]);
+
+  if (!notification || !mountNode) return null;
+  return createPortal(
+    <div className={`fixed top-4 left-4 z-[1000000] pointer-events-none transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="w-10 h-10 rounded-lg flex items-center justify-center backdrop-blur-sm shadow-lg"
+           style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}>
+        {notification.type === 'save' ? <Save className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
+      </div>
+    </div>, mountNode
+  );
+});
+
+const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon }: any) => {
+  const getSwitchStyle = (isActive: boolean) => ({
+    ...(isActive ? gradient : { backgroundColor: colors.darkBg }),
+    borderColor: isActive ? 'transparent' : colors.midDark,
+    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
+  });
+
+  return (
+    <div className="animate-fade-in w-full grid gap-4">
+      <div className="p-6 rounded-xl border-2 transition-all flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }}>
+        <div className="flex items-center justify-between gap-6 relative z-10">
+          <div className="flex items-center gap-5 overflow-hidden">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Clock className="w-6 h-6" /></div>
+            <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Save State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Automatically save your game state periodically.</p></div>
+          </div>
+          <button onClick={() => setAutoSaveState(!autoSaveState)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoSaveState)}>
+            <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveState ? colors.darkBg : colors.softLight }} />
+          </button>
+        </div>
+        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoSaveState ? '200px' : '0px', opacity: autoSaveState ? 1 : 0, marginTop: autoSaveState ? '1.5rem' : '0px', visibility: autoSaveState ? 'visible' : 'hidden' }}>
+          <div className="pt-4 border-t space-y-4 pl-16" style={{ borderColor: colors.highlight + '30' }}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3"><Timer className="w-4 h-4" style={{ color: colors.highlight }} /><span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span></div>
+              <div className="flex items-center gap-2">{[15, 30, 45, 60].map(v => <button key={v} onClick={() => setAutoSaveInterval(v)} className="px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all active:scale-95" style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, borderColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>{v}s</button>)}</div>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">{autoSaveIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Save Icon</span></div>
+              <button onClick={() => setAutoSaveIcon(!autoSaveIcon)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoSaveIcon)}>
+                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveIcon ? colors.darkBg : colors.softLight }} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="p-6 rounded-xl border-2 transition-all flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animationDelay: '0.1s' }}>
+        <div className="flex items-center justify-between gap-6 relative z-10">
+          <div className="flex items-center gap-5 overflow-hidden">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Save className="w-6 h-6" /></div>
+            <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Load State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Resume gameplay from your last save automatically.</p></div>
+          </div>
+          <button onClick={() => setAutoLoadState(!autoLoadState)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoLoadState)}>
+            <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadState ? colors.darkBg : colors.softLight }} />
+          </button>
+        </div>
+        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoLoadState ? '100px' : '0px', opacity: autoLoadState ? 1 : 0, marginTop: autoLoadState ? '1.5rem' : '0px', visibility: autoLoadState ? 'visible' : 'hidden' }}>
+          <div className="pt-4 border-t pl-16" style={{ borderColor: colors.highlight + '30' }}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">{autoLoadIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Load Icon</span></div>
+              <button onClick={() => setAutoLoadIcon(!autoLoadIcon)} className="relative w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0" style={getSwitchStyle(autoLoadIcon)}>
+                <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadIcon ? colors.darkBg : colors.softLight }} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 const EmptyState = memo(({ colors, gradient, onAddGame }: any) => (
   <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
     <div className="w-20 h-20 rounded-2xl mb-6 flex items-center justify-center shadow-lg transition-colors" style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}><Gamepad2 className="w-10 h-10" /></div>
@@ -416,10 +570,9 @@ const Sidebar = memo(({ isOpen, activeView, colors, onNavClick }: any) => (
 
 const ThemeGrid = memo(({ colors, selectedTheme, onSelectTheme, animKey }: any) => (
   <div>
-    <h2 className="text-2xl font-bold mb-6" style={{ color: colors.softLight }}>Select Theme</h2>
     <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {Object.entries(THEMES).map(([name, t]: [string, any], idx) => (
-         <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-2 relative overflow-hidden animate-card-enter text-left transition-all hover:shadow-lg"
+        <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-2 relative overflow-hidden animate-card-enter text-left transition-all hover:shadow-lg"
           style={{ backgroundColor: t.midDark, borderColor: selectedTheme === name ? t.play : t.highlight + '40', boxShadow: selectedTheme === name ? `0 2px 8px ${t.play}30` : '0 2px 4px rgba(0,0,0,0.2)', animationDelay: `${idx * 0.05}s` }}>
           <div className="flex justify-between mb-4">
             <h3 className="text-xl font-bold capitalize" style={{ color: t.softLight }}>{name}</h3>
@@ -449,8 +602,8 @@ const SystemPickerModal = memo(({ isOpen, isClosing, colors, gradient, editingGa
   const showCoverArt = pendingFiles.length <= 1;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose} style={{ animation: isClosing ? 'fadeOut 0.2s ease-out' : 'fadeIn 0.2s ease-out' }}>
-      <div className="p-6 rounded-2xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl border overflow-hidden" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 20px 60px rgba(0,0,0,0.7)', animation: isClosing ? 'fadeOut 0.2s ease-out' : 'fadeIn 0.3s ease-out' }} onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose} style={{ animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.2s ease-out forwards' }}>
+      <div className="p-6 rounded-2xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl border overflow-hidden" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 20px 60px rgba(0,0,0,0.7)', animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.3s ease-out forwards' }} onClick={e => e.stopPropagation()}>
         <div className="mb-6"><h3 className="text-3xl font-bold mb-2" style={{ color: colors.softLight }}>{editingGame ? editingGame.title : pendingFiles.length > 1 ? `Add ${pendingFiles.length} Games` : 'Select System'}</h3><p className="text-sm opacity-70" style={{ color: colors.highlight }}>{editingGame ? 'Choose system and cover art' : pendingFiles.length > 1 ? `Choose system for ${pendingFiles.length} files` : 'Select a system'}</p></div>
         <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 overflow-hidden">
           {showCoverArt && (
