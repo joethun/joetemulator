@@ -568,57 +568,70 @@ const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }: any) 
   );
 });
 
-const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon }: any) => {
-  const getSwitchStyle = (isActive: boolean) => ({
-    ...(isActive ? gradient : { backgroundColor: colors.darkBg }),
-    borderColor: isActive ? 'transparent' : colors.midDark,
-    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
-  });
+// settings
+const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
+  <div
+    role="switch"
+    aria-checked={checked}
+    onClick={onChange}
+    className="w-14 h-8 rounded-full p-0.5 transition-all duration-200 ease-out flex-shrink-0 border-2"
+    style={{
+      backgroundColor: checked ? 'transparent' : colors.darkBg,
+      borderColor: checked ? 'transparent' : colors.midDark,
+      backgroundImage: checked ? gradient.backgroundImage : 'none',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+    }}
+  >
+    <div
+      className={`w-6 h-6 rounded-full shadow-md transition-transform duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${checked ? 'translate-x-6' : 'translate-x-0'}`}
+      style={{ backgroundColor: checked ? colors.darkBg : colors.softLight }}
+    />
+  </div>
+));
 
+const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon }: any) => {
   return (
     <div className="animate-fade-in w-full grid gap-4">
-      <div className="p-6 rounded-xl border-2 transition-all flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }}>
+      <div className="p-6 rounded-xl border-[0.125rem] transition-colors flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }}>
         <div className="flex items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-5 overflow-hidden">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Clock className="w-6 h-6" /></div>
             <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Save State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Automatically save your game state periodically.</p></div>
           </div>
-          <button onClick={() => setAutoSaveState(!autoSaveState)} className="w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0 flex items-center p-0.5" style={getSwitchStyle(autoSaveState)}>
-            <span className={`w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveState ? colors.darkBg : colors.softLight }} />
-          </button>
+          <SettingsSwitch checked={autoSaveState} onChange={() => setAutoSaveState(!autoSaveState)} colors={colors} gradient={gradient} />
         </div>
         <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoSaveState ? '200px' : '0px', opacity: autoSaveState ? 1 : 0, marginTop: autoSaveState ? '1.5rem' : '0px', visibility: autoSaveState ? 'visible' : 'hidden' }}>
           <div className="pt-4 border-t space-y-4 pl-16" style={{ borderColor: colors.highlight + '30' }}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3"><Timer className="w-4 h-4" style={{ color: colors.highlight }} /><span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span></div>
-              <div className="flex items-center gap-2">{[15, 30, 45, 60].map(v => <button key={v} onClick={() => setAutoSaveInterval(v)} className="px-3 py-2 rounded-xl text-sm font-medium border-2 transition-all active:scale-95" style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, borderColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>{v}s</button>)}</div>
+              <div className="flex items-center gap-2">{[15, 30, 45, 60].map(v => (
+                <button key={v} onClick={() => setAutoSaveInterval(v)} 
+                  className="px-3 py-1 rounded-lg text-sm font-medium h-9 transition-all active:scale-95 flex items-center justify-center" 
+                  style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>
+                  {v}s
+                </button>
+              ))}</div>
             </div>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">{autoSaveIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Save Icon</span></div>
-              <button onClick={() => setAutoSaveIcon(!autoSaveIcon)} className="w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0 flex items-center p-0.5" style={getSwitchStyle(autoSaveIcon)}>
-                <span className={`w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoSaveIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoSaveIcon ? colors.darkBg : colors.softLight }} />
-              </button>
+              <SettingsSwitch checked={autoSaveIcon} onChange={() => setAutoSaveIcon(!autoSaveIcon)} colors={colors} gradient={gradient} />
             </div>
           </div>
         </div>
       </div>
-      <div className="p-6 rounded-xl border-2 transition-all flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animationDelay: '0.1s' }}>
+      <div className="p-6 rounded-xl border-[0.125rem] transition-colors flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animationDelay: '0.1s' }}>
         <div className="flex items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-5 overflow-hidden">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Save className="w-6 h-6" /></div>
             <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Load State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Resume gameplay from your last save automatically.</p></div>
           </div>
-          <button onClick={() => setAutoLoadState(!autoLoadState)} className="w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0 flex items-center p-0.5" style={getSwitchStyle(autoLoadState)}>
-            <span className={`w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadState ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadState ? colors.darkBg : colors.softLight }} />
-          </button>
+          <SettingsSwitch checked={autoLoadState} onChange={() => setAutoLoadState(!autoLoadState)} colors={colors} gradient={gradient} />
         </div>
         <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoLoadState ? '100px' : '0px', opacity: autoLoadState ? 1 : 0, marginTop: autoLoadState ? '1.5rem' : '0px', visibility: autoLoadState ? 'visible' : 'hidden' }}>
           <div className="pt-4 border-t pl-16" style={{ borderColor: colors.highlight + '30' }}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">{autoLoadIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Load Icon</span></div>
-              <button onClick={() => setAutoLoadIcon(!autoLoadIcon)} className="w-14 h-8 rounded-full transition-all duration-300 ease-out focus:outline-none border-2 flex-shrink-0 flex items-center p-0.5" style={getSwitchStyle(autoLoadIcon)}>
-                <span className={`w-6 h-6 rounded-full shadow-md transform transition-all duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${autoLoadIcon ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: autoLoadIcon ? colors.darkBg : colors.softLight }} />
-              </button>
+              <SettingsSwitch checked={autoLoadIcon} onChange={() => setAutoLoadIcon(!autoLoadIcon)} colors={colors} gradient={gradient} />
             </div>
           </div>
         </div>
@@ -656,7 +669,7 @@ const GameControls = memo(({ colors, gradient, gameSearchQuery, setGameSearchQue
 ));
 
 const SearchBar = memo(({ colors, value, onChange, isFocused, onFocus, onBlur, inputRef }: any) => (
-  <div className="flex items-center rounded-xl border-2 transition-all w-[340px] h-12" style={{ backgroundColor: colors.darkBg, borderColor: isFocused ? colors.highlight : colors.midDark, boxShadow: isFocused ? `0 0 0 2px ${colors.highlight}30` : 'none' }}>
+  <div className="flex items-center rounded-xl border-[0.125rem] transition-all w-[340px] h-12" style={{ backgroundColor: colors.darkBg, borderColor: isFocused ? colors.highlight : colors.midDark, boxShadow: isFocused ? `0 0 0 2px ${colors.highlight}30` : 'none' }}>
     <div className="w-12 h-full flex items-center justify-center" style={{ color: colors.softLight }}><Search className="w-4 h-4" /></div>
     <input ref={inputRef} type="text" placeholder="Search..." value={value} onChange={(e) => onChange(e.target.value)} onFocus={onFocus} onBlur={onBlur} className="bg-transparent h-full flex-1 focus:outline-none text-sm pr-4" style={{ color: colors.softLight }} />
   </div>
@@ -669,7 +682,7 @@ const AddGameButton = memo(({ onClick, colors, gradient }: any) => (
 const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
-    <div className="flex items-center rounded-xl border-2 h-12 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark }}>
+    <div className="flex items-center rounded-xl border-[0.125rem] h-12 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark }}>
       <button onClick={() => setIsOpen(!isOpen)} className="h-full px-3 flex items-center justify-center transition-colors" style={{ color: isOpen ? colors.highlight : colors.softLight }}><ListFilter className="w-5 h-5" /></button>
       <div className="h-6 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.midDark, width: isOpen ? '1px' : '0px', marginRight: isOpen ? '0.75rem' : '0px' }} />
       <div className="flex items-center overflow-hidden transition-all duration-300 ease-in-out" style={{ maxWidth: isOpen ? '300px' : '0px', opacity: isOpen ? 1 : 0, visibility: isOpen ? 'visible' : 'hidden' }}>
@@ -712,7 +725,7 @@ const ThemeGrid = memo(({ colors, selectedTheme, onSelectTheme, animKey }: any) 
   <div>
     <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {Object.entries(THEMES).map(([name, t]: [string, any], idx) => (
-        <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-2 relative overflow-hidden animate-card-enter text-left transition-all hover:shadow-lg"
+        <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-[0.125rem] relative overflow-hidden animate-card-enter text-left transition-all hover:shadow-lg"
           style={{ backgroundColor: t.midDark, borderColor: selectedTheme === name ? t.play : t.highlight + '40', boxShadow: selectedTheme === name ? `0 2px 8px ${t.play}30` : '0 2px 4px rgba(0,0,0,0.2)', animationDelay: `${idx * 0.05}s` }}>
           <div className="flex justify-between mb-4">
             <h3 className="text-xl font-bold capitalize" style={{ color: t.softLight }}>{name}</h3>
@@ -775,7 +788,7 @@ const SystemPickerModal = memo(({ isOpen, isClosing, colors, gradient, editingGa
                     {systems.map(([name, core]: any, idx) => {
                       const isSel = currentCore === core;
                       return (
-                        <button key={core} onClick={() => onSelectSystem(core)} className="p-3.5 rounded-xl text-left border-2 flex items-center justify-between group transition-all active:scale-95" style={{ backgroundColor: isSel ? colors.highlight : colors.midDark, borderColor: isSel ? colors.highlight : colors.midDark, color: isSel ? colors.darkBg : colors.softLight, animation: `fadeIn 0.4s ease-out ${idx * 0.03}s both` }}>
+                        <button key={core} onClick={() => onSelectSystem(core)} className="p-3.5 rounded-xl text-left border-[0.125rem] flex items-center justify-between group transition-all active:scale-95" style={{ backgroundColor: isSel ? colors.highlight : colors.midDark, borderColor: isSel ? colors.highlight : colors.midDark, color: isSel ? colors.darkBg : colors.softLight, animation: `fadeIn 0.4s ease-out ${idx * 0.03}s both` }}>
                           <span className="font-medium text-sm truncate pr-2 flex-1">{name}</span>{isSel && <CircleCheck className="w-5 h-5 flex-shrink-0 transition-all" style={{ color: colors.darkBg }} />}
                         </button>
                       );
