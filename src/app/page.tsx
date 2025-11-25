@@ -8,10 +8,10 @@ import { saveGameFile, getGameFile } from '@/lib/storage';
 import { SYSTEM_PICKER, getSystemNameByCore, getSystemCategory } from '@/lib/constants';
 import { Game, THEMES, getGradientStyle } from '@/types';
 import { GameCard } from '@/components/gamecard';
-import { 
-  Gamepad2, Palette, Menu, X, Trash2, ArrowUp, ArrowDown, Search, Plus, 
-  CircleCheck, Image, XCircle, ListFilter, Settings, Save, Clock, Upload, 
-  Eye, EyeOff, Timer 
+import {
+  Gamepad2, Palette, Menu, X, Trash2, ArrowUp, ArrowDown, Search, Plus,
+  CircleCheck, Image, XCircle, ListFilter, Settings, Save, Clock, Upload,
+  Eye, EyeOff, Timer
 } from 'lucide-react';
 import { useGameLibrary } from '@/hooks/useGameLibrary';
 import { useUIState } from '@/hooks/useUIState';
@@ -33,7 +33,7 @@ const getFileExtension = (filename: string) => filename.split(".").pop()?.toLowe
 
 export default function Home() {
   const { games, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
-  
+
   // ui state
   const {
     activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
@@ -64,7 +64,7 @@ export default function Home() {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
+
   // separate upload state to prevent full list re-sorts
   const [uploads, setUploads] = useState<Record<number, Game>>({});
 
@@ -85,7 +85,7 @@ export default function Home() {
   }, [activeView, setThemeAnimationKey]);
 
   // check duplicates
-  const isDuplicate = useCallback((fileName: string, list: Game[]) => 
+  const isDuplicate = useCallback((fileName: string, list: Game[]) =>
     list.some(g => g.fileName === fileName || g.filePath === fileName), []);
 
   // process single file
@@ -133,7 +133,7 @@ export default function Home() {
         ...prev,
         [gameId]: { ...prev[gameId], progress: 100 }
       }));
-      
+
       // 2. wait 800ms to let user see 100%
       await delay(800);
 
@@ -162,11 +162,11 @@ export default function Home() {
     delete newGame.isComplete;
 
     addGame(newGame);
-    
+
     setUploads(prev => {
-        const next = { ...prev };
-        delete next[gameId];
-        return next;
+      const next = { ...prev };
+      delete next[gameId];
+      return next;
     });
 
     return [...currentGamesList, newGame];
@@ -193,12 +193,12 @@ export default function Home() {
     if (filteredNeeding.length > 0) {
       setPendingFiles(filteredNeeding);
       if (filteredNeeding.length === 1) {
-        setPendingGame({ 
-          id: Date.now(), 
-          title: stripExtension(filteredNeeding[0].file.name), 
-          genre: 'Unknown', 
-          filePath: filteredNeeding[0].file.name, 
-          fileName: filteredNeeding[0].file.name 
+        setPendingGame({
+          id: Date.now(),
+          title: stripExtension(filteredNeeding[0].file.name),
+          genre: 'Unknown',
+          filePath: filteredNeeding[0].file.name,
+          fileName: filteredNeeding[0].file.name
         });
       } else {
         setPendingGame(null);
@@ -213,25 +213,25 @@ export default function Home() {
 
   // system picker completion
   const handleSystemPickerDone = useCallback(async () => {
-    if (editingGame) { 
-        closeSystemPicker(); 
-        return; 
+    if (editingGame) {
+      closeSystemPicker();
+      return;
     }
-    
+
     const effectiveCore = pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core;
 
-    if (!effectiveCore) { 
-        showDuplicateError("Please select a system"); 
-        return; 
+    if (!effectiveCore) {
+      showDuplicateError("Please select a system");
+      return;
     }
-    
+
     // validate single file duplicate check before closing
     if (pendingFiles.length === 1) {
-        if (isDuplicate(pendingFiles[0].file.name, games)) {
-            showDuplicateError(`"${pendingFiles[0].file.name}" is duplicate`);
-            closeSystemPicker();
-            return;
-        }
+      if (isDuplicate(pendingFiles[0].file.name, games)) {
+        showDuplicateError(`"${pendingFiles[0].file.name}" is duplicate`);
+        closeSystemPicker();
+        return;
+      }
     }
 
     // capture state for background processing
@@ -242,78 +242,78 @@ export default function Home() {
 
     // fire and forget: close modal immediately
     closeSystemPicker();
-    
+
     // async background upload
     (async () => {
-        setIsProcessing(true);
-        try {
-            if (filesToProcess.length > 1) {
-                let currentGames = games;
-                for (const { file, index } of filesToProcess) {
-                    currentGames = await processGameFile(file, index, core, currentGames);
-                }
-            } else if (filesToProcess.length === 1) {
-                // logic duplicated from processGameFile for single manual uploads with meta
-                const { file } = filesToProcess[0];
-                const gameId = meta?.id ?? Date.now();
-                
-                const tempGame: Game = {
-                    id: gameId,
-                    title: meta?.title || stripExtension(file.name),
-                    genre: meta?.genre || getSystemNameByCore(core) || 'Unknown',
-                    filePath: meta?.filePath || file.name,
-                    fileName: file.name,
-                    core: core,
-                    coverArt: meta?.coverArt,
-                    coverArtFit: meta?.coverArt ? (meta.coverArtFit || fit) : undefined,
-                    progress: 0
-                };
+      setIsProcessing(true);
+      try {
+        if (filesToProcess.length > 1) {
+          let currentGames = games;
+          for (const { file, index } of filesToProcess) {
+            currentGames = await processGameFile(file, index, core, currentGames);
+          }
+        } else if (filesToProcess.length === 1) {
+          // logic duplicated from processGameFile for single manual uploads with meta
+          const { file } = filesToProcess[0];
+          const gameId = meta?.id ?? Date.now();
 
-                setUploads(prev => ({ ...prev, [gameId]: tempGame }));
-                
-                let lastUpdate = 0;
-                await saveGameFile(gameId, file, (progress) => {
-                    const now = Date.now();
-                    if (now - lastUpdate > 100 || progress === 100 || progress === 0) {
-                        setUploads(prev => {
-                            const existing = prev[gameId];
-                            if (!existing) return prev;
-                            return { ...prev, [gameId]: { ...existing, progress } };
-                        });
-                        lastUpdate = now;
-                    }
-                });
+          const tempGame: Game = {
+            id: gameId,
+            title: meta?.title || stripExtension(file.name),
+            genre: meta?.genre || getSystemNameByCore(core) || 'Unknown',
+            filePath: meta?.filePath || file.name,
+            fileName: file.name,
+            core: core,
+            coverArt: meta?.coverArt,
+            coverArtFit: meta?.coverArt ? (meta.coverArtFit || fit) : undefined,
+            progress: 0
+          };
 
-                // 1. force 100% visible state
-                setUploads(prev => ({
-                    ...prev, 
-                    [gameId]: { ...prev[gameId], progress: 100 } 
-                }));
-                
-                // 2. wait 800ms
-                await delay(800);
+          setUploads(prev => ({ ...prev, [gameId]: tempGame }));
 
-                // 3. trigger fade
-                setUploads(prev => ({
-                    ...prev, 
-                    [gameId]: { ...prev[gameId], isComplete: true } 
-                }));
-
-                // 4. wait animation
-                await delay(300);
-
-                const newGame = { ...tempGame };
-                delete newGame.progress;
-                delete newGame.isComplete;
-                
-                addGame(newGame);
-                setUploads(prev => { const n = { ...prev }; delete n[gameId]; return n; });
+          let lastUpdate = 0;
+          await saveGameFile(gameId, file, (progress) => {
+            const now = Date.now();
+            if (now - lastUpdate > 100 || progress === 100 || progress === 0) {
+              setUploads(prev => {
+                const existing = prev[gameId];
+                if (!existing) return prev;
+                return { ...prev, [gameId]: { ...existing, progress } };
+              });
+              lastUpdate = now;
             }
-        } catch (e) {
-            console.error("background processing error:", e);
-        } finally {
-            setIsProcessing(false);
+          });
+
+          // 1. force 100% visible state
+          setUploads(prev => ({
+            ...prev,
+            [gameId]: { ...prev[gameId], progress: 100 }
+          }));
+
+          // 2. wait 800ms
+          await delay(800);
+
+          // 3. trigger fade
+          setUploads(prev => ({
+            ...prev,
+            [gameId]: { ...prev[gameId], isComplete: true }
+          }));
+
+          // 4. wait animation
+          await delay(300);
+
+          const newGame = { ...tempGame };
+          delete newGame.progress;
+          delete newGame.isComplete;
+
+          addGame(newGame);
+          setUploads(prev => { const n = { ...prev }; delete n[gameId]; return n; });
         }
+      } catch (e) {
+        console.error("background processing error:", e);
+      } finally {
+        setIsProcessing(false);
+      }
     })();
   }, [editingGame, pendingFiles, pendingBatchCore, pendingGame, games, isDuplicate, closeSystemPicker, showDuplicateError, processGameFile, addGame, coverArtFit]);
 
@@ -393,9 +393,9 @@ export default function Home() {
     let filtered = allGames;
     if (gameSearchQuery.trim()) {
       const q = gameSearchQuery.toLowerCase();
-      filtered = allGames.filter(g => 
-        g.title.toLowerCase().includes(q) || 
-        g.genre.toLowerCase().includes(q) || 
+      filtered = allGames.filter(g =>
+        g.title.toLowerCase().includes(q) ||
+        g.genre.toLowerCase().includes(q) ||
         getSystemCategory(g.core).toLowerCase().includes(q)
       );
     }
@@ -417,10 +417,10 @@ export default function Home() {
     const groups = sortedGames.reduce((acc, g) => {
       const mfg = getSystemCategory(g.core);
       const cat = mfg === 'Other' ? g.genre : `${mfg} ${g.genre}`;
-      (acc[cat] ||= []).push(g); 
+      (acc[cat] ||= []).push(g);
       return acc;
     }, {} as Record<string, Game[]>);
-    
+
     // sort keys and return simplified object
     return Object.keys(groups)
       .sort((a, b) => sortOrder === 'asc' ? a.localeCompare(b) : b.localeCompare(a))
@@ -449,9 +449,9 @@ export default function Home() {
           {activeView === 'themes' ? (
             <ThemeGrid colors={currentColors} selectedTheme={selectedTheme} onSelectTheme={setSelectedTheme} animKey={themeAnimationKey} />
           ) : activeView === 'settings' ? (
-            <SettingsView 
-              colors={currentColors} gradient={gradientStyle} 
-              autoLoadState={autoLoadState} setAutoLoadState={setAutoLoadState} 
+            <SettingsView
+              colors={currentColors} gradient={gradientStyle}
+              autoLoadState={autoLoadState} setAutoLoadState={setAutoLoadState}
               autoSaveState={autoSaveState} setAutoSaveState={setAutoSaveState}
               autoSaveInterval={autoSaveInterval} setAutoSaveInterval={setAutoSaveInterval}
               autoSaveIcon={autoSaveIcon} setAutoSaveIcon={setAutoSaveIcon}
@@ -536,7 +536,7 @@ const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }: any) 
         if (type === 'load' && !autoLoadIcon) return;
       }
       if (timerRef.current) clearTimeout(timerRef.current);
-      
+
       const gameEl = document.getElementById('game');
       setMountNode((gameEl && window.getComputedStyle(gameEl).display !== 'none') ? gameEl : document.body);
 
@@ -561,7 +561,7 @@ const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }: any) 
   return createPortal(
     <div className={`fixed top-4 left-4 z-[1000000] pointer-events-none transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
       <div className="w-10 h-10 rounded-lg flex items-center justify-center backdrop-blur-sm shadow-lg"
-           style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}>
+        style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}>
         {notification.type === 'save' ? <Save className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
       </div>
     </div>, mountNode
@@ -574,7 +574,7 @@ const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
     role="switch"
     aria-checked={checked}
     onClick={onChange}
-    className={`relative inline-flex h-8 w-14 flex-shrink-0 rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+    className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 items-center ${
       checked ? 'border-transparent' : ''
     }`}
     style={{
@@ -585,7 +585,7 @@ const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
     }}
   >
     <span
-      className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+      className={`pointer-events-none inline-block h-6 w-6 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ml-0.5 ${
         checked ? 'translate-x-6' : 'translate-x-0'
       }`}
       style={{ backgroundColor: checked ? colors.darkBg : colors.softLight }}
@@ -608,8 +608,8 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3"><Timer className="w-4 h-4" style={{ color: colors.highlight }} /><span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span></div>
               <div className="flex items-center gap-2">{[15, 30, 45, 60].map(v => (
-                <button key={v} onClick={() => setAutoSaveInterval(v)} 
-                  className="px-3 py-1 rounded-lg text-sm font-medium h-9 transition-all active:scale-95 flex items-center justify-center" 
+                <button key={v} onClick={() => setAutoSaveInterval(v)}
+                  className="px-3 py-1 rounded-lg text-sm font-medium h-9 transition-all active:scale-95 flex items-center justify-center"
                   style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>
                   {v}s
                 </button>
