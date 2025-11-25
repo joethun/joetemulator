@@ -570,11 +570,13 @@ const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }: any) 
 
 // settings
 const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
-  <div
+  <button
     role="switch"
     aria-checked={checked}
     onClick={onChange}
-    className="w-14 h-8 rounded-full p-0.5 transition-all duration-200 ease-out flex-shrink-0 border-2"
+    className={`relative inline-flex h-8 w-14 flex-shrink-0 rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+      checked ? 'border-transparent' : ''
+    }`}
     style={{
       backgroundColor: checked ? 'transparent' : colors.darkBg,
       borderColor: checked ? 'transparent' : colors.midDark,
@@ -582,13 +584,14 @@ const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
       boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
     }}
   >
-    <div
-      className={`w-6 h-6 rounded-full shadow-md transition-transform duration-300 cubic-bezier(0.4, 0.0, 0.2, 1) ${checked ? 'translate-x-6' : 'translate-x-0'}`}
+    <span
+      className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+        checked ? 'translate-x-6' : 'translate-x-0'
+      }`}
       style={{ backgroundColor: checked ? colors.darkBg : colors.softLight }}
     />
-  </div>
+  </button>
 ));
-
 const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon }: any) => {
   return (
     <div className="animate-fade-in w-full grid gap-4">
