@@ -441,7 +441,14 @@ export default function Home() {
       <Sidebar isOpen={isSidebarOpen} activeView={activeView} colors={currentColors} onNavClick={(v: any) => { setActiveView(v); setIsSidebarOpen(false); }} />
 
       <div className="flex-1 overflow-hidden">
-        <main className="p-8 overflow-y-auto pb-20 scrollbar-hide" style={{ minHeight: 'calc(100vh - 4rem)' }} onDragEnter={(e) => handleDrag(e, true)} onDragOver={(e) => e.dataTransfer && (e.dataTransfer.dropEffect = 'copy')} onDragLeave={(e) => handleDrag(e, false)} onDrop={handleDrop}>
+        <main 
+          className="p-8 overflow-y-auto pb-20 scrollbar-hide" 
+          style={{ minHeight: 'calc(100vh - 4rem)' }} 
+          onDragEnter={(e) => handleDrag(e, true)} 
+          onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; }} 
+          onDragLeave={(e) => handleDrag(e, false)} 
+          onDrop={handleDrop}
+        >
           <header className="mb-10 flex justify-between items-center">
             <h1 className="text-4xl font-extrabold tracking-tight capitalize" style={{ color: currentColors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>{activeView}</h1>
           </header>
