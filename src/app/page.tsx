@@ -581,7 +581,7 @@ const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
     role="switch"
     aria-checked={checked}
     onClick={onChange}
-    className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 items-center ${
+    className={`relative inline-flex h-8 w-14 flex-shrink-0 rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 items-center ${
       checked ? 'border-transparent' : ''
     }`}
     style={{
