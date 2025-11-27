@@ -332,7 +332,7 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
       <div className="flex items-center justify-between gap-4 sm:gap-6">
         <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Save className="w-5 h-5 sm:w-6 sm:h-6" /></div>
-          <div className="flex-1 min-w-0"><h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Load State</h3><p className="text-xs sm:text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Resume gameplay from your last save automatically.</p></div>
+          <div className="flex-1 min-w-0"><h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Load State</h3><p className="text-xs sm:text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Resume gameplay from your last state automatically.</p></div>
         </div>
         <SettingsSwitch checked={autoLoadState} onChange={() => setAutoLoadState(!autoLoadState)} colors={colors} gradient={gradient} />
       </div>
