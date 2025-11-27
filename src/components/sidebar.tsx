@@ -27,11 +27,23 @@ export const Sidebar = memo(({ activeView, colors, gradient, onNavClick, onAddGa
         >
             {/* logo & separator */}
             <div className="flex flex-col items-center gap-3 mb-2">
-                <img
-                    src="/favicon.ico"
-                    alt="Logo"
-                    className="w-12 h-12 object-contain opacity-90 hover:opacity-100 transition-opacity duration-300"
-                />
+                <div className="relative group">
+                    <img
+                        src="/favicon.ico"
+                        alt="Logo"
+                        className="w-12 h-12 object-contain opacity-90 hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                    />
+                    <div
+                        className="absolute left-full ml-6 px-3 py-2 rounded-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-[60] top-1/2 -translate-y-1/2"
+                        style={{
+                            backgroundColor: colors.midDark,
+                            color: colors.softLight,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                        }}
+                    >
+                        Joe T Emulator
+                    </div>
+                </div>
                 <div
                     className="w-12 h-px rounded-full"
                     style={{ backgroundColor: colors.highlight, opacity: 0.2 }}
