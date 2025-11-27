@@ -7,7 +7,7 @@ const jetbrainsMono = JetBrains_Mono({ variable: "--font-jetbrains-mono", subset
 
 export const metadata: Metadata = {
   title: "Joe T Emulator",
-  description: "Joe T Emulator - Retro Game Emulator",
+  description: "A web based frontend for EmulatorJS",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
