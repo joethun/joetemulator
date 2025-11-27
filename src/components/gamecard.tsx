@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useMemo, useRef } from 'react';
+import { memo, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Trash2, Settings, Play } from 'lucide-react';
 import { Game, THEMES, getGradientStyle } from '@/types';
 
@@ -23,11 +23,8 @@ const GameCardComponent = ({
 }: GameCardProps) => {
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isUploading = typeof game.progress === 'number';
-  
-  // check if upload is finished for fade out
   const isUploadComplete = !!game.isComplete;
 
-  // memoized card styles
   const cardStyle = useMemo(() => ({
     backgroundColor: isDeleteMode && isSelected ? '#ef4444' : colors.midDark,
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
@@ -46,7 +43,7 @@ const GameCardComponent = ({
       : getGradientStyle(colors.gradientFrom, colors.gradientTo)
   ), [game.coverArt, game.coverArtFit, colors.gradientFrom, colors.gradientTo]);
 
-  // prevent clicks during upload
+  // optimize event handlers with useCallback
   const handleAction = useCallback((action: (game: Game) => void, g: Game) => (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     if (!isUploading) action(g);
@@ -66,31 +63,29 @@ const GameCardComponent = ({
     }
   }, []);
 
-  // cleanup timer
-  useMemo(() => {
+  useEffect(() => {
     return () => {
-        if(longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-    }
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    };
   }, []);
 
   return (
     <div
-      className={`group relative overflow-hidden w-full aspect-[4/5] rounded-xl transition-all duration-300 ease-in-out hover:shadow-lg hover:z-10 border ${
-        isDeleteMode ? 'animate-shake' : isUploading ? '' : 'hover:scale-[1.02]'
-      }`}
+      className={`group relative overflow-hidden w-full aspect-[4/5] rounded-xl transition-all duration-300 ease-in-out hover:shadow-lg hover:z-1 border ${isDeleteMode ? 'animate-shake' : isUploading ? '' : 'hover:scale-[1.02]'
+        }`}
       style={cardStyle}
       onClick={() => isDeleteMode && !isUploading && onSelect(game.id)}
     >
-      {/* delete overlay */}
+      {/* delete mode overlay */}
       {isDeleteMode && !isUploading && (
         <>
           <div
-            className="absolute inset-0 z-20 flex items-center justify-center rounded-xl pointer-events-none transition-opacity duration-300 bg-red-500/85"
+            className="absolute inset-0 z-2 flex items-center justify-center rounded-xl pointer-events-none transition-opacity duration-300 bg-red-500/85"
             style={{ opacity: isSelected ? 1 : 0 }}
           >
             <Trash2 className="w-16 h-16 text-white drop-shadow-lg" />
           </div>
-          <div className="absolute bottom-3 right-3 z-20">
+          <div className="absolute bottom-3 right-3 z-2">
             <div
               className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all"
               style={{ backgroundColor: isSelected ? 'white' : 'transparent' }}
@@ -105,26 +100,23 @@ const GameCardComponent = ({
         </>
       )}
 
-      {/* upload progress overlay */}
+      {/* upload progress indicator */}
       {isUploading && (
-        <div 
-          className={`absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm transition-all duration-500 ease-out ${
-            isUploadComplete ? 'opacity-0' : 'opacity-100'
-          }`}
+        <div
+          className={`absolute inset-0 z-3 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm transition-all duration-500 ease-out ${isUploadComplete ? 'opacity-0' : 'opacity-100'
+            }`}
         >
           <div className="relative w-24 h-24">
             <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
-              {/* track */}
-              <circle 
-                cx="50" 
-                cy="50" 
-                r="40" 
-                fill="none" 
-                stroke={colors.midDark} 
-                strokeWidth="10" 
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                fill="none"
+                stroke={colors.midDark}
+                strokeWidth="10"
                 className="opacity-80"
               />
-              {/* fill */}
               <circle
                 cx="50"
                 cy="50"
@@ -150,12 +142,12 @@ const GameCardComponent = ({
         </div>
       )}
 
-      {/* cover art / gradient */}
+      {/* cover art or gradient background */}
       <div className="h-full flex items-center justify-center bg-cover bg-center bg-no-repeat relative" style={coverStyle}>
         {!game.coverArt && (
-          <div className="flex items-center justify-center w-full px-4" style={{ color: colors.darkBg }}>
+          <div className="flex items-center justify-center w-full px-2 sm:px-4" style={{ color: colors.darkBg }}>
             <span
-              className="block w-full max-w-full text-4xl font-bold tracking-wide text-center break-words whitespace-normal select-none"
+              className="block w-full max-w-full text-lg sm:text-xl md:text-2xl font-bold tracking-wide text-center break-words whitespace-normal select-none line-clamp-4"
               style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)', hyphens: 'auto' }}
             >
               {game.title}
@@ -169,30 +161,33 @@ const GameCardComponent = ({
         )}
       </div>
 
-      {/* actions overlay */}
+      {/* hover actions overlay */}
       {!isDeleteMode && !isUploading && (
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent backdrop-brightness-75 flex flex-col justify-end p-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent backdrop-brightness-75 flex flex-col justify-end p-3 sm:p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 ease-out">
-            <h3 className="text-xl font-bold truncate mb-1.5" style={{ color: colors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{game.title}</h3>
-            <p className="text-sm mb-3" style={{ color: colors.highlight }}>{game.genre}</p>
+            <h3 className="text-lg sm:text-xl font-bold truncate mb-1" style={{ color: colors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{game.title}</h3>
+            <p className="text-xs sm:text-sm mb-2 sm:mb-3" style={{ color: colors.highlight }}>{game.genre}</p>
 
-            <div className="flex gap-2.5 items-stretch mt-3">
+            <div
+              className="grid gap-2 items-stretch mt-2 sm:mt-3"
+              style={{ gridTemplateColumns: '1fr 44px 44px' }}
+            >
               <button
-                className="flex-1 flex items-center justify-center gap-2 w-full font-bold py-2.5 px-4 rounded-lg transition-all text-sm hover:shadow-md active:scale-[0.98]"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 font-bold py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg transition-all text-xs sm:text-sm hover:shadow-md active:scale-[0.98] w-full"
                 style={{ ...getGradientStyle(colors.gradientFrom, colors.gradientTo), color: colors.darkBg }}
                 onClick={handleAction(onPlay, game)}
               >
-                <Play className="w-4 h-4 fill-current" /> PLAY
+                <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" /> PLAY
               </button>
               <button
-                className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center"
+                className="rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center w-full h-full"
                 style={{ backgroundColor: colors.highlight, color: colors.darkBg }}
                 onClick={handleAction(onEdit, game)}
               >
-                <Settings className="w-5 h-5" />
+                <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
-                className="px-3 py-2.5 rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center select-none bg-red-500 text-white"
+                className="rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center select-none bg-red-500 text-white w-full h-full"
                 onMouseDown={handleStartLongPress}
                 onTouchStart={handleStartLongPress}
                 onMouseUp={handleEndLongPress}
@@ -200,7 +195,7 @@ const GameCardComponent = ({
                 onTouchEnd={handleEndLongPress}
                 onClick={handleAction(onDelete, game)}
               >
-                <Trash2 className="w-5 h-5" />
+                <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
           </div>

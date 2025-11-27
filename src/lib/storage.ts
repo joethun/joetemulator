@@ -1,10 +1,10 @@
 const GAME_DIR = 'games';
 const WRITE_CHUNK_SIZE = 64 * 1024 * 1024; // 64mb chunks
 
-// cached directory handle
+// cache directory handle for performance
 let dirHandle: FileSystemDirectoryHandle | null = null;
 
-// get directory handle with caching
+// retrieve directory with caching
 async function getDir(): Promise<FileSystemDirectoryHandle> {
   if (!dirHandle) {
     const root = await navigator.storage.getDirectory();
@@ -13,38 +13,38 @@ async function getDir(): Promise<FileSystemDirectoryHandle> {
   return dirHandle;
 }
 
-// write: chunked writing for performance
+// chunked writing for large files
 export async function saveGameFile(
-  gameId: number, 
+  gameId: number,
   file: File,
   onProgress?: (progress: number) => void
 ): Promise<void> {
   const dir = await getDir();
   const handle = await dir.getFileHandle(`${gameId}.rom`, { create: true });
   const writable = await handle.createWritable();
-  
+
   try {
     const size = file.size;
     let offset = 0;
-    
-    // write in chunks
+
+    // process file in chunks
     while (offset < size) {
       const end = Math.min(offset + WRITE_CHUNK_SIZE, size);
       const chunk = file.slice(offset, end);
-      
+
       await writable.write(chunk);
       offset = end;
-      
+
       if (onProgress) {
         onProgress(Math.round((offset / size) * 100));
       }
-      
-      // prevent ui blocking
+
+      // yield to event loop
       if (offset < size) {
         await new Promise(r => setTimeout(r, 0));
       }
     }
-    
+
     await writable.close();
   } catch (error) {
     await writable.abort();
@@ -52,7 +52,7 @@ export async function saveGameFile(
   }
 }
 
-// read: direct file access
+// direct file read
 export async function getGameFile(gameId: number): Promise<File | null> {
   try {
     const dir = await getDir();
@@ -64,7 +64,7 @@ export async function getGameFile(gameId: number): Promise<File | null> {
   }
 }
 
-// delete: simple remove
+// remove game file
 export async function deleteGameFile(gameId: number): Promise<void> {
   try {
     const dir = await getDir();
@@ -74,7 +74,7 @@ export async function deleteGameFile(gameId: number): Promise<void> {
   }
 }
 
-// exists: fast check
+// check if file exists
 export async function gameFileExists(gameId: number): Promise<boolean> {
   try {
     const dir = await getDir();
@@ -85,12 +85,12 @@ export async function gameFileExists(gameId: number): Promise<boolean> {
   }
 }
 
-// list: get all ids
+// list all game file ids
 export async function listAllGameFiles(): Promise<number[]> {
   try {
     const dir = await getDir();
     const ids: number[] = [];
-    // @ts-ignore - iteration valid in modern browsers
+    // @ts-ignore iteration supported in modern browsers
     for await (const [name] of dir.entries()) {
       if (name.endsWith('.rom')) {
         const id = parseInt(name.replace('.rom', ''));
@@ -103,7 +103,7 @@ export async function listAllGameFiles(): Promise<number[]> {
   }
 }
 
-// stats: get storage usage
+// calculate storage statistics
 export async function getStorageStats(): Promise<{
   totalGames: number;
   totalSize: number;
@@ -132,14 +132,14 @@ export async function getStorageStats(): Promise<{
   }
 }
 
-// utility: check support
+// check opfs browser support
 export function isOPFSSupported(): boolean {
-  return typeof navigator !== 'undefined' && 
-         'storage' in navigator && 
-         'getDirectory' in navigator.storage;
+  return typeof navigator !== 'undefined' &&
+    'storage' in navigator &&
+    'getDirectory' in navigator.storage;
 }
 
-// utility: get quota
+// get available storage quota
 export async function getStorageQuota(): Promise<{ usage: number; quota: number; available: number }> {
   if ('storage' in navigator && 'estimate' in navigator.storage) {
     const { usage = 0, quota = 0 } = await navigator.storage.estimate();

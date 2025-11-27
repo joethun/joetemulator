@@ -2,7 +2,7 @@ import { FILE_EXTENSIONS } from './constants';
 import { THEMES } from '@/types';
 
 const CDN_PATH = "https://cdn.jsdelivr.net/gh/joethun/EmulatorJS-With-Cores/";
-const CORES_WITH_THREADS = ['psp', 'dosbox_pure'];
+const CORES_WITH_THREADS = new Set(['psp', 'dosbox_pure']);
 
 const EJS_CORE_TO_RETROARCH: Record<string, string> = {
   segaGG: 'genesis_plus_gx',
@@ -31,26 +31,26 @@ function toggleMenuElements(show: boolean): void {
   if (typeof document === 'undefined') return;
   const displayVal = show ? '' : 'display: none !important; visibility: hidden !important;';
   const root = document.querySelector('div[style*="min-h-screen"]') as HTMLElement;
-  
+
   if (root) root.style.zIndex = show ? 'auto' : '-1';
-  
-  // toggle visibility of main ui elements
-  ['aside', 'footer', 'main', 'header', 'nav'].forEach(sel => {
-    const el = document.querySelector(sel) as HTMLElement;
-    if (el) el.style.cssText = displayVal;
+
+  // hide ui elements when game is running
+  const elements = document.querySelectorAll('aside, footer, main, header, nav');
+  elements.forEach(el => {
+    if (el instanceof HTMLElement) el.style.cssText = displayVal;
   });
 }
 
 function setupGameDisplay(): void {
   if (typeof document === 'undefined') return;
   let gameDiv = document.getElementById("game");
-  
+
   if (!gameDiv) {
     gameDiv = document.createElement("div");
     gameDiv.id = "game";
     document.body.appendChild(gameDiv);
   }
-  
+
   gameDiv.innerHTML = "";
   document.body.style.overflow = "hidden";
   document.documentElement.style.overflow = "hidden";
@@ -72,26 +72,25 @@ export function cleanupGame(): void {
   toggleMenuElements(true);
   window.gameRunning = false;
 
-  // clean up global ejs variables
-  Object.keys(window).forEach(key => {
+  // cleanup global emulator variables
+  for (const key in window) {
     if (key.startsWith('EJS_')) delete window[key];
-  });
+  }
 }
 
 function configureEmulator(
-  gameName: string, 
-  gameFile: File | string, 
-  core: string, 
-  themeName: string, 
-  autoLoad: boolean, 
+  gameName: string,
+  gameFile: File | string,
+  core: string,
+  themeName: string,
+  autoLoad: boolean,
   autoSave: boolean,
   autoSaveDelay: number
 ): void {
   const retroarchCore = EJS_CORE_TO_RETROARCH[core];
-  const themeKey = (themeName && THEMES[themeName]) ? themeName : 'default';
-  const theme = THEMES[themeKey];
+  const theme = THEMES[themeName] || THEMES.default;
 
-  // configure emulator instance
+  // setup emulator configuration
   Object.assign(window, {
     EJS_color: theme.gradientTo,
     EJS_backgroundColor: theme.darkBg,
@@ -102,7 +101,7 @@ function configureEmulator(
     EJS_pathtodata: CDN_PATH,
     EJS_startOnLoaded: true,
     EJS_biosUrl: '',
-    EJS_threads: CORES_WITH_THREADS.includes(core),
+    EJS_threads: CORES_WITH_THREADS.has(core),
     EJS_language: "en",
     EJS_defaultOptions: {
       "desmume_advanced_timing": "disabled",
@@ -132,16 +131,17 @@ function loadEmulatorScript(): void {
 }
 
 export async function loadGame(
-  file: File | string, 
-  coreOverride?: string, 
-  themeName: string = 'default', 
-  autoLoad: boolean = false, 
+  file: File | string,
+  coreOverride?: string,
+  themeName: string = 'default',
+  autoLoad: boolean = false,
   autoSave: boolean = false,
   autoSaveDelay: number = 60000
 ): Promise<void> {
   const fileName = file instanceof File ? file.name : (file as string).split('/').pop() || 'game';
-  const fileExtension = fileName.split(".").pop()?.toLowerCase() || "";
-  const gameName = fileName.replace(/\.[^/.]+$/, "");
+  const lastDotIndex = fileName.lastIndexOf('.');
+  const fileExtension = lastDotIndex !== -1 ? fileName.slice(lastDotIndex + 1).toLowerCase() : '';
+  const gameName = lastDotIndex !== -1 ? fileName.slice(0, lastDotIndex) : fileName;
   const core = coreOverride || detectCore(fileExtension);
 
   cleanupGame();
@@ -188,7 +188,7 @@ async function loadState(source: 'manual' | 'auto' = 'manual'): Promise<void> {
 function startAutoSave(interval: number): void {
   if (autoSaveInterval) clearInterval(autoSaveInterval);
   const safeInterval = Math.max(15000, interval);
-  
+
   autoSaveInterval = setInterval(() => {
     if (window.gameRunning && getEmulator()) saveState('auto');
   }, safeInterval);
@@ -197,7 +197,7 @@ function startAutoSave(interval: number): void {
 let eventListenersAdded = false;
 function addEventListeners(): void {
   if (eventListenersAdded || typeof document === 'undefined') return;
-  
+
   const handleKeydown = (event: KeyboardEvent) => {
     if (!window.gameRunning || !getEmulator()) return;
     if (event.key === 'F1') { event.preventDefault(); saveState('manual'); }

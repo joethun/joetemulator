@@ -1,524 +1,240 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback, memo, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import type { DragEvent } from 'react';
-import { loadGame } from '@/lib/emulator';
-import { saveGameFile, getGameFile } from '@/lib/storage';
-import { SYSTEM_PICKER, getSystemNameByCore, getSystemCategory } from '@/lib/constants';
-import { Game, THEMES, getGradientStyle } from '@/types';
+import { useEffect, useCallback, useState, memo } from 'react';
+import { getSystemNameByCore } from '@/lib/constants';
+import { Game, THEMES } from '@/types';
 import { GameCard } from '@/components/gamecard';
+import { Sidebar } from '@/components/sidebar';
+import { SearchBar } from '@/components/searchbar';
+import { SystemPickerModal } from '@/components/systempicker';
+import { EmulatorNotification } from '@/components/emulatornotification';
 import {
-  Gamepad2, Palette, Menu, X, Trash2, ArrowUp, ArrowDown, Search, Plus,
-  CircleCheck, Image, XCircle, ListFilter, Settings, Save, Clock, Upload,
-  Eye, EyeOff, Timer
+  Trash2, ArrowUp, ArrowDown, ListFilter,
+  Save, Clock, Eye, EyeOff, Timer, Gamepad2, CircleCheck, XCircle
 } from 'lucide-react';
+
+// hooks
 import { useGameLibrary } from '@/hooks/useGameLibrary';
 import { useUIState } from '@/hooks/useUIState';
 import { useGameOperations } from '@/hooks/useGameOperations';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useFileHandler } from '@/hooks/useFileHandler';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { useGameList } from '@/hooks/useGameList';
+import { useGameLauncher } from '@/hooks/useGameLauncher';
+import { useGameDeletion } from '@/hooks/useGameDeletion';
+import { useSystemPickerFlow } from '@/hooks/useSystemPickerFlow';
 
+// constants
 const FONT_FAMILY = 'Lexend, sans-serif';
-const GRID_CLASS = "grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-6";
-const NAV_ITEMS = [
-  { view: 'library' as const, icon: Gamepad2, label: 'Library' },
-  { view: 'themes' as const, icon: Palette, label: 'Themes' },
-  { view: 'settings' as const, icon: Settings, label: 'Settings' }
-] as const;
-
-// utils
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const stripExtension = (filename: string) => filename.replace(/\.[^/.]+$/, '');
-const getFileExtension = (filename: string) => filename.split(".").pop()?.toLowerCase() || "";
+const GRID_STYLE = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))',
+  gap: 'clamp(1rem, 2vw, 1.5rem)',
+  width: '100%',
+} as const;
+const SAVE_INTERVALS = [15, 30, 45, 60] as const;
 
 export default function Home() {
-  const { games, loadGamesFromStorage, addGame, updateGame, deleteGame } = useGameLibrary();
+  // 1. initialize base state hooks
+  const lib = useGameLibrary();
+  const ui = useUIState();
+  const ops = useGameOperations();
+  const settings = useAppSettings();
 
-  // ui state
-  const {
-    activeView, setActiveView, isSidebarOpen, setIsSidebarOpen,
-    isMounted, setIsMounted, gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused,
-    setIsDragActive, themeAnimationKey, setThemeAnimationKey,
-    isDeleteMode, setIsDeleteMode, selectedGameIds, setSelectedGameIds,
-    deletingGameIds, setDeletingGameIds, gameSearchInputRef, dragCounterRef,
-    toggleGameSelection, exitDeleteMode
-  } = useUIState();
+  // 2. specialized logic hooks
+  const files = useFileHandler(lib.games, lib.addGame, ops);
+  const view = useGameList(lib.games, files.uploads, ui.gameSearchQuery, settings.sortBy, settings.sortOrder);
 
-  // ops state
-  const {
-    duplicateMessage, showDuplicateMessage, editingGame, setEditingGame, pendingGame, setPendingGame,
-    pendingFiles, setPendingFiles, systemPickerOpen, setSystemPickerOpen, systemPickerClosing,
-    systemSearchQuery, setSystemSearchQuery, pendingBatchCore, setPendingBatchCore, coverArtFit, setCoverArtFit,
-    showDuplicateError, closeSystemPicker, getSystemFromExtension, extractFilesFromDataTransfer
-  } = useGameOperations();
+  // 3. action hooks
+  const launcher = useGameLauncher(settings);
+  const deletion = useGameDeletion(lib, ui);
+  const pickerFlow = useSystemPickerFlow(ops, lib, files);
 
-  // preferences
-  const [selectedTheme, setSelectedTheme, isThemeHydrated] = useLocalStorage('theme', 'default');
-  const [sortBy, setSortBy, isSortByHydrated] = useLocalStorage<'title' | 'system'>('sortBy', 'title');
-  const [sortOrder, setSortOrder, isSortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
-  const [autoLoadState, setAutoLoadState, isAutoLoadHydrated] = useLocalStorage('autoLoadState', true);
-  const [autoLoadIcon, setAutoLoadIcon] = useLocalStorage('autoLoadIcon', true);
-  const [autoSaveState, setAutoSaveState, isAutoSaveHydrated] = useLocalStorage('autoSaveState', true);
-  const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 60);
-  const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
-
-  const [isProcessing, setIsProcessing] = useState(false);
+  // 4. local component state
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // separate upload state to prevent full list re-sorts
-  const [uploads, setUploads] = useState<Record<number, Game>>({});
-
-  const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated && isAutoLoadHydrated && isAutoSaveHydrated;
-  const currentColors = useMemo(() => THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default, [selectedTheme]);
-  const gradientStyle = useMemo(() => getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), [currentColors]);
-
-  // load initial data
+  // 5. lifecycle
   useEffect(() => {
-    setIsMounted(true);
-    loadGamesFromStorage();
-    const loadTimer = setTimeout(() => setIsInitialLoad(false), 2000);
-    return () => clearTimeout(loadTimer);
-  }, [loadGamesFromStorage, setIsMounted]);
+    ui.setIsMounted(true);
+    lib.loadGamesFromStorage();
+    const timer = setTimeout(() => setIsInitialLoad(false), 2000);
+    return () => clearTimeout(timer);
+  }, [lib.loadGamesFromStorage, ui.setIsMounted]);
 
   useEffect(() => {
-    if (activeView === 'themes') setThemeAnimationKey(k => k + 1);
-  }, [activeView, setThemeAnimationKey]);
+    if (ui.activeView === 'themes') ui.setThemeAnimationKey(k => k + 1);
+  }, [ui.activeView, ui.setThemeAnimationKey]);
 
-  // check duplicates
-  const isDuplicate = useCallback((fileName: string, list: Game[]) =>
-    list.some(g => g.fileName === fileName || g.filePath === fileName), []);
-
-  // process single file
-  const processGameFile = useCallback(async (file: File, index: number, selectedCore?: string, currentGamesList: Game[] = games): Promise<Game[]> => {
-    if (isDuplicate(file.name, currentGamesList)) {
-      showDuplicateError(`"${file.name}" is already in your library`);
-      return currentGamesList;
-    }
-    const detectedCore = selectedCore || getSystemFromExtension(getFileExtension(file.name));
-    if (!detectedCore) return currentGamesList;
-
-    const gameId = Date.now() + index;
-    const tempGame: Game = {
-      id: gameId,
-      title: stripExtension(file.name),
-      genre: getSystemNameByCore(detectedCore),
-      filePath: file.name,
-      fileName: file.name,
-      core: detectedCore,
-      progress: 0
-    };
-
-    // optimistic update
-    setUploads(prev => ({ ...prev, [gameId]: tempGame }));
-
-    // throttling ref for progress updates
-    let lastUpdate = 0;
-
-    try {
-      await saveGameFile(gameId, file, (progress) => {
-        const now = Date.now();
-        // throttle updates to 100ms to avoid freezing main thread
-        if (now - lastUpdate > 100 || progress === 100 || progress === 0) {
-          setUploads(prev => {
-            const existing = prev[gameId];
-            if (!existing) return prev;
-            return { ...prev, [gameId]: { ...existing, progress } };
-          });
-          lastUpdate = now;
-        }
-      });
-
-      // 1. force 100% visible state
-      setUploads(prev => ({
-        ...prev,
-        [gameId]: { ...prev[gameId], progress: 100 }
-      }));
-
-      // 2. wait 800ms to let user see 100%
-      await delay(800);
-
-      // 3. trigger fade out animation
-      setUploads(prev => ({
-        ...prev,
-        [gameId]: { ...prev[gameId], isComplete: true }
-      }));
-
-      // 4. wait for animation to finish
-      await delay(300);
-
-    } catch (e) {
-      console.error("upload failed", e);
-      setUploads(prev => {
-        const next = { ...prev };
-        delete next[gameId];
-        return next;
-      });
-      return currentGamesList;
-    }
-
-    // cleanup upload state and add real game
-    const newGame: Game = { ...tempGame };
-    delete newGame.progress;
-    delete newGame.isComplete;
-
-    addGame(newGame);
-
-    setUploads(prev => {
-      const next = { ...prev };
-      delete next[gameId];
-      return next;
-    });
-
-    return [...currentGamesList, newGame];
-  }, [games, isDuplicate, showDuplicateError, getSystemFromExtension, addGame]);
-
-  // batch file handler
-  const handleIncomingFiles = useCallback(async (files: File[]) => {
-    if (!files.length) return;
-    const filesNeedingSystem: Array<{ file: File; index: number }> = [];
-    let currentGames = games;
-
-    for (let i = 0; i < files.length; i++) {
-      const detectedCore = getSystemFromExtension(getFileExtension(files[i].name));
-      if (detectedCore) {
-        // process known cores immediately
-        currentGames = await processGameFile(files[i], i, detectedCore, currentGames);
-      } else {
-        filesNeedingSystem.push({ file: files[i], index: i });
-      }
-    }
-
-    const filteredNeeding = filesNeedingSystem.filter(({ file }) => !isDuplicate(file.name, currentGames));
-
-    if (filteredNeeding.length > 0) {
-      setPendingFiles(filteredNeeding);
-      if (filteredNeeding.length === 1) {
-        setPendingGame({
-          id: Date.now(),
-          title: stripExtension(filteredNeeding[0].file.name),
-          genre: 'Unknown',
-          filePath: filteredNeeding[0].file.name,
-          fileName: filteredNeeding[0].file.name
-        });
-      } else {
-        setPendingGame(null);
-      }
-      setPendingBatchCore(null);
-      setCoverArtFit('cover');
-      setSystemPickerOpen(true);
-    } else if (filesNeedingSystem.length > 0) {
-      showDuplicateError(filesNeedingSystem.length === 1 ? 'File already in library' : 'All selected files are duplicates');
-    }
-  }, [games, isDuplicate, getSystemFromExtension, processGameFile, setPendingFiles, setPendingGame, setPendingBatchCore, setCoverArtFit, setSystemPickerOpen, showDuplicateError]);
-
-  // system picker completion
-  const handleSystemPickerDone = useCallback(async () => {
-    if (editingGame) {
-      closeSystemPicker();
-      return;
-    }
-
-    const effectiveCore = pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core;
-
-    if (!effectiveCore) {
-      showDuplicateError("Please select a system");
-      return;
-    }
-
-    // validate single file duplicate check before closing
-    if (pendingFiles.length === 1) {
-      if (isDuplicate(pendingFiles[0].file.name, games)) {
-        showDuplicateError(`"${pendingFiles[0].file.name}" is duplicate`);
-        closeSystemPicker();
-        return;
-      }
-    }
-
-    // capture state for background processing
-    const filesToProcess = [...pendingFiles];
-    const meta = pendingGame ? { ...pendingGame } : null;
-    const core = effectiveCore;
-    const fit = coverArtFit;
-
-    // fire and forget: close modal immediately
-    closeSystemPicker();
-
-    // async background upload
-    (async () => {
-      setIsProcessing(true);
-      try {
-        if (filesToProcess.length > 1) {
-          let currentGames = games;
-          for (const { file, index } of filesToProcess) {
-            currentGames = await processGameFile(file, index, core, currentGames);
-          }
-        } else if (filesToProcess.length === 1) {
-          // logic duplicated from processGameFile for single manual uploads with meta
-          const { file } = filesToProcess[0];
-          const gameId = meta?.id ?? Date.now();
-
-          const tempGame: Game = {
-            id: gameId,
-            title: meta?.title || stripExtension(file.name),
-            genre: meta?.genre || getSystemNameByCore(core) || 'Unknown',
-            filePath: meta?.filePath || file.name,
-            fileName: file.name,
-            core: core,
-            coverArt: meta?.coverArt,
-            coverArtFit: meta?.coverArt ? (meta.coverArtFit || fit) : undefined,
-            progress: 0
-          };
-
-          setUploads(prev => ({ ...prev, [gameId]: tempGame }));
-
-          let lastUpdate = 0;
-          await saveGameFile(gameId, file, (progress) => {
-            const now = Date.now();
-            if (now - lastUpdate > 100 || progress === 100 || progress === 0) {
-              setUploads(prev => {
-                const existing = prev[gameId];
-                if (!existing) return prev;
-                return { ...prev, [gameId]: { ...existing, progress } };
-              });
-              lastUpdate = now;
-            }
-          });
-
-          // 1. force 100% visible state
-          setUploads(prev => ({
-            ...prev,
-            [gameId]: { ...prev[gameId], progress: 100 }
-          }));
-
-          // 2. wait 800ms
-          await delay(800);
-
-          // 3. trigger fade
-          setUploads(prev => ({
-            ...prev,
-            [gameId]: { ...prev[gameId], isComplete: true }
-          }));
-
-          // 4. wait animation
-          await delay(300);
-
-          const newGame = { ...tempGame };
-          delete newGame.progress;
-          delete newGame.isComplete;
-
-          addGame(newGame);
-          setUploads(prev => { const n = { ...prev }; delete n[gameId]; return n; });
-        }
-      } catch (e) {
-        console.error("background processing error:", e);
-      } finally {
-        setIsProcessing(false);
-      }
-    })();
-  }, [editingGame, pendingFiles, pendingBatchCore, pendingGame, games, isDuplicate, closeSystemPicker, showDuplicateError, processGameFile, addGame, coverArtFit]);
-
-  // drag handlers
-  const handleDrag = useCallback((e: DragEvent<HTMLElement>, active: boolean) => {
-    e.preventDefault(); e.stopPropagation();
-    if (active && e.dataTransfer?.types.includes('Files')) {
-      dragCounterRef.current += 1; setIsDragActive(true); e.dataTransfer.dropEffect = 'copy';
-    } else if (!active) {
-      dragCounterRef.current -= 1; if (dragCounterRef.current === 0) setIsDragActive(false);
-    }
-  }, [setIsDragActive, dragCounterRef]);
-
-  const handleDrop = useCallback(async (e: DragEvent<HTMLElement>) => {
-    e.preventDefault(); e.stopPropagation();
-    dragCounterRef.current = 0; setIsDragActive(false);
-    if (e.dataTransfer) await handleIncomingFiles(extractFilesFromDataTransfer(e.dataTransfer));
-  }, [setIsDragActive, dragCounterRef, handleIncomingFiles, extractFilesFromDataTransfer]);
-
-  // file input handler
-  const handleFileSelect = useCallback(async () => {
-    try {
-      let files: File[] = [];
-      if ('showOpenFilePicker' in window) {
-        // @ts-ignore
-        const handles = await window.showOpenFilePicker({ multiple: true });
-        files = await Promise.all(handles.map((fh: any) => fh.getFile()));
-      } else {
-        files = await new Promise<File[]>(r => {
-          const inp = document.createElement('input'); inp.type = 'file'; inp.multiple = true;
-          inp.onchange = (e: any) => r(Array.from(e.target.files || [])); inp.click();
-        });
-      }
-      await handleIncomingFiles(files);
-    } catch (err: any) { if (err?.name !== 'AbortError') console.error(err); }
-  }, [handleIncomingFiles]);
-
-  // game actions
-  const handlePlayClick = useCallback(async (game: Game) => {
-    try {
-      let file = await getGameFile(game.id);
-      if (!file && game.fileData) {
-        const res = await fetch(game.fileData);
-        file = new File([await res.blob()], game.fileName || game.title, { type: 'application/octet-stream' });
-        await saveGameFile(game.id, file);
-      }
-      if (file) await loadGame(file, game.core, selectedTheme, autoLoadState, autoSaveState, autoSaveInterval * 1000);
-      else console.error('game file missing', game);
-    } catch (e) { console.error('launch failed', e); }
-  }, [selectedTheme, autoLoadState, autoSaveState, autoSaveInterval]);
-
-  const handleDeleteGame = useCallback(async (game: Game) => {
-    if (!confirm(`Delete "${game.title}"?`)) return;
-    setDeletingGameIds(prev => new Set(prev).add(game.id));
-    await delay(350); await deleteGame(game.id);
-    setDeletingGameIds(prev => { const n = new Set(prev); n.delete(game.id); return n; });
-  }, [deleteGame, setDeletingGameIds]);
-
-  const handleMassDelete = useCallback(async () => {
-    if (!selectedGameIds.size || !confirm(`Delete ${selectedGameIds.size} games?`)) return;
-    setDeletingGameIds(new Set(selectedGameIds));
-    await delay(350);
-    await Promise.all([...selectedGameIds].map(id => deleteGame(id)));
-    setSelectedGameIds(new Set()); setDeletingGameIds(new Set()); setIsDeleteMode(false);
-  }, [selectedGameIds, deleteGame, setDeletingGameIds, setSelectedGameIds, setIsDeleteMode]);
-
-  const handleEditGame = useCallback((g: Game) => {
-    setEditingGame(g); setPendingGame({ ...g }); setCoverArtFit(g.coverArtFit || 'cover'); setSystemPickerOpen(true);
-  }, [setEditingGame, setPendingGame, setCoverArtFit, setSystemPickerOpen]);
-
-  // render calculations
-  const sortedGames = useMemo(() => {
-    // combine uploads and games
-    const activeUploads = Object.values(uploads).filter(u => !games.some(g => g.id === u.id));
-    const allGames = [...games, ...activeUploads];
-
-    let filtered = allGames;
-    if (gameSearchQuery.trim()) {
-      const q = gameSearchQuery.toLowerCase();
-      filtered = allGames.filter(g =>
-        g.title.toLowerCase().includes(q) ||
-        g.genre.toLowerCase().includes(q) ||
-        getSystemCategory(g.core).toLowerCase().includes(q)
-      );
-    }
-    return [...filtered].sort((a, b) => {
-      let cmp = 0;
-      if (sortBy === 'title') cmp = a.title.localeCompare(b.title);
-      else {
-        cmp = getSystemCategory(a.core).localeCompare(getSystemCategory(b.core));
-        if (cmp === 0) cmp = a.genre.localeCompare(b.genre);
-        if (cmp === 0) cmp = a.title.localeCompare(b.title);
-      }
-      return sortOrder === 'asc' ? cmp : -cmp;
-    });
-  }, [games, uploads, sortBy, sortOrder, gameSearchQuery]);
-
-  const groupedGames = useMemo(() => {
-    if (sortBy !== 'system') return null;
-    // group efficiently
-    const groups = sortedGames.reduce((acc, g) => {
-      const mfg = getSystemCategory(g.core);
-      const cat = mfg === 'Other' ? g.genre : `${mfg} ${g.genre}`;
-      (acc[cat] ||= []).push(g);
-      return acc;
-    }, {} as Record<string, Game[]>);
-
-    // sort keys and return simplified object
-    return Object.keys(groups)
-      .sort((a, b) => sortOrder === 'asc' ? a.localeCompare(b) : b.localeCompare(a))
-      .reduce((res, cat) => { res[cat] = groups[cat]; return res; }, {} as Record<string, Game[]>);
-  }, [sortedGames, sortBy, sortOrder]);
-
-  const renderCard = useCallback((game: Game, idx: number) => (
-    <div key={game.id} className={deletingGameIds.has(game.id) ? 'animate-card-exit' : 'animate-card-enter'} style={{ animationDelay: deletingGameIds.has(game.id) ? '0s' : `${isInitialLoad ? idx * 0.05 : 0}s` }}>
-      <GameCard game={game} isSelected={selectedGameIds.has(game.id)} onPlay={handlePlayClick} onDelete={handleDeleteGame} onSelect={toggleGameSelection} isDeleteMode={isDeleteMode} onEnterDeleteMode={() => setIsDeleteMode(true)} colors={currentColors} onEdit={handleEditGame} onCoverArtClick={handleEditGame} />
+  // 6. render helper
+  const renderGameCard = useCallback((g: Game, i: number) => (
+    <div key={g.id} className={ui.deletingGameIds.has(g.id) ? 'animate-card-exit' : 'animate-card-enter'}
+      style={{ animationDelay: ui.deletingGameIds.has(g.id) ? '0s' : isInitialLoad ? `${i * 0.05}s` : '0s' }}>
+      <GameCard
+        game={g}
+        isSelected={ui.selectedGameIds.has(g.id)}
+        onPlay={launcher.handlePlayClick}
+        onDelete={deletion.handleDeleteGame}
+        onSelect={ui.toggleGameSelection}
+        isDeleteMode={ui.isDeleteMode}
+        onEnterDeleteMode={() => ui.setIsDeleteMode(true)}
+        colors={settings.currentColors}
+        onEdit={pickerFlow.handleEditGame}
+        onCoverArtClick={pickerFlow.handleEditGame}
+      />
     </div>
-  ), [deletingGameIds, isInitialLoad, selectedGameIds, handlePlayClick, handleDeleteGame, toggleGameSelection, isDeleteMode, currentColors, handleEditGame]);
+  ), [ui, isInitialLoad, launcher, deletion, pickerFlow, settings.currentColors]);
 
-  if (!isMounted || !isHydrated) return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />;
+  if (!ui.isMounted || !settings.isHydrated) return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: currentColors.darkBg, fontFamily: FONT_FAMILY }}>
-      <div className={`fixed inset-0 z-40 transition-all duration-300 ${isSidebarOpen ? 'bg-black/60 backdrop-blur-sm' : 'bg-black/0 pointer-events-none'}`} onClick={() => setIsSidebarOpen(false)} />
-      <Sidebar isOpen={isSidebarOpen} activeView={activeView} colors={currentColors} onNavClick={(v: any) => { setActiveView(v); setIsSidebarOpen(false); }} />
+    <div className="min-h-screen flex" style={{ backgroundColor: settings.currentColors.darkBg, fontFamily: FONT_FAMILY }}>
+      <Sidebar
+        activeView={ui.activeView}
+        colors={settings.currentColors}
+        gradient={settings.gradientStyle}
+        onNavClick={ui.setActiveView}
+        onAddGame={async () => {
+          try {
+            let f: File[] = [];
+            if ('showOpenFilePicker' in window) {
+              // @ts-ignore
+              const h = await window.showOpenFilePicker({ multiple: true });
+              f = await Promise.all(h.map((fh: any) => fh.getFile()));
+            } else {
+              f = await new Promise(r => {
+                const i = document.createElement('input');
+                i.type = 'file'; i.multiple = true;
+                i.onchange = (e: any) => r(Array.from(e.target.files || []));
+                i.click();
+              });
+            }
+            await files.handleIncomingFiles(f);
+          } catch (err: any) { if (err?.name !== 'AbortError') console.error(err); }
+        }}
+      />
 
-      <div className="flex-1 overflow-hidden">
-        <main 
-          className="p-8 overflow-y-auto pb-20 scrollbar-hide" 
-          style={{ minHeight: 'calc(100vh - 4rem)' }} 
-          onDragEnter={(e) => handleDrag(e, true)} 
-          onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; }} 
-          onDragLeave={(e) => handleDrag(e, false)} 
-          onDrop={handleDrop}
+      <div className="flex-1 overflow-hidden ml-20">
+        <main
+          className="p-4 sm:p-6 md:p-8 overflow-y-auto scrollbar-hide"
+          style={{ minHeight: '100vh' }}
+          onDragEnter={(e) => {
+            e.preventDefault(); e.stopPropagation();
+            if (e.dataTransfer?.types.includes('Files')) {
+              ui.dragCounterRef.current++;
+              ui.setIsDragActive(true);
+              e.dataTransfer.dropEffect = 'copy';
+            }
+          }}
+          onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; }}
+          onDragLeave={(e) => {
+            e.preventDefault(); e.stopPropagation();
+            ui.dragCounterRef.current--;
+            if (ui.dragCounterRef.current === 0) ui.setIsDragActive(false);
+          }}
+          onDrop={async (e) => {
+            e.preventDefault(); e.stopPropagation();
+            ui.dragCounterRef.current = 0;
+            ui.setIsDragActive(false);
+            if (e.dataTransfer) await files.handleIncomingFiles(ops.extractFilesFromDataTransfer(e.dataTransfer));
+          }}
         >
-          <header className="mb-10 flex justify-between items-center">
-            <h1 className="text-4xl font-extrabold tracking-tight capitalize" style={{ color: currentColors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>{activeView}</h1>
+          <header className="mb-10 flex flex-col md:flex-row justify-between gap-6 md:items-center md:h-12">
+            <h1 className="text-4xl font-extrabold tracking-tight capitalize" style={{ color: settings.currentColors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+              {ui.activeView}
+              {ui.activeView === 'library' && <span className="ml-3">({view.sortedGames.length})</span>}
+            </h1>
+            {ui.activeView === 'library' && (
+              <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                <div className="flex gap-3 items-center w-full md:w-auto">
+                  <div className="flex-1 md:flex-initial md:w-[340px] min-w-0">
+                    <SearchBar
+                      colors={settings.currentColors}
+                      value={ui.gameSearchQuery}
+                      onChange={ui.setGameSearchQuery}
+                      isFocused={ui.gameSearchFocused}
+                      onFocus={() => ui.setGameSearchFocused(true)}
+                      onBlur={() => ui.setGameSearchFocused(false)}
+                      inputRef={ui.gameSearchInputRef}
+                    />
+                  </div>
+                  <SortControls
+                    colors={settings.currentColors}
+                    sortBy={settings.sortBy}
+                    setSortBy={settings.setSortBy}
+                    sortOrder={settings.sortOrder}
+                    setSortOrder={settings.setSortOrder}
+                  />
+                </div>
+                {ui.isDeleteMode && (
+                  <div className="flex gap-3 w-full md:w-auto">
+                    <button onClick={deletion.onMassDelete} disabled={!ui.selectedGameIds.size} className="flex-1 md:flex-none px-5 py-2.5 rounded-lg h-12 flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60"><Trash2 className="w-5 h-5" /></button>
+                    <button onClick={() => ui.setIsDeleteMode(false)} className="flex-1 md:flex-none px-5 py-2.5 rounded-lg font-semibold h-12 transition-all active:scale-95" style={{ backgroundColor: settings.currentColors.highlight, color: settings.currentColors.darkBg }}>Cancel</button>
+                  </div>
+                )}
+              </div>
+            )}
           </header>
 
-          {activeView === 'themes' ? (
-            <ThemeGrid colors={currentColors} selectedTheme={selectedTheme} onSelectTheme={setSelectedTheme} animKey={themeAnimationKey} />
-          ) : activeView === 'settings' ? (
+          {ui.activeView === 'themes' ? (
+            <ThemeGrid colors={settings.currentColors} selectedTheme={settings.selectedTheme} onSelectTheme={settings.setSelectedTheme} animKey={ui.themeAnimationKey} />
+          ) : ui.activeView === 'settings' ? (
             <SettingsView
-              colors={currentColors} gradient={gradientStyle}
-              autoLoadState={autoLoadState} setAutoLoadState={setAutoLoadState}
-              autoSaveState={autoSaveState} setAutoSaveState={setAutoSaveState}
-              autoSaveInterval={autoSaveInterval} setAutoSaveInterval={setAutoSaveInterval}
-              autoSaveIcon={autoSaveIcon} setAutoSaveIcon={setAutoSaveIcon}
-              autoLoadIcon={autoLoadIcon} setAutoLoadIcon={setAutoLoadIcon}
+              colors={settings.currentColors} gradient={settings.gradientStyle}
+              autoLoadState={settings.autoLoadState} setAutoLoadState={settings.setAutoLoadState}
+              autoSaveState={settings.autoSaveState} setAutoSaveState={settings.setAutoSaveState}
+              autoSaveInterval={settings.autoSaveInterval} setAutoSaveInterval={settings.setAutoSaveInterval}
+              autoSaveIcon={settings.autoSaveIcon} setAutoSaveIcon={settings.setAutoSaveIcon}
+              autoLoadIcon={settings.autoLoadIcon} setAutoLoadIcon={settings.setAutoLoadIcon}
             />
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold" style={{ color: currentColors.softLight }}>Games ({sortedGames.length})</h2>
+          ) : lib.games.length === 0 && Object.keys(files.uploads).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
+              <div className="w-20 h-20 rounded-2xl mb-6 flex items-center justify-center shadow-lg" style={{ backgroundColor: settings.currentColors.highlight + '15', color: settings.currentColors.highlight }}><Gamepad2 className="w-10 h-10" /></div>
+              <h3 className="text-xl font-bold mb-2" style={{ color: settings.currentColors.softLight }}>No games found</h3>
+              <p className="mb-8 opacity-70" style={{ color: settings.currentColors.highlight }}>Add your first ROM to get started</p>
+            </div>
+          ) : view.sortedGames.length === 0 ? (
+            <div className="text-center py-20 opacity-60"><p style={{ color: settings.currentColors.softLight }}>No games found matching "{ui.gameSearchQuery}"</p></div>
+          ) : view.groupedGames ? (
+            Object.entries(view.groupedGames).map(([cat, catGames]) => (
+              <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
+                <div className="flex items-center mb-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: settings.currentColors.highlight }}>{cat}</h4>
+                  <div className="flex-1 h-px" style={{ backgroundColor: settings.currentColors.highlight + '30' }} />
+                </div>
+                <div style={GRID_STYLE}>{catGames.map(renderGameCard)}</div>
               </div>
-              {games.length === 0 && Object.keys(uploads).length === 0 ? (
-                <EmptyState colors={currentColors} gradient={gradientStyle} onAddGame={handleFileSelect} />
-              ) : (
-                <>
-                  <GameControls colors={currentColors} gradient={gradientStyle} gameSearchQuery={gameSearchQuery} setGameSearchQuery={setGameSearchQuery} gameSearchFocused={gameSearchFocused} setGameSearchFocused={setGameSearchFocused} gameSearchInputRef={gameSearchInputRef} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} isDeleteMode={isDeleteMode} selectedGameIds={selectedGameIds} onMassDelete={handleMassDelete} onExitDeleteMode={exitDeleteMode} onAddGame={handleFileSelect} />
-                  {sortedGames.length === 0 ? (
-                    <div className="text-center py-20 opacity-60"><p style={{ color: currentColors.softLight }}>No games found matching "{gameSearchQuery}"</p></div>
-                  ) : groupedGames ? (
-                    Object.entries(groupedGames).map(([cat, catGames]) => (
-                      <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
-                        <div className="flex items-center mb-4">
-                          <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: currentColors.highlight }}>{cat}</h4>
-                          <div className="flex-1 h-px" style={{ backgroundColor: currentColors.highlight + '30' }} />
-                        </div>
-                        <div className={GRID_CLASS}>{catGames.map((g, i) => renderCard(g, i))}</div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className={GRID_CLASS}>{sortedGames.map((g, i) => renderCard(g, i))}</div>
-                  )}
-                </>
-              )}
-            </>
+            ))
+          ) : (
+            <div style={GRID_STYLE}>{view.sortedGames.map(renderGameCard)}</div>
           )}
         </main>
       </div>
 
-      {duplicateMessage && <Toast message={duplicateMessage} isVisible={showDuplicateMessage} />}
-      <EmulatorNotification colors={currentColors} autoSaveIcon={autoSaveIcon} autoLoadIcon={autoLoadIcon} />
-      <Footer colors={currentColors} isSidebarOpen={isSidebarOpen} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+      {ops.duplicateMessage && <Toast message={ops.duplicateMessage} isVisible={ops.showDuplicateMessage} />}
+      <EmulatorNotification colors={settings.currentColors} autoSaveIcon={settings.autoSaveIcon} autoLoadIcon={settings.autoLoadIcon} />
 
-      {(systemPickerOpen || systemPickerClosing) && (
+      {(ops.systemPickerOpen || ops.systemPickerClosing) && (
         <SystemPickerModal
-          isOpen={systemPickerOpen} isClosing={systemPickerClosing} colors={currentColors} gradient={gradientStyle}
-          editingGame={editingGame} pendingGame={pendingGame} pendingFiles={pendingFiles} searchQuery={systemSearchQuery}
-          onSearchChange={setSystemSearchQuery} onClose={closeSystemPicker} onDone={handleSystemPickerDone}
-          isProcessing={isProcessing} pendingBatchCore={pendingBatchCore}
-          onSelectSystem={(core: string) => {
-            if (pendingFiles.length > 1) setPendingBatchCore(core);
-            else {
-              const update = { core, genre: getSystemNameByCore(core) };
-              if (editingGame) { updateGame(editingGame.id, update); setEditingGame({ ...editingGame, ...update }); }
-              if (pendingGame) setPendingGame({ ...pendingGame, ...update });
-            }
-          }}
+          isOpen={ops.systemPickerOpen} isClosing={ops.systemPickerClosing} colors={settings.currentColors} gradient={settings.gradientStyle}
+          editingGame={ops.editingGame} pendingGame={ops.pendingGame} pendingFiles={ops.pendingFiles} searchQuery={ops.systemSearchQuery}
+          onSearchChange={ops.setSystemSearchQuery} onClose={ops.closeSystemPicker} onDone={pickerFlow.handleSystemPickerDone}
+          isProcessing={files.isProcessing} pendingBatchCore={ops.pendingBatchCore}
+          onSelectSystem={pickerFlow.onSelectSystem}
           coverArtState={{
-            file: editingGame ? editingGame.coverArt : pendingGame?.coverArt, fit: coverArtFit,
-            onFitChange: (f: any) => { setCoverArtFit(f); if (editingGame) { updateGame(editingGame.id, { coverArtFit: f }); setEditingGame({ ...editingGame, coverArtFit: f }); } },
-            onUpload: (d: any) => { if (editingGame) { updateGame(editingGame.id, { coverArt: d }); setEditingGame({ ...editingGame, coverArt: d }); } else if (pendingGame) setPendingGame({ ...pendingGame, coverArt: d }); },
-            onRemove: () => { if (editingGame) { updateGame(editingGame.id, { coverArt: undefined }); setEditingGame({ ...editingGame, coverArt: undefined }); } else if (pendingGame) setPendingGame({ ...pendingGame, coverArt: undefined }); }
+            file: ops.editingGame ? ops.editingGame.coverArt : ops.pendingGame?.coverArt,
+            fit: ops.coverArtFit,
+            onFitChange: (f: any) => {
+              ops.setCoverArtFit(f);
+              if (ops.editingGame) { lib.updateGame(ops.editingGame.id, { coverArtFit: f }); ops.setEditingGame({ ...ops.editingGame, coverArtFit: f }); }
+            },
+            onUpload: (d: any) => {
+              if (ops.editingGame) { lib.updateGame(ops.editingGame.id, { coverArt: d }); ops.setEditingGame({ ...ops.editingGame, coverArt: d }); }
+              else if (ops.pendingGame) ops.setPendingGame({ ...ops.pendingGame, coverArt: d });
+            },
+            onRemove: () => {
+              if (ops.editingGame) { lib.updateGame(ops.editingGame.id, { coverArt: undefined }); ops.setEditingGame({ ...ops.editingGame, coverArt: undefined }); }
+              else if (ops.pendingGame) ops.setPendingGame({ ...ops.pendingGame, coverArt: undefined });
+            }
           }}
         />
       )}
@@ -526,294 +242,109 @@ export default function Home() {
   );
 }
 
-// sub-components
-const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }: any) => {
-  const [notification, setNotification] = useState<{ type: 'save' | 'load', id: number } | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => { setMountNode(document.body); }, []);
-
-  useEffect(() => {
-    const handler = (e: any) => {
-      const { type, source } = e.detail;
-      if (source === 'auto') {
-        if (type === 'save' && !autoSaveIcon) return;
-        if (type === 'load' && !autoLoadIcon) return;
-      }
-      if (timerRef.current) clearTimeout(timerRef.current);
-
-      const gameEl = document.getElementById('game');
-      setMountNode((gameEl && window.getComputedStyle(gameEl).display !== 'none') ? gameEl : document.body);
-
-      setIsVisible(false);
-      setTimeout(() => {
-        setNotification({ type, id: Date.now() });
-        requestAnimationFrame(() => setIsVisible(true));
-        timerRef.current = setTimeout(() => {
-          setIsVisible(false);
-          setTimeout(() => setNotification(null), 300);
-        }, 1500);
-      }, 10);
-    };
-    window.addEventListener('emulator_notification', handler);
-    return () => {
-      window.removeEventListener('emulator_notification', handler);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [autoSaveIcon, autoLoadIcon]);
-
-  if (!notification || !mountNode) return null;
-  return createPortal(
-    <div className={`fixed top-4 left-4 z-[1000000] pointer-events-none transition-opacity duration-300 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <div className="w-10 h-10 rounded-lg flex items-center justify-center backdrop-blur-sm shadow-lg"
-        style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}>
-        {notification.type === 'save' ? <Save className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
-      </div>
-    </div>, mountNode
-  );
-});
-
-// settings
-const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
-  <button
-    role="switch"
-    aria-checked={checked}
-    onClick={onChange}
-    className={`relative inline-flex h-8 w-14 flex-shrink-0 rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 items-center ${
-      checked ? 'border-transparent' : ''
-    }`}
-    style={{
-      backgroundColor: checked ? 'transparent' : colors.darkBg,
-      borderColor: checked ? 'transparent' : colors.midDark,
-      backgroundImage: checked ? gradient.backgroundImage : 'none',
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
-    }}
-  >
-    <span
-      className={`pointer-events-none inline-block h-6 w-6 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ml-0.5 ${
-        checked ? 'translate-x-6' : 'translate-x-0'
-      }`}
-      style={{ backgroundColor: checked ? colors.darkBg : colors.softLight }}
-    />
-  </button>
-));
-const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon }: any) => {
-  return (
-    <div className="animate-fade-in w-full grid gap-4">
-      <div className="p-6 rounded-xl border-[0.125rem] transition-colors flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }}>
-        <div className="flex items-center justify-between gap-6 relative z-10">
-          <div className="flex items-center gap-5 overflow-hidden">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Clock className="w-6 h-6" /></div>
-            <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Save State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Automatically save your game state periodically.</p></div>
-          </div>
-          <SettingsSwitch checked={autoSaveState} onChange={() => setAutoSaveState(!autoSaveState)} colors={colors} gradient={gradient} />
-        </div>
-        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoSaveState ? '200px' : '0px', opacity: autoSaveState ? 1 : 0, marginTop: autoSaveState ? '1.5rem' : '0px', visibility: autoSaveState ? 'visible' : 'hidden' }}>
-          <div className="pt-4 border-t space-y-4 pl-16" style={{ borderColor: colors.highlight + '30' }}>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3"><Timer className="w-4 h-4" style={{ color: colors.highlight }} /><span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span></div>
-              <div className="flex items-center gap-2">{[15, 30, 45, 60].map(v => (
-                <button key={v} onClick={() => setAutoSaveInterval(v)}
-                  className="px-3 py-1 rounded-lg text-sm font-medium h-9 transition-all active:scale-95 flex items-center justify-center"
-                  style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>
-                  {v}s
-                </button>
-              ))}</div>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">{autoSaveIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Save Icon</span></div>
-              <SettingsSwitch checked={autoSaveIcon} onChange={() => setAutoSaveIcon(!autoSaveIcon)} colors={colors} gradient={gradient} />
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="p-6 rounded-xl border-[0.125rem] transition-colors flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animationDelay: '0.1s' }}>
-        <div className="flex items-center justify-between gap-6 relative z-10">
-          <div className="flex items-center gap-5 overflow-hidden">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Save className="w-6 h-6" /></div>
-            <div className="flex-1 min-w-0"><h3 className="text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Load State</h3><p className="text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Resume gameplay from your last save automatically.</p></div>
-          </div>
-          <SettingsSwitch checked={autoLoadState} onChange={() => setAutoLoadState(!autoLoadState)} colors={colors} gradient={gradient} />
-        </div>
-        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: autoLoadState ? '100px' : '0px', opacity: autoLoadState ? 1 : 0, marginTop: autoLoadState ? '1.5rem' : '0px', visibility: autoLoadState ? 'visible' : 'hidden' }}>
-          <div className="pt-4 border-t pl-16" style={{ borderColor: colors.highlight + '30' }}>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">{autoLoadIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Load Icon</span></div>
-              <SettingsSwitch checked={autoLoadIcon} onChange={() => setAutoLoadIcon(!autoLoadIcon)} colors={colors} gradient={gradient} />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-const EmptyState = memo(({ colors, gradient, onAddGame }: any) => (
-  <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
-    <div className="w-20 h-20 rounded-2xl mb-6 flex items-center justify-center shadow-lg transition-colors" style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}><Gamepad2 className="w-10 h-10" /></div>
-    <h3 className="text-xl font-bold mb-2" style={{ color: colors.softLight }}>No games found</h3>
-    <p className="mb-8 opacity-70" style={{ color: colors.highlight }}>Add your first ROM to get started</p>
-    <AddGameButton onClick={onAddGame} colors={colors} gradient={gradient} />
-  </div>
-));
-
-const GameControls = memo(({ colors, gradient, gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused, gameSearchInputRef, sortBy, setSortBy, sortOrder, setSortOrder, isDeleteMode, selectedGameIds, onMassDelete, onExitDeleteMode, onAddGame }: any) => (
-  <div className="flex flex-col gap-4 mb-6">
-    <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-      <div className="flex flex-wrap gap-3 items-center flex-1 min-w-0">
-        <SearchBar colors={colors} value={gameSearchQuery} onChange={setGameSearchQuery} isFocused={gameSearchFocused} onFocus={() => setGameSearchFocused(true)} onBlur={() => setGameSearchFocused(false)} inputRef={gameSearchInputRef} />
-        <SortControls colors={colors} sortBy={sortBy} setSortBy={setSortBy} sortOrder={sortOrder} setSortOrder={setSortOrder} />
-      </div>
-      <div className="flex flex-wrap gap-3 justify-end items-center">
-        {isDeleteMode ? (
-          <>
-            <button onClick={onMassDelete} disabled={!selectedGameIds.size} className="px-5 py-2.5 rounded-lg h-12 flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60"><Trash2 className="w-5 h-5" /></button>
-            <button onClick={onExitDeleteMode} className="px-5 py-2.5 rounded-lg font-semibold h-12 transition-all active:scale-95" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>Cancel</button>
-          </>
-        ) : <AddGameButton onClick={onAddGame} colors={colors} gradient={gradient} />}
-      </div>
-    </div>
-  </div>
-));
-
-const SearchBar = memo(({ colors, value, onChange, isFocused, onFocus, onBlur, inputRef }: any) => (
-  <div className="flex items-center rounded-xl border-[0.125rem] transition-all w-[340px] h-12" style={{ backgroundColor: colors.darkBg, borderColor: isFocused ? colors.highlight : colors.midDark, boxShadow: isFocused ? `0 0 0 2px ${colors.highlight}30` : 'none' }}>
-    <div className="w-12 h-full flex items-center justify-center" style={{ color: colors.softLight }}><Search className="w-4 h-4" /></div>
-    <input ref={inputRef} type="text" placeholder="Search..." value={value} onChange={(e) => onChange(e.target.value)} onFocus={onFocus} onBlur={onBlur} className="bg-transparent h-full flex-1 focus:outline-none text-sm pr-4" style={{ color: colors.softLight }} />
-  </div>
-));
-
-const AddGameButton = memo(({ onClick, colors, gradient }: any) => (
-  <button onClick={onClick} className="px-8 rounded-lg font-semibold transition-all hover:shadow-md active:scale-95 flex items-center gap-2 justify-center h-12" style={{ ...gradient, color: colors.darkBg }}><Plus className="w-5 h-5" /><span>Add Game</span></button>
-));
+// --- Extracted Components (Included for completeness) ---
 
 const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
-    <div className="flex items-center rounded-xl border-[0.125rem] h-12 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark }}>
-      <button onClick={() => setIsOpen(!isOpen)} className="h-full px-3 flex items-center justify-center transition-colors" style={{ color: isOpen ? colors.highlight : colors.softLight }}><ListFilter className="w-5 h-5" /></button>
-      <div className="h-6 transition-all duration-300 ease-in-out" style={{ backgroundColor: colors.midDark, width: isOpen ? '1px' : '0px', marginRight: isOpen ? '0.75rem' : '0px' }} />
-      <div className="flex items-center overflow-hidden transition-all duration-300 ease-in-out" style={{ maxWidth: isOpen ? '300px' : '0px', opacity: isOpen ? 1 : 0, visibility: isOpen ? 'visible' : 'hidden' }}>
-        <div className="flex items-center pr-4 gap-1">
-          {['title', 'system'].map(opt => <button key={opt} onClick={() => setSortBy(opt)} className="px-3 py-1 rounded-lg text-sm font-medium h-9 capitalize transition-all active:scale-95" style={{ backgroundColor: sortBy === opt ? colors.highlight : colors.midDark, color: sortBy === opt ? colors.darkBg : colors.softLight }}>{opt}</button>)}
-          <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 h-9 rounded-lg flex items-center justify-center transition-all active:scale-95" style={{ backgroundColor: colors.midDark, color: colors.softLight }}>{sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}</button>
+    <div className="relative z-40">
+      {isOpen && <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />}
+      <button onClick={() => setIsOpen(!isOpen)} className="relative z-40 flex items-center rounded-xl border-[0.125rem] h-12 px-3 transition-all duration-300" style={{ backgroundColor: colors.darkBg, borderColor: isOpen ? colors.highlight : colors.midDark, color: isOpen ? colors.highlight : colors.softLight, boxShadow: isOpen ? `0 0 0 2px ${colors.highlight}30` : 'none' }}>
+        <ListFilter className="w-5 h-5" />
+      </button>
+      <div className="absolute top-full mt-2 right-0 z-40 rounded-xl border-[0.125rem] overflow-hidden transition-all duration-300 origin-top" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, maxHeight: isOpen ? '200px' : '0px', opacity: isOpen ? 1 : 0, visibility: isOpen ? 'visible' : 'hidden', boxShadow: isOpen ? '0 4px 12px rgba(0,0,0,0.3)' : 'none' }}>
+        <div className="p-3 space-y-2 min-w-[160px]">
+          <div className="flex flex-col gap-1">
+            <div className="text-[10px] font-bold uppercase tracking-wider mb-1 px-1 opacity-70" style={{ color: colors.softLight }}>Sort By</div>
+            {['title', 'system'].map(opt => (
+              <button key={opt} onClick={() => { setSortBy(opt); setIsOpen(false); }} className="px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all active:scale-95 text-left" style={{ backgroundColor: sortBy === opt ? colors.highlight : colors.midDark, color: sortBy === opt ? colors.darkBg : colors.softLight }}>{opt}</button>
+            ))}
+          </div>
+          <div className="h-px" style={{ backgroundColor: colors.midDark }} />
+          <div className="flex flex-col gap-1">
+            <div className="text-[10px] font-bold uppercase tracking-wider mb-1 px-1 opacity-70" style={{ color: colors.softLight }}>Order</div>
+            <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all active:scale-95" style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
+              {sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+              {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 });
+SortControls.displayName = 'SortControls';
 
-const Toast = memo(({ message, isVisible }: any) => (
+const Toast = ({ message, isVisible }: { message: string; isVisible: boolean }) => (
   <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-lg shadow-2xl z-60 bg-red-500 text-white flex items-center gap-2 transition-opacity duration-300 ${isVisible ? 'animate-fade-in' : 'animate-fade-out'}`} style={{ pointerEvents: isVisible ? 'auto' : 'none' }}><XCircle className="w-5 h-5" /><span className="font-semibold">{message}</span></div>
-));
-
-const Footer = memo(({ colors, isSidebarOpen, onToggleSidebar }: any) => (
-  <footer className="fixed bottom-0 left-0 right-0 h-16 border-t flex items-center px-6 z-50" style={{ backgroundColor: colors.midDark, borderColor: colors.sidebarHover, boxShadow: '0 -4px 12px rgba(0,0,0,0.3)' }}>
-    <button className="p-2.5 rounded-lg transition-all hover:bg-opacity-50" onClick={onToggleSidebar} style={{ color: colors.softLight, backgroundColor: isSidebarOpen ? colors.sidebarHover : 'transparent' }}>{isSidebarOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}</button>
-  </footer>
-));
-
-const Sidebar = memo(({ isOpen, activeView, colors, onNavClick }: any) => (
-  <aside className={`w-64 p-6 flex flex-col shadow-xl fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out ${isOpen ? "translate-x-0" : "-translate-x-full"}`} style={{ backgroundColor: colors.midDark, boxShadow: '4px 0 12px rgba(0,0,0,0.3)' }}>
-    <div className="flex items-center gap-3 mb-12 pb-6 border-b animate-fade-in" style={{ borderColor: colors.highlight + '30' }}>
-      <img src="/favicon.ico" alt="Joe T" className="w-12 h-12 flex-shrink-0" />
-      <h2 className="text-2xl font-extrabold bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(135deg, ${colors.softLight}, ${colors.highlight})` }}>Joe T Emulator</h2>
-    </div>
-    <nav>
-      {NAV_ITEMS.map(({ view, icon: Icon, label }, idx) => (
-        <button key={view} onClick={() => onNavClick(view)} className="w-full p-3 mb-2 rounded-lg transition-all flex items-center hover:translate-x-1 hover:bg-opacity-50" style={{ backgroundColor: activeView === view ? colors.sidebarHover : 'transparent', borderLeft: activeView === view ? `4px solid ${colors.highlight}` : '4px solid transparent', color: colors.softLight, animation: `fadeInSlide 0.3s ease-out ${idx * 0.1}s both` }}>
-          <Icon className="w-6 h-6 mr-3 transition-transform" /><span className="font-semibold">{label}</span>
-        </button>
-      ))}
-    </nav>
-  </aside>
-));
+);
 
 const ThemeGrid = memo(({ colors, selectedTheme, onSelectTheme, animKey }: any) => (
-  <div>
-    <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Object.entries(THEMES).map(([name, t]: [string, any], idx) => (
-        <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-[0.125rem] relative overflow-hidden animate-card-enter text-left transition-all hover:shadow-lg"
-          style={{ backgroundColor: t.midDark, borderColor: selectedTheme === name ? t.play : t.highlight + '40', boxShadow: selectedTheme === name ? `0 2px 8px ${t.play}30` : '0 2px 4px rgba(0,0,0,0.2)', animationDelay: `${idx * 0.05}s` }}>
-          <div className="flex justify-between mb-4">
-            <h3 className="text-xl font-bold capitalize" style={{ color: t.softLight }}>{name}</h3>
-            {selectedTheme === name && <CircleCheck className="w-6 h-6" style={{ color: t.play }} />}
+  <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {Object.entries(THEMES).map(([name, t]: [string, any], idx) => (
+      <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-[0.125rem] relative overflow-hidden animate-card-enter text-left transition-all hover:shadow-lg" style={{ backgroundColor: t.midDark, borderColor: selectedTheme === name ? t.play : t.highlight + '40', boxShadow: selectedTheme === name ? `0 2px 8px ${t.play}30` : '0 2px 4px rgba(0,0,0,0.2)', animationDelay: `${idx * 0.05}s` }}>
+        <div className="flex justify-between mb-4">
+          <h3 className="text-xl font-bold capitalize" style={{ color: t.softLight }}>{name}</h3>
+          {selectedTheme === name && <CircleCheck className="w-6 h-6" style={{ color: t.play }} />}
+        </div>
+        <div className="flex gap-2">
+          {[t.darkBg, t.midDark, t.play, t.highlight].map((c: string, i: number) => <div key={i} className="flex-1 h-12 rounded-lg" style={{ backgroundColor: c }} />)}
+        </div>
+      </button>
+    ))}
+  </div>
+));
+ThemeGrid.displayName = 'ThemeGrid';
+
+const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
+  <button role="switch" aria-checked={checked} onClick={onChange} className={`relative inline-flex h-8 w-14 flex-shrink-0 rounded-full border-2 transition-colors duration-200 items-center ${checked ? 'border-transparent' : ''}`} style={{ backgroundColor: checked ? 'transparent' : colors.darkBg, borderColor: checked ? 'transparent' : colors.midDark, backgroundImage: checked ? gradient.backgroundImage : 'none', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }}>
+    <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full shadow transition duration-200 ml-0.5 ${checked ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: checked ? colors.darkBg : colors.softLight }} />
+  </button>
+));
+SettingsSwitch.displayName = 'SettingsSwitch';
+
+const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon }: any) => (
+  <div className="animate-fade-in w-full grid gap-4">
+    <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }}>
+      <div className="flex items-center justify-between gap-4 sm:gap-6">
+        <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Clock className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+          <div className="flex-1 min-w-0"><h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Save State</h3><p className="text-xs sm:text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Automatically save your game state periodically.</p></div>
+        </div>
+        <SettingsSwitch checked={autoSaveState} onChange={() => setAutoSaveState(!autoSaveState)} colors={colors} gradient={gradient} />
+      </div>
+      <div className="overflow-hidden transition-all duration-300" style={{ maxHeight: autoSaveState ? '300px' : '0px', opacity: autoSaveState ? 1 : 0, marginTop: autoSaveState ? '1.5rem' : '0px', visibility: autoSaveState ? 'visible' : 'hidden' }}>
+        <div className="pt-4 border-t space-y-4 pl-0 sm:pl-16" style={{ borderColor: colors.highlight + '30' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3"><Timer className="w-4 h-4" style={{ color: colors.highlight }} /><span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span></div>
+            <div className="flex flex-wrap items-center gap-2">{SAVE_INTERVALS.map(v => (
+              <button key={v} onClick={() => setAutoSaveInterval(v)} className="px-3 py-1 rounded-lg text-sm font-medium h-9 transition-all active:scale-95 flex items-center justify-center flex-1 sm:flex-none" style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>{v}s</button>
+            ))}</div>
           </div>
-          <div className="flex gap-2">
-            {[t.darkBg, t.midDark, t.play, t.highlight].map((c, i) => <div key={i} className="flex-1 h-12 rounded-lg" style={{ backgroundColor: c }} />)}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">{autoSaveIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Save Icon</span></div>
+            <SettingsSwitch checked={autoSaveIcon} onChange={() => setAutoSaveIcon(!autoSaveIcon)} colors={colors} gradient={gradient} />
           </div>
-        </button>
-      ))}
+        </div>
+      </div>
+    </div>
+    <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animationDelay: '0.1s' }}>
+      <div className="flex items-center justify-between gap-4 sm:gap-6">
+        <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Save className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+          <div className="flex-1 min-w-0"><h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Load State</h3><p className="text-xs sm:text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Resume gameplay from your last save automatically.</p></div>
+        </div>
+        <SettingsSwitch checked={autoLoadState} onChange={() => setAutoLoadState(!autoLoadState)} colors={colors} gradient={gradient} />
+      </div>
+      <div className="overflow-hidden transition-all duration-300" style={{ maxHeight: autoLoadState ? '200px' : '0px', opacity: autoLoadState ? 1 : 0, marginTop: autoLoadState ? '1.5rem' : '0px', visibility: autoLoadState ? 'visible' : 'hidden' }}>
+        <div className="pt-4 border-t pl-0 sm:pl-16" style={{ borderColor: colors.highlight + '30' }}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">{autoLoadIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Load Icon</span></div>
+            <SettingsSwitch checked={autoLoadIcon} onChange={() => setAutoLoadIcon(!autoLoadIcon)} colors={colors} gradient={gradient} />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 ));
-
-const SystemPickerModal = memo(({ isOpen, isClosing, colors, gradient, editingGame, pendingGame, pendingFiles, searchQuery, onSearchChange, onClose, onDone, onSelectSystem, coverArtState, isProcessing, pendingBatchCore }: any) => {
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const categories = useMemo(() => {
-    const filtered: Record<string, Array<[string, string]>> = {};
-    Object.entries(SYSTEM_PICKER).forEach(([cat, systems]) => {
-      const matches = Object.entries(systems).filter(([name]) => name.toLowerCase().includes(searchQuery.toLowerCase()));
-      if (matches.length) filtered[cat] = matches;
-    });
-    return filtered;
-  }, [searchQuery]);
-
-  const currentCore = editingGame?.core || (pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core);
-  const showCoverArt = pendingFiles.length <= 1;
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose} style={{ animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.2s ease-out forwards' }}>
-      <div className="p-6 rounded-2xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl border overflow-hidden" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 20px 60px rgba(0,0,0,0.7)', animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.3s ease-out forwards' }} onClick={e => e.stopPropagation()}>
-        <div className="mb-6"><h3 className="text-3xl font-bold mb-2" style={{ color: colors.softLight }}>{editingGame ? editingGame.title : pendingFiles.length > 1 ? `Add ${pendingFiles.length} Games` : 'Select System'}</h3><p className="text-sm opacity-70" style={{ color: colors.highlight }}>{editingGame ? 'Choose system and cover art' : pendingFiles.length > 1 ? `Choose system for ${pendingFiles.length} files` : 'Select a system'}</p></div>
-        <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 overflow-hidden">
-          {showCoverArt && (
-            <div className="flex-shrink-0 w-full xl:w-80 space-y-4 max-h-[60vh] xl:max-h-full overflow-y-auto">
-              <div className="rounded-xl border overflow-hidden" style={{ borderColor: colors.midDark, backgroundColor: colors.darkBg }}>
-                {coverArtState.file ? (
-                  <div className="relative group aspect-[4/5] bg-black/20">
-                    <img src={coverArtState.file} alt="Cover" className="w-full h-full" style={{ objectFit: coverArtState.fit, objectPosition: 'center' }} />
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={coverArtState.onRemove} className="p-2.5 rounded-lg hover:shadow-md active:scale-95 transition-all" style={{ backgroundColor: '#ef4444', color: colors.softLight }}><Trash2 className="w-5 h-5" /></button></div>
-                  </div>
-                ) : (
-                  <div className="aspect-[3/4] flex items-center justify-center p-6 text-center" style={{ backgroundColor: colors.midDark }}><div><Image className="w-8 h-8 mx-auto mb-4" style={{ color: colors.highlight }} /><p className="text-sm font-medium" style={{ color: colors.softLight }}>No Cover Art</p></div></div>
-                )}
-                {coverArtState.file && <div className="p-4 border-t" style={{ borderColor: colors.highlight + '30' }}><button onClick={() => coverArtState.onFitChange(coverArtState.fit === 'contain' ? 'cover' : 'contain')} className="w-full py-2.5 rounded-lg text-sm font-semibold active:scale-95 transition-all" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>{coverArtState.fit === 'contain' ? 'Zoom to Fill' : 'Shrink to Fit'}</button></div>}
-                <div className="p-4 border-t" style={{ borderColor: colors.highlight + '30' }}>
-                  <input type="file" accept="image/*" className="hidden" id="art-upload" onChange={e => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = ev => coverArtState.onUpload(ev.target?.result); r.readAsDataURL(f); } e.target.value = ''; }} />
-                  <label htmlFor="art-upload" className="block w-full py-2.5 rounded-lg text-sm font-semibold text-center active:scale-95 transition-all" style={{ ...(coverArtState.file ? { backgroundColor: colors.highlight } : gradient), color: colors.darkBg }}>{coverArtState.file ? 'Change Image' : 'Upload Cover Art'}</label>
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="flex-1 flex flex-col min-w-0">
-            <SearchBar colors={colors} value={searchQuery} onChange={onSearchChange} isFocused={isSearchFocused} onFocus={() => setIsSearchFocused(true)} onBlur={() => setIsSearchFocused(false)} inputRef={null} />
-            <div className="flex-1 overflow-y-auto pr-2 scrollbar-hide mt-4">
-              {Object.entries(categories).map(([cat, systems]) => (
-                <div key={cat} className="mb-6 last:mb-0">
-                  <div className="flex items-center mb-3"><h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: colors.highlight }}>{cat}</h4><div className="flex-1 h-px" style={{ backgroundColor: colors.highlight + '30' }} /></div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {systems.map(([name, core]: any, idx) => {
-                      const isSel = currentCore === core;
-                      return (
-                        <button key={core} onClick={() => onSelectSystem(core)} className="p-3.5 rounded-xl text-left border-[0.125rem] flex items-center justify-between group transition-all active:scale-95" style={{ backgroundColor: isSel ? colors.highlight : colors.midDark, borderColor: isSel ? colors.highlight : colors.midDark, color: isSel ? colors.darkBg : colors.softLight, animation: `fadeIn 0.4s ease-out ${idx * 0.03}s both` }}>
-                          <span className="font-medium text-sm truncate pr-2 flex-1">{name}</span>{isSel && <CircleCheck className="w-5 h-5 flex-shrink-0 transition-all" style={{ color: colors.darkBg }} />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: colors.midDark }}>
-          {(editingGame || pendingFiles.length > 0) && <button onClick={onDone} disabled={isProcessing} className="py-2.5 px-6 rounded-lg font-semibold active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50" style={{ ...gradient, color: colors.darkBg }}><span>Done</span></button>}
-          <button onClick={onClose} disabled={isProcessing} className="py-2.5 px-6 rounded-lg font-semibold active:scale-95 transition-all disabled:opacity-50" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>{editingGame ? 'Cancel' : 'Close'}</button>
-        </div>
-      </div>
-    </div>
-  );
-});
+SettingsView.displayName = 'SettingsView';

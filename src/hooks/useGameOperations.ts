@@ -6,21 +6,21 @@ const DUPLICATE_MESSAGE_DURATION = 2500;
 const DUPLICATE_MESSAGE_CLEAR_DELAY = 3000;
 
 export function useGameOperations() {
-  // game state
+  // game edit state
   const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
   const [showDuplicateMessage, setShowDuplicateMessage] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
   const [pendingGame, setPendingGame] = useState<Partial<Game> | null>(null);
   const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; index: number }>>([]);
-  
-  // modal state
+
+  // system picker state
   const [systemPickerOpen, setSystemPickerOpen] = useState(false);
   const [systemPickerClosing, setSystemPickerClosing] = useState(false);
   const [systemSearchQuery, setSystemSearchQuery] = useState('');
   const [pendingBatchCore, setPendingBatchCore] = useState<string | null>(null);
   const [coverArtFit, setCoverArtFit] = useState<'cover' | 'contain'>('cover');
 
-  // displays duplicate error toast
+  // show duplicate error notification
   const showDuplicateError = useCallback((message: string) => {
     setDuplicateMessage(message);
     setShowDuplicateMessage(true);
@@ -28,7 +28,7 @@ export function useGameOperations() {
     setTimeout(() => setDuplicateMessage(null), DUPLICATE_MESSAGE_CLEAR_DELAY);
   }, []);
 
-  // closes system picker with animation
+  // close picker with animation
   const closeSystemPicker = useCallback(() => {
     setSystemPickerClosing(true);
     setTimeout(() => {
@@ -42,12 +42,12 @@ export function useGameOperations() {
     }, 200);
   }, []);
 
-  // detects core from extension
+  // detect system from file extension
   const getSystemFromExtension = useCallback((extension: string): string | null => {
     return FILE_EXTENSIONS[extension.toLowerCase()] || null;
   }, []);
 
-  // extracts files from drag event
+  // extract files from drag drop event
   const extractFilesFromDataTransfer = useCallback((dataTransfer: DataTransfer): File[] => {
     if (dataTransfer.items?.length) {
       return Array.from(dataTransfer.items)

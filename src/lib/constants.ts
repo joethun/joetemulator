@@ -13,7 +13,7 @@ export const FILE_EXTENSIONS: Record<string, string> = {
   ws: "ws", wsc: "ws"
 };
 
-// organized system list for ui selection
+// system categories and configurations
 export const SYSTEM_PICKER: Record<string, Record<string, string>> = {
   "Nintendo": {
     "NES": "nes", "Game Boy": "gb", "Game Boy Color": "gbc",
@@ -21,7 +21,7 @@ export const SYSTEM_PICKER: Record<string, Record<string, string>> = {
     "N64": "n64", "DS": "nds",
   },
   "Sega": {
-    "Master System": "segaMS", "Genesis/Mega Drive": "segaMD",
+    "Master System": "segaMS", "Genesis": "segaMD",
     "Game Gear": "segaGG", "CD": "segaCD", "32X": "sega32x", "Saturn": "segaSaturn",
   },
   "Sony": { "PS1": "psx", "PSP": "psp" },
@@ -41,7 +41,7 @@ export const SYSTEM_PICKER: Record<string, Record<string, string>> = {
   }
 };
 
-// internal core to friendly name map
+// core to display name mapping
 export const SYSTEM_DISPLAY_NAMES: Record<string, string> = {
   nes: 'NES', gb: 'GB', gbc: 'GBC', gba: 'GBA', snes: 'SNES', vb: 'VB', n64: 'N64',
   nds: 'DS', segaMS: 'MS', segaMD: 'MD', segaGG: 'GG', segaCD: 'CD',
@@ -54,11 +54,11 @@ export const SYSTEM_DISPLAY_NAMES: Record<string, string> = {
   ngp: 'NGP', ws: 'WS',
 };
 
-// performant lookups
+// lookup maps for performance
 const coreToNameMap = new Map<string, string>();
 const coreToCategoryMap = new Map<string, string>();
 
-// populate maps once
+// populate lookup maps on init
 for (const [category, systems] of Object.entries(SYSTEM_PICKER)) {
   for (const [name, core] of Object.entries(systems)) {
     coreToNameMap.set(core, name);
@@ -66,12 +66,12 @@ for (const [category, systems] of Object.entries(SYSTEM_PICKER)) {
   }
 }
 
-// gets friendly system name from core id
+// convert core to system name
 export function getSystemNameByCore(core: string): string {
   return coreToNameMap.get(core) || 'Unknown System';
 }
 
-// gets category from core id
+// get manufacturer category from core
 export function getSystemCategory(core?: string): string {
   return core && coreToCategoryMap.get(core) || 'Other';
 }

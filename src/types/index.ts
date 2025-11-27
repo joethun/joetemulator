@@ -4,12 +4,12 @@ export interface Game {
   genre: string;
   filePath?: string;
   fileName?: string;
-  fileData?: string; // legacy support
+  fileData?: string; // for legacy game support
   core?: string;
   coverArt?: string;
   coverArtFit?: 'cover' | 'contain';
-  progress?: number; // upload progress (0-100)
-  isComplete?: boolean; // trigger completion animation
+  progress?: number; // file upload progress 0-100
+  isComplete?: boolean; // completion animation trigger
 }
 
 type ThemeColors = {
@@ -23,7 +23,7 @@ type ThemeColors = {
   gradientTo: string;
 };
 
-// themes configuration
+// theme color configurations
 export const THEMES: Record<string, ThemeColors> = {
   default: {
     highlight: '#8899cc', darkBg: '#0a0a0f', midDark: '#151520',
@@ -74,7 +74,7 @@ export const THEMES: Record<string, ThemeColors> = {
 
 export type ThemeConfig = ThemeColors;
 
-// css gradient helper
+// gradient style generator
 export const getGradientStyle = (from: string, to: string) => ({
   backgroundImage: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`
 });

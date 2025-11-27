@@ -8,36 +8,21 @@ const MIGRATION_KEY = 'games_migrated_v1';
 
 export function useGameLibrary() {
   const [games, setGames] = useState<Game[]>([]);
-  const [isLoadingGames, setIsLoadingGames] = useState(true);
   const migrationCheckedRef = useRef(false);
 
-  // persists to localstorage
-  const saveGamesToStorage = useCallback((updatedGames: Game[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedGames));
-      setGames(updatedGames);
-    } catch (error) {
-      console.error('failed to save games:', error);
-    }
-  }, []);
-
-  // loads and migrates legacy data
+  // storage migration logic
   const loadGamesFromStorage = useCallback(async () => {
     if (migrationCheckedRef.current) return;
     migrationCheckedRef.current = true;
-    
-    setIsLoadingGames(true);
+
     try {
       const savedGames = localStorage.getItem(STORAGE_KEY);
-      if (!savedGames) {
-        setIsLoadingGames(false);
-        return;
-      }
+      if (!savedGames) return;
 
       let loadedGames: Game[] = JSON.parse(savedGames);
       const alreadyMigrated = localStorage.getItem(MIGRATION_KEY) === 'true';
 
-      // migrate base64 to indexeddb
+      // convert old base64 to opfs
       if (!alreadyMigrated) {
         console.log('migrating games...');
         for (const game of loadedGames) {
@@ -55,11 +40,11 @@ export function useGameLibrary() {
         localStorage.setItem(MIGRATION_KEY, 'true');
       }
 
-      // cleanup game objects
+      // remove legacy data and update games
       loadedGames = loadedGames.map(game => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { fileData, ...gameWithoutData } = game;
-        
+
         if (game.genre === 'ROM' && game.core) {
           gameWithoutData.genre = getSystemNameByCore(game.core);
         }
@@ -71,16 +56,14 @@ export function useGameLibrary() {
 
       setGames(loadedGames);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedGames));
-      
+
     } catch (error) {
       console.error('load failed', error);
       setGames([]);
-    } finally {
-      setIsLoadingGames(false);
     }
   }, []);
 
-  // crud operations
+  // game mutation operations
   const addGame = useCallback((newGame: Game) => {
     setGames(prev => {
       const updated = [...prev, newGame];
@@ -112,9 +95,7 @@ export function useGameLibrary() {
 
   return {
     games,
-    isLoadingGames,
     loadGamesFromStorage,
-    saveGamesToStorage,
     addGame,
     updateGame,
     deleteGame,

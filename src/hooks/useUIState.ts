@@ -2,22 +2,20 @@ import { useState, useCallback, useRef } from 'react';
 
 export function useUIState() {
   const [activeView, setActiveView] = useState<'library' | 'themes' | 'settings'>('library');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentTime, setCurrentTime] = useState<string>('');
+
   const [isMounted, setIsMounted] = useState(false);
   const [gameSearchQuery, setGameSearchQuery] = useState('');
   const [gameSearchFocused, setGameSearchFocused] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [themeAnimationKey, setThemeAnimationKey] = useState(0);
-  const [gameListAnimationKey, setGameListAnimationKey] = useState(0);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<Set<number>>(new Set());
   const [deletingGameIds, setDeletingGameIds] = useState<Set<number>>(new Set());
 
-  const gameSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const gameSearchInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
-  // toggles selection of a game id
+  // toggle selected game in delete mode
   const toggleGameSelection = useCallback((gameId: number) => {
     setSelectedGameIds(prev => {
       const next = new Set(prev);
@@ -26,7 +24,7 @@ export function useUIState() {
     });
   }, []);
 
-  // cleans up delete mode state
+  // exit delete mode and reset selection
   const exitDeleteMode = useCallback(() => {
     setIsDeleteMode(false);
     setSelectedGameIds(new Set());
@@ -34,14 +32,12 @@ export function useUIState() {
 
   return {
     activeView, setActiveView,
-    isSidebarOpen, setIsSidebarOpen,
-    currentTime, setCurrentTime,
+
     isMounted, setIsMounted,
     gameSearchQuery, setGameSearchQuery,
     gameSearchFocused, setGameSearchFocused,
     isDragActive, setIsDragActive,
     themeAnimationKey, setThemeAnimationKey,
-    gameListAnimationKey, setGameListAnimationKey,
     isDeleteMode, setIsDeleteMode,
     selectedGameIds, setSelectedGameIds,
     deletingGameIds, setDeletingGameIds,
