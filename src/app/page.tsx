@@ -188,7 +188,7 @@ export default function Home() {
             />
           ) : lib.games.length === 0 && Object.keys(files.uploads).length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
-              <div className="w-20 h-20 rounded-2xl mb-6 flex items-center justify-center shadow-lg" style={{ backgroundColor: settings.currentColors.highlight + '15', color: settings.currentColors.highlight }}><Gamepad2 className="w-10 h-10" /></div>
+              <div className="w-20 h-20 rounded-2xl mb-6 flex items-center justify-center shadow-lg" style={{ backgroundColor: settings.currentColors.midDark, color: settings.currentColors.highlight }}><Gamepad2 className="w-10 h-10" /></div>
               <h3 className="text-xl font-bold mb-2" style={{ color: settings.currentColors.softLight }}>No games found</h3>
               <p className="mb-8 opacity-70" style={{ color: settings.currentColors.highlight }}>Add your first ROM to get started</p>
             </div>
@@ -308,7 +308,7 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
     <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }}>
       <div className="flex items-center justify-between gap-4 sm:gap-6">
         <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Clock className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.midDark, color: colors.highlight }}><Clock className="w-5 h-5 sm:w-6 sm:h-6" /></div>
           <div className="flex-1 min-w-0"><h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Save State</h3><p className="text-xs sm:text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Automatically save your game state periodically.</p></div>
         </div>
         <SettingsSwitch checked={autoSaveState} onChange={() => setAutoSaveState(!autoSaveState)} colors={colors} gradient={gradient} />
@@ -331,7 +331,7 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
     <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animationDelay: '0.1s' }}>
       <div className="flex items-center justify-between gap-4 sm:gap-6">
         <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.highlight + '20', color: colors.highlight }}><Save className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.midDark, color: colors.highlight }}><Save className="w-5 h-5 sm:w-6 sm:h-6" /></div>
           <div className="flex-1 min-w-0"><h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Load State</h3><p className="text-xs sm:text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Resume gameplay from your last state automatically.</p></div>
         </div>
         <SettingsSwitch checked={autoLoadState} onChange={() => setAutoLoadState(!autoLoadState)} colors={colors} gradient={gradient} />
