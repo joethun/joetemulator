@@ -37,6 +37,13 @@ export const SystemPickerModal = memo(({
 }: SystemPickerProps) => {
     const [isSearchFocused, setIsSearchFocused] = useState(false);
 
+    // memoize derived values
+    const currentCore = useMemo(
+        () => editingGame?.core || (pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core),
+        [editingGame?.core, pendingFiles.length, pendingBatchCore, pendingGame?.core]
+    );
+    const showCoverArt = useMemo(() => pendingFiles.length <= 1, [pendingFiles.length]);
+
     // filter systems based on search
     const categories = useMemo(() => {
         const filtered: Record<string, Array<[string, string]>> = {};
@@ -46,9 +53,6 @@ export const SystemPickerModal = memo(({
         });
         return filtered;
     }, [searchQuery]);
-
-    const currentCore = editingGame?.core || (pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core);
-    const showCoverArt = pendingFiles.length <= 1;
 
     return (
         <div
@@ -181,7 +185,7 @@ export const SystemPickerModal = memo(({
                 </div>
 
                 {/* footer actions */}
-                <div className="flex justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: colors.midDark }}>
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: colors.highlight + '30' }}>
                     {(editingGame || pendingFiles.length > 0) && (
                         <button onClick={onDone} disabled={isProcessing} className="py-2.5 px-6 rounded-lg font-semibold active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50" style={{ ...gradient, color: colors.darkBg }}>
                             <span>Done</span>

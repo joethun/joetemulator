@@ -1,7 +1,36 @@
 import { useCallback } from 'react';
 import { getSystemNameByCore } from '@/lib/constants';
+import { Game } from '@/types';
 
-export function useSystemPickerFlow(ops: any, lib: any, files: any) {
+interface GameOperations {
+    editingGame: Game | null;
+    pendingGame: any;
+    pendingFiles: any[];
+    pendingBatchCore: string | null;
+    systemPickerOpen: boolean;
+    systemPickerClosing: boolean;
+    setEditingGame: (game: Game | null) => void;
+    setPendingGame: (game: any) => void;
+    setPendingBatchCore: (core: string | null) => void;
+    setCoverArtFit: (fit: 'cover' | 'contain') => void;
+    setSystemPickerOpen: (open: boolean) => void;
+    closeSystemPicker: () => void;
+    showDuplicateError: (message: string) => void;
+    extractFilesFromDataTransfer: (dt: DataTransfer) => File[];
+}
+
+interface GameLibrary {
+    games: Game[];
+    updateGame: (id: number, updates: Partial<Game>) => void;
+}
+
+interface FileHandler {
+    setIsProcessing: (processing: boolean) => void;
+    processGameFile: (file: File, index: number, core: string, meta?: any) => Promise<void>;
+    handleIncomingFiles: (files: File[]) => Promise<void>;
+}
+
+export function useSystemPickerFlow(ops: GameOperations, lib: GameLibrary, files: FileHandler) {
 
     const handleSystemPickerDone = useCallback(async () => {
         // 1. handle edit mode
@@ -13,7 +42,7 @@ export function useSystemPickerFlow(ops: any, lib: any, files: any) {
         // 2. validate core selection
         const effectiveCore = ops.pendingFiles.length > 1 ? ops.pendingBatchCore : ops.pendingGame?.core;
         if (!effectiveCore) {
-            return ops.showDuplicateError("please select a system");
+            return ops.showDuplicateError("Please select a system");
         }
 
         // 3. check duplicates for single manual adds

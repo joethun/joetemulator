@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useCallback, useState, memo } from 'react';
-import { getSystemNameByCore } from '@/lib/constants';
 import { Game, THEMES } from '@/types';
 import { GameCard } from '@/components/gamecard';
 import { Sidebar } from '@/components/sidebar';
@@ -65,7 +64,35 @@ export default function Home() {
     if (ui.activeView === 'themes') ui.setThemeAnimationKey(k => k + 1);
   }, [ui.activeView, ui.setThemeAnimationKey]);
 
-  // 6. render helper
+  // 6. memoized drag handlers
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (e.dataTransfer?.types.includes('Files')) {
+      ui.dragCounterRef.current++;
+      ui.setIsDragActive(true);
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, [ui]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    ui.dragCounterRef.current--;
+    if (ui.dragCounterRef.current === 0) ui.setIsDragActive(false);
+  }, [ui]);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    ui.dragCounterRef.current = 0;
+    ui.setIsDragActive(false);
+    if (e.dataTransfer) await files.handleIncomingFiles(ops.extractFilesFromDataTransfer(e.dataTransfer));
+  }, [ui, files, ops]);
+
+  // 7. render helper
   const renderGameCard = useCallback((g: Game, i: number) => (
     <div key={g.id} className={ui.deletingGameIds.has(g.id) ? 'animate-card-exit' : 'animate-card-enter'}
       style={{ animationDelay: ui.deletingGameIds.has(g.id) ? '0s' : isInitialLoad ? `${i * 0.05}s` : '0s' }}>
@@ -82,7 +109,7 @@ export default function Home() {
         onCoverArtClick={pickerFlow.handleEditGame}
       />
     </div>
-  ), [ui, isInitialLoad, launcher, deletion, pickerFlow, settings.currentColors]);
+  ), [ui.deletingGameIds, ui.selectedGameIds, isInitialLoad, launcher.handlePlayClick, deletion.handleDeleteGame, ui.toggleGameSelection, ui.isDeleteMode, ui.setIsDeleteMode, settings.currentColors, pickerFlow.handleEditGame]);
 
   if (!ui.isMounted || !settings.isHydrated) return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />;
 
@@ -115,30 +142,14 @@ export default function Home() {
 
       <div className="flex-1 overflow-hidden ml-20">
         <main
-          className="p-4 sm:p-6 md:p-8 overflow-y-auto scrollbar-hide"
+          className="pt-6 pb-4 px-4 sm:pb-6 sm:px-6 md:pb-8 md:px-8 overflow-y-auto scrollbar-hide"
           style={{ minHeight: '100vh' }}
-          onDragEnter={(e) => {
-            e.preventDefault(); e.stopPropagation();
-            if (e.dataTransfer?.types.includes('Files')) {
-              ui.dragCounterRef.current++;
-              ui.setIsDragActive(true);
-              e.dataTransfer.dropEffect = 'copy';
-            }
-          }}
-          onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; }}
-          onDragLeave={(e) => {
-            e.preventDefault(); e.stopPropagation();
-            ui.dragCounterRef.current--;
-            if (ui.dragCounterRef.current === 0) ui.setIsDragActive(false);
-          }}
-          onDrop={async (e) => {
-            e.preventDefault(); e.stopPropagation();
-            ui.dragCounterRef.current = 0;
-            ui.setIsDragActive(false);
-            if (e.dataTransfer) await files.handleIncomingFiles(ops.extractFilesFromDataTransfer(e.dataTransfer));
-          }}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         >
-          <header className="mb-10 flex flex-col md:flex-row justify-between gap-6 md:items-center md:h-12">
+          <header className="mb-[33px] flex flex-col md:flex-row justify-between gap-6 md:items-center md:h-12">
             <h1 className="text-4xl font-extrabold tracking-tight capitalize" style={{ color: settings.currentColors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
               {ui.activeView}
               {ui.activeView === 'library' && <span className="ml-3">({view.sortedGames.length})</span>}
@@ -260,7 +271,7 @@ const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder 
               <button key={opt} onClick={() => { setSortBy(opt); setIsOpen(false); }} className="px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all active:scale-95 text-left" style={{ backgroundColor: sortBy === opt ? colors.highlight : colors.midDark, color: sortBy === opt ? colors.darkBg : colors.softLight }}>{opt}</button>
             ))}
           </div>
-          <div className="h-px" style={{ backgroundColor: colors.midDark }} />
+          <div className="h-px" style={{ backgroundColor: colors.highlight + '30' }} />
           <div className="flex flex-col gap-1">
             <div className="text-[10px] font-bold uppercase tracking-wider mb-1 px-1 opacity-70" style={{ color: colors.softLight }}>Order</div>
             <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all active:scale-95" style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
