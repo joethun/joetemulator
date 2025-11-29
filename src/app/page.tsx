@@ -231,6 +231,7 @@ export default function Home() {
           onSearchChange={ops.setSystemSearchQuery} onClose={ops.closeSystemPicker} onDone={pickerFlow.handleSystemPickerDone}
           isProcessing={files.isProcessing} pendingBatchCore={ops.pendingBatchCore}
           onSelectSystem={pickerFlow.onSelectSystem}
+          onRename={pickerFlow.onRename}
           coverArtState={{
             file: ops.editingGame ? ops.editingGame.coverArt : ops.pendingGame?.coverArt,
             fit: ops.coverArtFit,

@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useState, useMemo } from 'react';
-import { Trash2, Image, CircleCheck } from 'lucide-react';
+import { Trash2, Image, CircleCheck, Edit2 } from 'lucide-react';
 import { SYSTEM_PICKER } from '@/lib/constants';
 import { SearchBar } from '@/components/searchbar';
 import { Game } from '@/types';
@@ -19,6 +19,7 @@ interface SystemPickerProps {
     onClose: () => void;
     onDone: () => void;
     onSelectSystem: (core: string) => void;
+    onRename: (title: string) => void;
     coverArtState: {
         file: string | undefined;
         fit: 'cover' | 'contain';
@@ -32,9 +33,10 @@ interface SystemPickerProps {
 
 export const SystemPickerModal = memo(({
     isClosing, colors, gradient, editingGame, pendingGame, pendingFiles,
-    searchQuery, onSearchChange, onClose, onDone, onSelectSystem, coverArtState,
+    searchQuery, onSearchChange, onClose, onDone, onSelectSystem, onRename, coverArtState,
     isProcessing, pendingBatchCore
 }: SystemPickerProps) => {
+    const [isRenameFocused, setIsRenameFocused] = useState(false);
     const [isSearchFocused, setIsSearchFocused] = useState(false);
 
     // memoize derived values
@@ -43,6 +45,8 @@ export const SystemPickerModal = memo(({
         [editingGame?.core, pendingFiles.length, pendingBatchCore, pendingGame?.core]
     );
     const showCoverArt = useMemo(() => pendingFiles.length <= 1, [pendingFiles.length]);
+    const canRename = useMemo(() => !!editingGame || pendingFiles.length === 1, [editingGame, pendingFiles.length]);
+    const currentTitle = useMemo(() => editingGame ? editingGame.title : (pendingGame?.title || ''), [editingGame, pendingGame]);
 
     // filter systems based on search
     const categories = useMemo(() => {
@@ -72,11 +76,41 @@ export const SystemPickerModal = memo(({
             >
                 {/* header */}
                 <div className="mb-6">
-                    <h3 className="text-3xl font-bold mb-2" style={{ color: colors.softLight }}>
-                        {editingGame ? editingGame.title : pendingFiles.length > 1 ? `Add ${pendingFiles.length} Games` : 'Select System'}
-                    </h3>
+                    {canRename ? (
+                        <div
+                            className="flex items-center rounded-xl border-[0.125rem] transition-all w-full h-16 mb-2"
+                            style={{
+                                backgroundColor: colors.darkBg,
+                                borderColor: isRenameFocused ? colors.highlight : colors.midDark,
+                                boxShadow: isRenameFocused ? `0 0 0 2px ${colors.highlight}30` : 'none'
+                            }}
+                        >
+                            <div className="w-16 h-full flex items-center justify-center flex-shrink-0" style={{ color: colors.softLight }}>
+                                <Edit2 className="w-6 h-6" />
+                            </div>
+                            <input
+                                type="text"
+                                value={currentTitle}
+                                onChange={(e) => onRename(e.target.value)}
+                                onFocus={() => setIsRenameFocused(true)}
+                                onBlur={() => setIsRenameFocused(false)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        onDone();
+                                    }
+                                }}
+                                className="bg-transparent h-full flex-1 focus:outline-none text-2xl font-bold pr-6"
+                                style={{ color: colors.softLight }}
+                                placeholder="Game Title"
+                            />
+                        </div>
+                    ) : (
+                        <h3 className="text-3xl font-bold mb-2" style={{ color: colors.softLight }}>
+                            {pendingFiles.length > 1 ? `Add ${pendingFiles.length} Games` : 'Select System'}
+                        </h3>
+                    )}
                     <p className="text-sm opacity-70" style={{ color: colors.highlight }}>
-                        {editingGame ? 'Choose system and cover art' : pendingFiles.length > 1 ? `Choose system for ${pendingFiles.length} files` : 'Select a system'}
+                        {editingGame ? 'Edit game metadata' : pendingFiles.length > 1 ? `Choose system for ${pendingFiles.length} files` : 'Name your game and select a system'}
                     </p>
                 </div>
 

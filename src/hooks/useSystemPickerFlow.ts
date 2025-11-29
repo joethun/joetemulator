@@ -35,6 +35,7 @@ export function useSystemPickerFlow(ops: GameOperations, lib: GameLibrary, files
     const handleSystemPickerDone = useCallback(async () => {
         // 1. handle edit mode
         if (ops.editingGame) {
+            lib.updateGame(ops.editingGame.id, ops.editingGame);
             ops.closeSystemPicker();
             return;
         }
@@ -67,7 +68,7 @@ export function useSystemPickerFlow(ops: GameOperations, lib: GameLibrary, files
         } finally {
             files.setIsProcessing(false);
         }
-    }, [ops, lib.games, files]);
+    }, [ops, lib.games, files, lib.updateGame]);
 
     const handleEditGame = useCallback((g: any) => {
         ops.setEditingGame(g);
@@ -82,14 +83,21 @@ export function useSystemPickerFlow(ops: GameOperations, lib: GameLibrary, files
         } else {
             const update = { core, genre: getSystemNameByCore(core) };
             if (ops.editingGame) {
-                lib.updateGame(ops.editingGame.id, update);
                 ops.setEditingGame({ ...ops.editingGame, ...update });
             }
             if (ops.pendingGame) {
                 ops.setPendingGame({ ...ops.pendingGame, ...update });
             }
         }
-    }, [ops, lib]);
+    }, [ops]);
 
-    return { handleSystemPickerDone, handleEditGame, onSelectSystem };
+    const onRename = useCallback((title: string) => {
+        if (ops.editingGame) {
+            ops.setEditingGame({ ...ops.editingGame, title });
+        } else if (ops.pendingGame) {
+            ops.setPendingGame({ ...ops.pendingGame, title });
+        }
+    }, [ops]);
+
+    return { handleSystemPickerDone, handleEditGame, onSelectSystem, onRename };
 }
