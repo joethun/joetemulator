@@ -23,7 +23,7 @@ input::placeholder {
   opacity: 0.6;
 }
 
-/* emulator game container */
+/* game container */
 #game {
   position: fixed !important;
   top: 0 !important;
@@ -39,7 +39,7 @@ input::placeholder {
   inset: 0 !important;
 }
 
-/* emulator canvas styling */
+/* canvas styling */
 #game canvas {
   display: block !important;
   visibility: visible !important;

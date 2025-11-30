@@ -4,11 +4,11 @@ export interface Game {
   genre: string;
   filePath?: string;
   fileName?: string;
-  fileData?: string; // for legacy game support
+  fileData?: string; // legacy game support
   core?: string;
   coverArt?: string;
   coverArtFit?: 'cover' | 'contain';
-  progress?: number; // file upload progress 0-100
+  progress?: number; // upload progress 0-100
   isComplete?: boolean; // completion animation trigger
 }
 

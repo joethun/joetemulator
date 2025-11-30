@@ -34,7 +34,7 @@ function toggleMenuElements(show: boolean): void {
 
   if (root) root.style.zIndex = show ? 'auto' : '-1';
 
-  // hide ui elements when game is running
+  // hide ui when game runs
   const elements = document.querySelectorAll('aside, footer, main, header, nav');
   elements.forEach(el => {
     if (el instanceof HTMLElement) el.style.cssText = displayVal;
@@ -72,7 +72,7 @@ export function cleanupGame(): void {
   toggleMenuElements(true);
   window.gameRunning = false;
 
-  // cleanup global emulator variables
+  // cleanup global emulator vars
   for (const key in window) {
     if (key.startsWith('EJS_')) delete window[key];
   }
@@ -90,7 +90,7 @@ function configureEmulator(
   const retroarchCore = EJS_CORE_TO_RETROARCH[core];
   const theme = THEMES[themeName] || THEMES.default;
 
-  // setup emulator configuration
+  // configure emulator
   Object.assign(window, {
     EJS_color: theme.gradientTo,
     EJS_backgroundColor: theme.darkBg,

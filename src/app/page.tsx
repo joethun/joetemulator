@@ -9,7 +9,7 @@ import { SystemPickerModal } from '@/components/systempicker';
 import { EmulatorNotification } from '@/components/emulatornotification';
 import {
   Trash2, ArrowUp, ArrowDown, ListFilter,
-  Save, Clock, Eye, EyeOff, Timer, Gamepad2, CircleCheck, XCircle
+  Save, Clock, Eye, EyeOff, Gamepad2, CircleCheck, XCircle
 } from 'lucide-react';
 
 // hooks
@@ -31,28 +31,27 @@ const GRID_STYLE = {
   gap: 'clamp(1rem, 2vw, 1.5rem)',
   width: '100%',
 } as const;
-const SAVE_INTERVALS = [15, 30, 45, 60] as const;
 
 export default function Home() {
-  // 1. initialize base state hooks
+  // base state hooks
   const lib = useGameLibrary();
   const ui = useUIState();
   const ops = useGameOperations();
   const settings = useAppSettings();
 
-  // 2. specialized logic hooks
+  // specialized logic hooks
   const files = useFileHandler(lib.games, lib.addGame, ops);
   const view = useGameList(lib.games, files.uploads, ui.gameSearchQuery, settings.sortBy, settings.sortOrder);
 
-  // 3. action hooks
+  // action hooks
   const launcher = useGameLauncher(settings);
   const deletion = useGameDeletion(lib, ui);
   const pickerFlow = useSystemPickerFlow(ops, lib, files);
 
-  // 4. local component state
+  // local state
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // 5. lifecycle
+  // lifecycle
   useEffect(() => {
     ui.setIsMounted(true);
     lib.loadGamesFromStorage();
@@ -64,7 +63,7 @@ export default function Home() {
     if (ui.activeView === 'themes') ui.setThemeAnimationKey(k => k + 1);
   }, [ui.activeView, ui.setThemeAnimationKey]);
 
-  // 6. memoized drag handlers
+  // drag handlers
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault(); e.stopPropagation();
     if (e.dataTransfer?.types.includes('Files')) {
@@ -92,7 +91,7 @@ export default function Home() {
     if (e.dataTransfer) await files.handleIncomingFiles(ops.extractFilesFromDataTransfer(e.dataTransfer));
   }, [ui, files, ops]);
 
-  // 7. render helper
+  // render game card
   const renderGameCard = useCallback((g: Game, i: number) => (
     <div key={g.id} className={ui.deletingGameIds.has(g.id) ? 'animate-card-exit' : 'animate-card-enter'}
       style={{ animationDelay: ui.deletingGameIds.has(g.id) ? '0s' : isInitialLoad ? `${i * 0.05}s` : '0s' }}>
@@ -328,8 +327,8 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
       <div className="overflow-hidden transition-all duration-300" style={{ maxHeight: autoSaveState ? '300px' : '0px', opacity: autoSaveState ? 1 : 0, marginTop: autoSaveState ? '1.5rem' : '0px', visibility: autoSaveState ? 'visible' : 'hidden' }}>
         <div className="pt-4 border-t space-y-4 pl-0 sm:pl-16" style={{ borderColor: colors.highlight + '30' }}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3"><Timer className="w-4 h-4" style={{ color: colors.highlight }} /><span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span></div>
-            <div className="flex flex-wrap items-center gap-2">{SAVE_INTERVALS.map(v => (
+            <div className="flex items-center gap-3"><Clock className="w-4 h-4" style={{ color: colors.highlight }} /><span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span></div>
+            <div className="flex flex-wrap items-center gap-2">{[15, 30, 45, 60].map(v => (
               <button key={v} onClick={() => setAutoSaveInterval(v)} className="px-3 py-1 rounded-lg text-sm font-medium h-9 transition-all active:scale-95 flex items-center justify-center flex-1 sm:flex-none" style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>{v}s</button>
             ))}</div>
           </div>

@@ -1,4 +1,4 @@
-// file extension to core mapping
+// file extension to emulator core mapping
 export const FILE_EXTENSIONS: Record<string, string> = {
   fds: "nes", nes: "nes", unif: "nes", unf: "nes",
   gb: "gb", gbc: "gbc", gba: "gba",

@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useMemo, useRef, useEffect } from 'react';
+import { memo, useCallback, useRef, useEffect } from 'react';
 import { Trash2, Settings, Play } from 'lucide-react';
 import { Game, THEMES, getGradientStyle } from '@/types';
 
@@ -25,25 +25,23 @@ const GameCardComponent = ({
   const isUploading = typeof game.progress === 'number';
   const isUploadComplete = !!game.isComplete;
 
-  const cardStyle = useMemo(() => ({
+  const cardStyle = {
     backgroundColor: isDeleteMode && isSelected ? '#ef4444' : colors.midDark,
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
     borderColor: 'rgb(31, 41, 55)',
-  }), [isDeleteMode, isSelected, colors.midDark]);
+  };
 
-  const coverStyle = useMemo(() => (
-    game.coverArt
-      ? {
-        backgroundImage: `url(${game.coverArt})`,
-        backgroundColor: 'transparent',
-        backgroundSize: game.coverArtFit || 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }
-      : getGradientStyle(colors.gradientFrom, colors.gradientTo)
-  ), [game.coverArt, game.coverArtFit, colors.gradientFrom, colors.gradientTo]);
+  const coverStyle = game.coverArt
+    ? {
+      backgroundImage: `url(${game.coverArt})`,
+      backgroundColor: 'transparent',
+      backgroundSize: game.coverArtFit || 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    }
+    : getGradientStyle(colors.gradientFrom, colors.gradientTo);
 
-  // optimize event handlers with useCallback
+  // event handlers
   const handleAction = useCallback((action: (game: Game) => void, g: Game) => (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     if (!isUploading) action(g);
@@ -100,7 +98,7 @@ const GameCardComponent = ({
         </>
       )}
 
-      {/* upload progress indicator */}
+      {/* upload progress */}
       {isUploading && (
         <div
           className={`absolute inset-0 z-3 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm transition-all duration-500 ease-out ${isUploadComplete ? 'opacity-0' : 'opacity-100'
@@ -142,7 +140,7 @@ const GameCardComponent = ({
         </div>
       )}
 
-      {/* cover art or gradient background */}
+      {/* cover art */}
       <div className="h-full flex items-center justify-center bg-cover bg-center bg-no-repeat relative" style={coverStyle}>
         {!game.coverArt && (
           <div className="flex items-center justify-center w-full px-2 sm:px-4" style={{ color: colors.darkBg }}>
@@ -161,7 +159,7 @@ const GameCardComponent = ({
         )}
       </div>
 
-      {/* hover actions overlay */}
+      {/* hover actions */}
       {!isDeleteMode && !isUploading && (
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent backdrop-brightness-75 flex flex-col justify-end p-3 sm:p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 ease-out">

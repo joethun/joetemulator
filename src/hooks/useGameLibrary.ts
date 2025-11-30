@@ -10,7 +10,7 @@ export function useGameLibrary() {
   const [games, setGames] = useState<Game[]>([]);
   const migrationCheckedRef = useRef(false);
 
-  // storage migration logic
+  // migrate old storage format
   const loadGamesFromStorage = useCallback(async () => {
     if (migrationCheckedRef.current) return;
     migrationCheckedRef.current = true;
@@ -24,7 +24,6 @@ export function useGameLibrary() {
 
       // convert old base64 to opfs
       if (!alreadyMigrated) {
-        console.log('migrating games...');
         for (const game of loadedGames) {
           if (game.fileData) {
             try {
@@ -40,7 +39,7 @@ export function useGameLibrary() {
         localStorage.setItem(MIGRATION_KEY, 'true');
       }
 
-      // remove legacy data and update games
+      // clean legacy data
       loadedGames = loadedGames.map(game => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { fileData, ...gameWithoutData } = game;
@@ -63,7 +62,7 @@ export function useGameLibrary() {
     }
   }, []);
 
-  // game mutation operations
+  // add new game
   const addGame = useCallback((newGame: Game) => {
     setGames(prev => {
       const updated = [...prev, newGame];

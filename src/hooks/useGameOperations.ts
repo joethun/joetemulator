@@ -2,11 +2,8 @@ import { useState, useCallback } from 'react';
 import { Game } from '@/types';
 import { FILE_EXTENSIONS } from '@/lib/constants';
 
-const DUPLICATE_MESSAGE_DURATION = 2500;
-const DUPLICATE_MESSAGE_CLEAR_DELAY = 3000;
-
 export function useGameOperations() {
-  // game edit state
+  // edit state
   const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
   const [showDuplicateMessage, setShowDuplicateMessage] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
@@ -20,15 +17,15 @@ export function useGameOperations() {
   const [pendingBatchCore, setPendingBatchCore] = useState<string | null>(null);
   const [coverArtFit, setCoverArtFit] = useState<'cover' | 'contain'>('cover');
 
-  // show duplicate error notification
+  // show duplicate error
   const showDuplicateError = useCallback((message: string) => {
     setDuplicateMessage(message);
     setShowDuplicateMessage(true);
-    setTimeout(() => setShowDuplicateMessage(false), DUPLICATE_MESSAGE_DURATION);
-    setTimeout(() => setDuplicateMessage(null), DUPLICATE_MESSAGE_CLEAR_DELAY);
+    setTimeout(() => setShowDuplicateMessage(false), 2500);
+    setTimeout(() => setDuplicateMessage(null), 3000);
   }, []);
 
-  // close picker with animation
+  // close picker
   const closeSystemPicker = useCallback(() => {
     setSystemPickerClosing(true);
     setTimeout(() => {

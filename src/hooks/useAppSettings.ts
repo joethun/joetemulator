@@ -3,7 +3,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { THEMES, getGradientStyle } from '@/types';
 
 export function useAppSettings() {
-    // persistence
+    // local storage state
     const [selectedTheme, setSelectedTheme, isThemeHydrated] = useLocalStorage('theme', 'default');
     const [sortBy, setSortBy, isSortByHydrated] = useLocalStorage<'title' | 'system'>('sortBy', 'title');
     const [sortOrder, setSortOrder, isSortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
@@ -13,7 +13,7 @@ export function useAppSettings() {
     const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 60);
     const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
 
-    // derived theme styles
+    // theme styles
     const currentColors = useMemo(() =>
         THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default,
         [selectedTheme]);

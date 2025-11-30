@@ -23,16 +23,16 @@ export const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }
     useEffect(() => {
         const handler = (e: CustomEvent<{ type: NotificationType; source: string }>) => {
             const { type, source } = e.detail;
-            // respect user preference for auto notifications
+            // respect preferences
             if (source === 'auto' && ((type === 'save' && !autoSaveIcon) || (type === 'load' && !autoLoadIcon))) return;
 
             if (timerRef.current) clearTimeout(timerRef.current);
 
-            // ensure notification shows on top of game if active
+            // show on top of game if active
             const gameEl = document.getElementById('game');
             setMountNode((gameEl && window.getComputedStyle(gameEl).display !== 'none') ? gameEl : document.body);
 
-            // trigger animation sequence
+            // animate
             setIsVisible(false);
             setTimeout(() => {
                 setNotification({ type, id: Date.now() });

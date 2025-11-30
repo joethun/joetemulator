@@ -39,16 +39,13 @@ export const SystemPickerModal = memo(({
     const [isRenameFocused, setIsRenameFocused] = useState(false);
     const [isSearchFocused, setIsSearchFocused] = useState(false);
 
-    // memoize derived values
-    const currentCore = useMemo(
-        () => editingGame?.core || (pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core),
-        [editingGame?.core, pendingFiles.length, pendingBatchCore, pendingGame?.core]
-    );
-    const showCoverArt = useMemo(() => pendingFiles.length <= 1, [pendingFiles.length]);
-    const canRename = useMemo(() => !!editingGame || pendingFiles.length === 1, [editingGame, pendingFiles.length]);
-    const currentTitle = useMemo(() => editingGame ? editingGame.title : (pendingGame?.title || ''), [editingGame, pendingGame]);
+    // derived values
+    const currentCore = editingGame?.core || (pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core);
+    const showCoverArt = pendingFiles.length <= 1;
+    const canRename = !!editingGame || pendingFiles.length === 1;
+    const currentTitle = editingGame ? editingGame.title : (pendingGame?.title || '');
 
-    // filter systems based on search
+    // filter systems
     const categories = useMemo(() => {
         const filtered: Record<string, Array<[string, string]>> = {};
         Object.entries(SYSTEM_PICKER).forEach(([cat, systems]) => {

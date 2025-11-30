@@ -17,7 +17,7 @@ interface SidebarProps {
     onAddGame: () => void;
 }
 
-// Reusable tooltip component
+// tooltip component
 const Tooltip = memo(({ text, colors }: { text: string; colors: any }) => (
     <div
         className="absolute left-full ml-6 px-3 py-2 rounded-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-[60] top-1/2 -translate-y-1/2"
@@ -40,7 +40,7 @@ export const Sidebar = memo(({ activeView, colors, gradient, onNavClick, onAddGa
             className="w-20 py-6 flex flex-col shadow-xl fixed inset-y-0 left-0 z-50"
             style={{ backgroundColor: colors.midDark, boxShadow: '4px 0 12px rgba(0,0,0,0.3)' }}
         >
-            {/* logo & separator */}
+            {/* logo */}
             <div className="flex flex-col items-center gap-4 mb-2">
                 <div className="relative group">
                     <img

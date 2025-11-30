@@ -3,12 +3,7 @@ import { Game } from '@/types';
 import { saveGameFile } from '@/lib/storage';
 import { getSystemNameByCore } from '@/lib/constants';
 
-// utilities
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const stripExtension = (filename: string) => filename.replace(/\.[^/.]+$/, '');
-const getFileExtension = (filename: string) => filename.split(".").pop()?.toLowerCase() || "";
-
-// interface for operations needed by this hook
+// interface for dependencies
 interface GameOperations {
     showDuplicateError: (msg: string) => void;
     setPendingFiles: (files: any[]) => void;
@@ -28,21 +23,20 @@ export function useFileHandler(
     const [uploads, setUploads] = useState<Record<number, Game>>({});
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // check if file already exists
+    // check for duplicate file
     const isDuplicate = useCallback((fileName: string) =>
         games.some(g => g.fileName === fileName || g.filePath === fileName), [games]);
 
-    // update progress state during upload
+    // update upload progress
     const updateUploadProgress = useCallback((gameId: number, progress: number) => {
         setUploads(prev => prev[gameId] ? { ...prev, [gameId]: { ...prev[gameId], progress } } : prev);
     }, []);
 
-    // handle single file upload sequence
     const processGameFile = useCallback(async (file: File, index: number, core: string, meta?: Partial<Game>) => {
         const gameId = Date.now() + index + Math.floor(Math.random() * 1000);
         const tempGame: Game = {
             id: gameId,
-            title: meta?.title || stripExtension(file.name),
+            title: meta?.title || file.name.replace(/\.[^/.]+$/, ''),
             genre: meta?.genre || getSystemNameByCore(core),
             filePath: meta?.filePath || file.name,
             fileName: file.name,
@@ -58,7 +52,7 @@ export function useFileHandler(
             let lastUpdate = 0;
             await saveGameFile(gameId, file, (progress) => {
                 const now = Date.now();
-                // throttle updates to prevent ui thrashing
+                // throttle updates
                 if (now - lastUpdate > 100 || progress === 100 || progress === 0) {
                     updateUploadProgress(gameId, progress);
                     lastUpdate = now;
@@ -66,11 +60,11 @@ export function useFileHandler(
             });
 
             updateUploadProgress(gameId, 100);
-            await delay(800); // allow animation to finish
+            await new Promise(r => setTimeout(r, 800)); // animation completion
             setUploads(prev => ({ ...prev, [gameId]: { ...prev[gameId], isComplete: true } }));
-            await delay(300);
+            await new Promise(r => setTimeout(r, 300));
 
-            // remove temp fields before saving
+            // remove temp fields
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { progress, isComplete, ...newGame } = tempGame;
             addGame(newGame);
@@ -93,7 +87,8 @@ export function useFileHandler(
             if (isDuplicate(file.name)) {
                 acc.duplicates.push(file.name);
             } else {
-                const core = ops.getSystemFromExtension(getFileExtension(file.name));
+                const ext = file.name.split(".").pop()?.toLowerCase() || "";
+                const core = ops.getSystemFromExtension(ext);
                 if (core) acc.withCore.push({ file, index: i, core });
                 else acc.needsSystem.push({ file, index: i });
             }
@@ -105,7 +100,7 @@ export function useFileHandler(
             return;
         }
 
-        // process files where core is known
+        // process files with known core
         categorized.withCore.forEach(f => processGameFile(f.file, f.index, f.core));
 
         // open picker for files needing system
@@ -113,7 +108,7 @@ export function useFileHandler(
             ops.setPendingFiles(categorized.needsSystem);
             ops.setPendingGame(categorized.needsSystem.length === 1 ? {
                 id: Date.now(),
-                title: stripExtension(categorized.needsSystem[0].file.name),
+                title: categorized.needsSystem[0].file.name.replace(/\.[^/.]+$/, ''),
                 genre: 'Unknown',
                 filePath: categorized.needsSystem[0].file.name,
                 fileName: categorized.needsSystem[0].file.name

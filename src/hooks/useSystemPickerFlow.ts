@@ -33,26 +33,26 @@ interface FileHandler {
 export function useSystemPickerFlow(ops: GameOperations, lib: GameLibrary, files: FileHandler) {
 
     const handleSystemPickerDone = useCallback(async () => {
-        // 1. handle edit mode
+        // handle edit mode
         if (ops.editingGame) {
             lib.updateGame(ops.editingGame.id, ops.editingGame);
             ops.closeSystemPicker();
             return;
         }
 
-        // 2. validate core selection
+        // validate core selection
         const effectiveCore = ops.pendingFiles.length > 1 ? ops.pendingBatchCore : ops.pendingGame?.core;
         if (!effectiveCore) {
             return ops.showDuplicateError("Please select a system");
         }
 
-        // 3. check duplicates for single manual adds
+        // check duplicates
         if (ops.pendingFiles.length === 1 && lib.games.some((g: any) => g.fileName === ops.pendingFiles[0].file.name)) {
             ops.showDuplicateError(`"${ops.pendingFiles[0].file.name}" is duplicate`);
             return ops.closeSystemPicker();
         }
 
-        // 4. process batch
+        // process batch upload
         const filesToProcess = [...ops.pendingFiles];
         const meta = ops.pendingGame ? { ...ops.pendingGame } : undefined;
 

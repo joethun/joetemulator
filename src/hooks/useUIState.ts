@@ -15,7 +15,7 @@ export function useUIState() {
   const gameSearchInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
-  // toggle selected game in delete mode
+  // toggle game selection
   const toggleGameSelection = useCallback((gameId: number) => {
     setSelectedGameIds(prev => {
       const next = new Set(prev);
@@ -24,7 +24,7 @@ export function useUIState() {
     });
   }, []);
 
-  // exit delete mode and reset selection
+  // exit delete mode
   const exitDeleteMode = useCallback(() => {
     setIsDeleteMode(false);
     setSelectedGameIds(new Set());
