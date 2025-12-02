@@ -56,7 +56,7 @@ export const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }
 
     return createPortal(
         <div className={`fixed top-4 left-4 z-[1000000] pointer-events-none transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center backdrop-blur-sm shadow-lg" style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-sm shadow-lg" style={{ backgroundColor: colors.highlight + '15', color: colors.highlight }}>
                 {notification.type === 'save' ? <Save className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
             </div>
         </div>, mountNode

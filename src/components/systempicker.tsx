@@ -62,12 +62,12 @@ export const SystemPickerModal = memo(({
             style={{ animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.2s ease-out forwards' }}
         >
             <div
-                className="p-6 rounded-2xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl border overflow-hidden"
+                className="p-6 rounded-xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl border overflow-hidden"
                 style={{
                     backgroundColor: colors.darkBg,
                     borderColor: colors.midDark,
                     boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
-                    animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.3s ease-out forwards'
+                    animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.2s ease-out forwards'
                 }}
                 onClick={e => e.stopPropagation()}
             >
@@ -120,7 +120,7 @@ export const SystemPickerModal = memo(({
                                     <div className="relative group aspect-[4/5] bg-black/20">
                                         <img src={coverArtState.file} alt="Cover" className="w-full h-full" style={{ objectFit: coverArtState.fit, objectPosition: 'center' }} />
                                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={coverArtState.onRemove} className="p-2.5 rounded-lg hover:shadow-md active:scale-95 transition-all" style={{ backgroundColor: '#ef4444', color: colors.softLight }}>
+                                            <button onClick={coverArtState.onRemove} className="p-2.5 rounded-xl hover:shadow-md active:scale-95 transition-all bg-red-500 text-white">
                                                 <Trash2 className="w-5 h-5" />
                                             </button>
                                         </div>
@@ -136,7 +136,7 @@ export const SystemPickerModal = memo(({
 
                                 {coverArtState.file && (
                                     <div className="p-4 border-t" style={{ borderColor: colors.highlight + '30' }}>
-                                        <button onClick={() => coverArtState.onFitChange(coverArtState.fit === 'contain' ? 'cover' : 'contain')} className="w-full py-2.5 rounded-lg text-sm font-semibold active:scale-95 transition-all" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>
+                                        <button onClick={() => coverArtState.onFitChange(coverArtState.fit === 'contain' ? 'cover' : 'contain')} className="w-full h-12 rounded-xl text-sm font-semibold active:scale-95 transition-all" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>
                                             {coverArtState.fit === 'contain' ? 'Zoom to Fill' : 'Shrink to Fit'}
                                         </button>
                                     </div>
@@ -160,7 +160,7 @@ export const SystemPickerModal = memo(({
                                     />
                                     <label
                                         htmlFor="art-upload"
-                                        className="block w-full py-2.5 rounded-lg text-sm font-semibold text-center active:scale-95 transition-all"
+                                        className="w-full h-12 flex items-center justify-center rounded-xl text-sm font-semibold active:scale-95 transition-all"
                                         style={{ ...(coverArtState.file ? { backgroundColor: colors.highlight } : gradient), color: colors.darkBg }}
                                     >
                                         {coverArtState.file ? 'Change Image' : 'Upload Cover Art'}
@@ -195,7 +195,7 @@ export const SystemPickerModal = memo(({
                                                 <button
                                                     key={core}
                                                     onClick={() => onSelectSystem(core)}
-                                                    className="p-3.5 rounded-xl text-left border-[0.125rem] flex items-center justify-between transition-all active:scale-95"
+                                                    className="h-12 px-4 rounded-xl text-left border-[0.125rem] flex items-center justify-between transition-all active:scale-95"
                                                     style={{
                                                         backgroundColor: isSel ? colors.highlight : colors.midDark,
                                                         borderColor: isSel ? colors.highlight : colors.midDark,
@@ -218,11 +218,11 @@ export const SystemPickerModal = memo(({
                 {/* footer actions */}
                 <div className="flex justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: colors.highlight + '30' }}>
                     {(editingGame || pendingFiles.length > 0) && (
-                        <button onClick={onDone} disabled={isProcessing} className="py-2.5 px-6 rounded-lg font-semibold active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50" style={{ ...gradient, color: colors.darkBg }}>
+                        <button onClick={onDone} disabled={isProcessing} className="h-12 px-6 rounded-xl font-semibold active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50" style={{ ...gradient, color: colors.darkBg }}>
                             <span>Done</span>
                         </button>
                     )}
-                    <button onClick={onClose} disabled={isProcessing} className="py-2.5 px-6 rounded-lg font-semibold active:scale-95 transition-all disabled:opacity-50" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>
+                    <button onClick={onClose} disabled={isProcessing} className="h-12 px-6 rounded-xl font-semibold active:scale-95 transition-all disabled:opacity-50" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>
                         {editingGame ? 'Cancel' : 'Close'}
                     </button>
                 </div>

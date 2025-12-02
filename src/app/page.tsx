@@ -9,7 +9,7 @@ import { SystemPickerModal } from '@/components/systempicker';
 import { EmulatorNotification } from '@/components/emulatornotification';
 import {
   Trash2, ArrowUp, ArrowDown, ListFilter,
-  Save, Clock, Eye, EyeOff, Gamepad2, CircleCheck, XCircle
+  Save, Clock, Eye, EyeOff, Gamepad2, CircleCheck, XCircle, Zap
 } from 'lucide-react';
 
 // hooks
@@ -113,7 +113,7 @@ export default function Home() {
   if (!ui.isMounted || !settings.isHydrated) return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />;
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: settings.currentColors.darkBg, fontFamily: FONT_FAMILY }}>
+    <div className={`min-h-screen flex ${settings.snappyAnimations ? 'snappy-animations' : ''}`} style={{ backgroundColor: settings.currentColors.darkBg, fontFamily: FONT_FAMILY }}>
       <Sidebar
         activeView={ui.activeView}
         colors={settings.currentColors}
@@ -177,8 +177,8 @@ export default function Home() {
                 </div>
                 {ui.isDeleteMode && (
                   <div className="flex gap-3 w-full md:w-auto">
-                    <button onClick={deletion.onMassDelete} disabled={!ui.selectedGameIds.size} className="flex-1 md:flex-none px-5 py-2.5 rounded-lg h-12 flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60"><Trash2 className="w-5 h-5" /></button>
-                    <button onClick={() => ui.setIsDeleteMode(false)} className="flex-1 md:flex-none px-5 py-2.5 rounded-lg font-semibold h-12 transition-all active:scale-95" style={{ backgroundColor: settings.currentColors.highlight, color: settings.currentColors.darkBg }}>Cancel</button>
+                    <button onClick={deletion.onMassDelete} disabled={!ui.selectedGameIds.size} className="flex-1 md:flex-none px-5 py-2.5 rounded-xl h-12 flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60"><Trash2 className="w-5 h-5" /></button>
+                    <button onClick={() => ui.setIsDeleteMode(false)} className="flex-1 md:flex-none px-5 py-2.5 rounded-xl font-semibold h-12 transition-all active:scale-95" style={{ backgroundColor: settings.currentColors.highlight, color: settings.currentColors.darkBg }}>Cancel</button>
                   </div>
                 )}
               </div>
@@ -195,10 +195,11 @@ export default function Home() {
               autoSaveInterval={settings.autoSaveInterval} setAutoSaveInterval={settings.setAutoSaveInterval}
               autoSaveIcon={settings.autoSaveIcon} setAutoSaveIcon={settings.setAutoSaveIcon}
               autoLoadIcon={settings.autoLoadIcon} setAutoLoadIcon={settings.setAutoLoadIcon}
+              reducedMotion={settings.snappyAnimations} setReducedMotion={settings.setSnappyAnimations}
             />
           ) : lib.games.length === 0 && Object.keys(files.uploads).length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
-              <div className="w-20 h-20 rounded-2xl mb-6 flex items-center justify-center shadow-lg" style={{ backgroundColor: settings.currentColors.midDark, color: settings.currentColors.highlight }}><Gamepad2 className="w-10 h-10" /></div>
+              <div className="w-20 h-20 rounded-xl mb-6 flex items-center justify-center shadow-lg" style={{ backgroundColor: settings.currentColors.midDark, color: settings.currentColors.highlight }}><Gamepad2 className="w-10 h-10" /></div>
               <h3 className="text-xl font-bold mb-2" style={{ color: settings.currentColors.softLight }}>No games found</h3>
               <p className="mb-8 opacity-70" style={{ color: settings.currentColors.highlight }}>Add your first ROM to get started</p>
             </div>
@@ -268,13 +269,13 @@ const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder 
           <div className="flex flex-col gap-1">
             <div className="text-[10px] font-bold uppercase tracking-wider mb-1 px-1 opacity-70" style={{ color: colors.softLight }}>Sort By</div>
             {['title', 'system'].map(opt => (
-              <button key={opt} onClick={() => { setSortBy(opt); setIsOpen(false); }} className="px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all active:scale-95 text-left" style={{ backgroundColor: sortBy === opt ? colors.highlight : colors.midDark, color: sortBy === opt ? colors.darkBg : colors.softLight }}>{opt}</button>
+              <button key={opt} onClick={() => { setSortBy(opt); setIsOpen(false); }} className="px-3 py-2 rounded-xl text-sm font-medium capitalize transition-all active:scale-95 text-left" style={{ backgroundColor: sortBy === opt ? colors.highlight : colors.midDark, color: sortBy === opt ? colors.darkBg : colors.softLight }}>{opt}</button>
             ))}
           </div>
           <div className="h-px" style={{ backgroundColor: colors.highlight + '30' }} />
           <div className="flex flex-col gap-1">
             <div className="text-[10px] font-bold uppercase tracking-wider mb-1 px-1 opacity-70" style={{ color: colors.softLight }}>Order</div>
-            <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all active:scale-95" style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
+            <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all active:scale-95" style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
               {sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
               {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
             </button>
@@ -287,19 +288,19 @@ const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder 
 SortControls.displayName = 'SortControls';
 
 const Toast = ({ message, isVisible }: { message: string; isVisible: boolean }) => (
-  <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-lg shadow-2xl z-60 bg-red-500 text-white flex items-center gap-2 transition-opacity duration-300 ${isVisible ? 'animate-fade-in' : 'animate-fade-out'}`} style={{ pointerEvents: isVisible ? 'auto' : 'none' }}><XCircle className="w-5 h-5" /><span className="font-semibold">{message}</span></div>
+  <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-xl shadow-2xl z-60 bg-red-500 text-white flex items-center gap-2 transition-opacity duration-300 ${isVisible ? 'animate-fade-in' : 'animate-fade-out'}`} style={{ pointerEvents: isVisible ? 'auto' : 'none' }}><XCircle className="w-5 h-5" /><span className="font-semibold">{message}</span></div>
 );
 
 const ThemeGrid = memo(({ colors, selectedTheme, onSelectTheme, animKey }: any) => (
   <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
     {Object.entries(THEMES).map(([name, t]: [string, any], idx) => (
-      <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-[0.125rem] relative overflow-hidden animate-card-enter text-left transition-all hover:shadow-lg" style={{ backgroundColor: t.midDark, borderColor: selectedTheme === name ? t.play : t.highlight + '40', boxShadow: selectedTheme === name ? `0 2px 8px ${t.play}30` : '0 2px 4px rgba(0,0,0,0.2)', animationDelay: `${idx * 0.05}s` }}>
+      <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-[0.125rem] relative overflow-hidden text-left transition-all hover:shadow-lg" style={{ backgroundColor: t.midDark, borderColor: selectedTheme === name ? t.play : t.highlight + '40', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', animation: `fadeIn 0.4s ease-out ${idx * 0.03}s both` }}>
         <div className="flex justify-between mb-4">
           <h3 className="text-xl font-bold capitalize" style={{ color: t.softLight }}>{name}</h3>
           {selectedTheme === name && <CircleCheck className="w-6 h-6" style={{ color: t.play }} />}
         </div>
         <div className="flex gap-2">
-          {[t.darkBg, t.midDark, t.play, t.highlight].map((c: string, i: number) => <div key={i} className="flex-1 h-12 rounded-lg" style={{ backgroundColor: c }} />)}
+          {[t.darkBg, t.midDark, t.play, t.highlight].map((c: string, i: number) => <div key={i} className="flex-1 h-12 rounded-xl" style={{ backgroundColor: c }} />)}
         </div>
       </button>
     ))}
@@ -308,15 +309,15 @@ const ThemeGrid = memo(({ colors, selectedTheme, onSelectTheme, animKey }: any) 
 ThemeGrid.displayName = 'ThemeGrid';
 
 const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
-  <button role="switch" aria-checked={checked} onClick={onChange} className={`relative inline-flex h-8 w-14 flex-shrink-0 rounded-full border-2 transition-colors duration-200 items-center ${checked ? 'border-transparent' : ''}`} style={{ backgroundColor: checked ? 'transparent' : colors.darkBg, borderColor: checked ? 'transparent' : colors.midDark, backgroundImage: checked ? gradient.backgroundImage : 'none', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }}>
+  <button role="switch" aria-checked={checked} onClick={onChange} className={`relative inline-flex h-8 w-14 flex-shrink-0 rounded-full border-2 transition-colors duration-200 items-center ${checked ? 'border-transparent' : ''}`} style={{ backgroundColor: checked ? 'transparent' : colors.darkBg, borderColor: checked ? 'transparent' : colors.midDark, backgroundImage: checked ? gradient.backgroundImage : 'none', boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.3)' }}>
     <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full shadow transition duration-200 ml-0.5 ${checked ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: checked ? colors.darkBg : colors.softLight }} />
   </button>
 ));
 SettingsSwitch.displayName = 'SettingsSwitch';
 
-const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon }: any) => (
+const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon, reducedMotion, setReducedMotion }: any) => (
   <div className="animate-fade-in w-full grid gap-4">
-    <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }}>
+    <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animation: 'fadeIn 0.4s ease-out both' }}>
       <div className="flex items-center justify-between gap-4 sm:gap-6">
         <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.midDark, color: colors.highlight }}><Clock className="w-5 h-5 sm:w-6 sm:h-6" /></div>
@@ -329,7 +330,7 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3"><Clock className="w-4 h-4" style={{ color: colors.highlight }} /><span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span></div>
             <div className="flex flex-wrap items-center gap-2">{[15, 30, 45, 60].map(v => (
-              <button key={v} onClick={() => setAutoSaveInterval(v)} className="px-3 py-1 rounded-lg text-sm font-medium h-9 transition-all active:scale-95 flex items-center justify-center flex-1 sm:flex-none" style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>{v}s</button>
+              <button key={v} onClick={() => setAutoSaveInterval(v)} className="px-3 py-1 rounded-xl text-sm font-medium h-9 transition-all active:scale-95 flex items-center justify-center flex-1 sm:flex-none" style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>{v}s</button>
             ))}</div>
           </div>
           <div className="flex items-center justify-between gap-4">
@@ -339,7 +340,7 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
         </div>
       </div>
     </div>
-    <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col animate-card-enter" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animationDelay: '0.1s' }}>
+    <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animation: 'fadeIn 0.4s ease-out 0.03s both' }}>
       <div className="flex items-center justify-between gap-4 sm:gap-6">
         <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.midDark, color: colors.highlight }}><Save className="w-5 h-5 sm:w-6 sm:h-6" /></div>
@@ -354,6 +355,15 @@ const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, 
             <SettingsSwitch checked={autoLoadIcon} onChange={() => setAutoLoadIcon(!autoLoadIcon)} colors={colors} gradient={gradient} />
           </div>
         </div>
+      </div>
+    </div>
+    <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animation: 'fadeIn 0.4s ease-out 0.06s both' }}>
+      <div className="flex items-center justify-between gap-4 sm:gap-6">
+        <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.midDark, color: colors.highlight }}><Zap className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+          <div className="flex-1 min-w-0"><h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Snappy Animations</h3><p className="text-xs sm:text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Speed up animations for a faster experience.</p></div>
+        </div>
+        <SettingsSwitch checked={reducedMotion} onChange={() => setReducedMotion(!reducedMotion)} colors={colors} gradient={gradient} />
       </div>
     </div>
   </div>

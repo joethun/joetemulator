@@ -12,6 +12,7 @@ export function useAppSettings() {
     const [autoSaveState, setAutoSaveState, isAutoSaveHydrated] = useLocalStorage('autoSaveState', true);
     const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 60);
     const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
+    const [snappyAnimations, setSnappyAnimations, isSnappyAnimationsHydrated] = useLocalStorage('snappyAnimations', false);
 
     // theme styles
     const currentColors = useMemo(() =>
@@ -23,7 +24,7 @@ export function useAppSettings() {
         [currentColors]);
 
     // hydration check
-    const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated && isAutoLoadHydrated && isAutoSaveHydrated;
+    const isHydrated = isThemeHydrated && isSortByHydrated && isSortOrderHydrated && isAutoLoadHydrated && isAutoSaveHydrated && isSnappyAnimationsHydrated;
 
     return {
         // state
@@ -35,6 +36,7 @@ export function useAppSettings() {
         autoSaveState, setAutoSaveState,
         autoSaveInterval, setAutoSaveInterval,
         autoSaveIcon, setAutoSaveIcon,
+        snappyAnimations, setSnappyAnimations,
 
         // derived
         currentColors,

@@ -27,7 +27,7 @@ const GameCardComponent = ({
 
   const cardStyle = {
     backgroundColor: isDeleteMode && isSelected ? '#ef4444' : colors.midDark,
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
     borderColor: 'rgb(31, 41, 55)',
   };
 
@@ -171,21 +171,21 @@ const GameCardComponent = ({
               style={{ gridTemplateColumns: '1fr 44px 44px' }}
             >
               <button
-                className="flex items-center justify-center gap-1.5 sm:gap-2 font-bold py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg transition-all text-xs sm:text-sm hover:shadow-md active:scale-[0.98] w-full"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 font-bold py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl transition-all text-xs sm:text-sm hover:shadow-md active:scale-[0.98] w-full"
                 style={{ ...getGradientStyle(colors.gradientFrom, colors.gradientTo), color: colors.darkBg }}
                 onClick={handleAction(onPlay, game)}
               >
                 <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" /> PLAY
               </button>
               <button
-                className="rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center w-full h-full"
+                className="rounded-xl transition-all hover:shadow-md active:scale-95 flex items-center justify-center w-full h-full"
                 style={{ backgroundColor: colors.highlight, color: colors.darkBg }}
                 onClick={handleAction(onEdit, game)}
               >
                 <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
-                className="rounded-lg transition-all hover:shadow-md active:scale-95 flex items-center justify-center select-none bg-red-500 text-white w-full h-full"
+                className="rounded-xl transition-all hover:shadow-md active:scale-95 flex items-center justify-center select-none bg-red-500 text-white w-full h-full"
                 onMouseDown={handleStartLongPress}
                 onTouchStart={handleStartLongPress}
                 onMouseUp={handleEndLongPress}

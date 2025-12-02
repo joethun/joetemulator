@@ -61,7 +61,7 @@ input::placeholder {
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out both;
+  animation: fadeIn 0.2s ease-out both;
 }
 
 @keyframes fadeOut {
@@ -75,39 +75,35 @@ input::placeholder {
 }
 
 .animate-fade-out {
-  animation: fadeOut 0.3s ease-out forwards;
+  animation: fadeOut 0.2s ease-out forwards;
 }
 
 @keyframes cardEnter {
-  0% {
+  from {
     opacity: 0;
-    transform: scale(0.9);
   }
 
-  100% {
+  to {
     opacity: 1;
-    transform: scale(1);
   }
 }
 
 .animate-card-enter {
-  animation: cardEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: cardEnter 0.2s ease-out both;
 }
 
 @keyframes cardExit {
-  0% {
+  from {
     opacity: 1;
-    transform: scale(1);
   }
 
-  100% {
+  to {
     opacity: 0;
-    transform: scale(0.95);
   }
 }
 
 .animate-card-exit {
-  animation: cardExit 0.3s ease-in forwards;
+  animation: cardExit 0.2s ease-out forwards;
 }
 
 @keyframes slideDown {
@@ -158,4 +154,14 @@ input::placeholder {
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* snappy animations mode - set animations and transitions to 0.1s */
+.snappy-animations *,
+.snappy-animations *::before,
+.snappy-animations *::after {
+  animation-duration: 0.1s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.1s !important;
+  scroll-behavior: auto !important;
 }
