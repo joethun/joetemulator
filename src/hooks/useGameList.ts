@@ -2,6 +2,18 @@ import { useMemo } from 'react';
 import { Game } from '@/types';
 import { getSystemCategory } from '@/lib/constants';
 
+function compareGames(a: Game, b: Game, sortBy: 'title' | 'system', sortOrder: 'asc' | 'desc') {
+    let cmp = 0;
+    if (sortBy === 'title') {
+        cmp = a.title.localeCompare(b.title);
+    } else {
+        cmp = getSystemCategory(a.core).localeCompare(getSystemCategory(b.core)) ||
+            a.genre.localeCompare(b.genre) ||
+            a.title.localeCompare(b.title);
+    }
+    return sortOrder === 'asc' ? cmp : -cmp;
+}
+
 export function useGameList(
     games: Game[],
     uploads: Record<number, Game>,
@@ -24,12 +36,7 @@ export function useGameList(
         }
 
         return filtered.sort((a, b) => {
-            let cmp = sortBy === 'title'
-                ? a.title.localeCompare(b.title)
-                : getSystemCategory(a.core).localeCompare(getSystemCategory(b.core)) ||
-                a.genre.localeCompare(b.genre) ||
-                a.title.localeCompare(b.title);
-            return sortOrder === 'asc' ? cmp : -cmp;
+            return compareGames(a, b, sortBy, sortOrder);
         });
     }, [games, uploads, sortBy, sortOrder, searchQuery]);
 

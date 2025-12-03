@@ -26,19 +26,6 @@ export const SYSTEM_PICKER: Record<string, Record<string, string>> = {
   }
 };
 
-// core to display name mapping
-export const SYSTEM_DISPLAY_NAMES: Record<string, string> = {
-  nes: 'NES', gb: 'GB', gbc: 'GBC', gba: 'GBA', snes: 'SNES', vb: 'VB', n64: 'N64',
-  nds: 'DS', segaMS: 'MS', segaMD: 'MD', segaGG: 'GG', segaCD: 'CD',
-  sega32x: '32X', segaSaturn: 'Saturn', psx: 'PS1', psp: 'PSP',
-  atari2600: '2600', atari5200: '5200', atari7800: '7800',
-  lynx: 'Lynx', jaguar: 'Jaguar', opera: '3DO', arcade: 'Arcade',
-  mame2003_plus: 'MAME', dosbox_pure: 'DOS', vice_xpet: 'PET',
-  vice_xvic: 'VIC20', amiga: 'Amiga', vice_x64: 'C64', vice_x128: 'C128',
-  vice_xplus4: 'Plus/4', coleco: 'Coleco', pce: 'TG16', pcfx: 'PC-FX',
-  ngp: 'NGP', ws: 'WS',
-};
-
 // lookup maps for performance
 const coreToNameMap = new Map<string, string>();
 const coreToCategoryMap = new Map<string, string>();

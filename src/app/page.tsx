@@ -11,6 +11,7 @@ import {
   Trash2, ArrowUp, ArrowDown, ListFilter,
   Save, Clock, Eye, EyeOff, Gamepad2, CircleCheck, XCircle, Zap
 } from 'lucide-react';
+import { Alert } from '@/components/alert';
 
 // hooks
 import { useGameLibrary } from '@/hooks/useGameLibrary';
@@ -31,6 +32,22 @@ const GRID_STYLE = {
   gap: 'clamp(1rem, 2vw, 1.5rem)',
   width: '100%',
 } as const;
+
+async function selectFiles(): Promise<File[]> {
+  if ('showOpenFilePicker' in window) {
+    // @ts-ignore
+    const handles = await window.showOpenFilePicker({ multiple: true });
+    return Promise.all(handles.map((fh: any) => fh.getFile()));
+  }
+
+  return new Promise(resolve => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.onchange = (e: any) => resolve(Array.from(e.target.files || []));
+    input.click();
+  });
+}
 
 export default function Home() {
   // base state hooks
@@ -121,19 +138,7 @@ export default function Home() {
         onNavClick={ui.setActiveView}
         onAddGame={async () => {
           try {
-            let f: File[] = [];
-            if ('showOpenFilePicker' in window) {
-              // @ts-ignore
-              const h = await window.showOpenFilePicker({ multiple: true });
-              f = await Promise.all(h.map((fh: any) => fh.getFile()));
-            } else {
-              f = await new Promise(r => {
-                const i = document.createElement('input');
-                i.type = 'file'; i.multiple = true;
-                i.onchange = (e: any) => r(Array.from(e.target.files || []));
-                i.click();
-              });
-            }
+            const f = await selectFiles();
             await files.handleIncomingFiles(f);
           } catch (err: any) { if (err?.name !== 'AbortError') console.error(err); }
         }}
@@ -148,7 +153,7 @@ export default function Home() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <header className="mb-[33px] flex flex-col md:flex-row justify-between gap-6 md:items-center md:h-12">
+          <header className="mb-[32px] flex flex-col md:flex-row justify-between gap-6 md:items-center md:h-12">
             <h1 className="text-4xl font-extrabold tracking-tight capitalize" style={{ color: settings.currentColors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
               {ui.activeView}
               {ui.activeView === 'library' && <span className="ml-3">({view.sortedGames.length})</span>}
@@ -221,7 +226,7 @@ export default function Home() {
         </main>
       </div>
 
-      {ops.duplicateMessage && <Toast message={ops.duplicateMessage} isVisible={ops.showDuplicateMessage} />}
+      {ops.duplicateMessage && <Alert message={ops.duplicateMessage} isVisible={ops.showDuplicateMessage} />}
       <EmulatorNotification colors={settings.currentColors} autoSaveIcon={settings.autoSaveIcon} autoLoadIcon={settings.autoLoadIcon} />
 
       {(ops.systemPickerOpen || ops.systemPickerClosing) && (
@@ -254,7 +259,7 @@ export default function Home() {
   );
 }
 
-// --- Extracted Components (Included for completeness) ---
+// extracted components
 
 const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder }: any) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -287,9 +292,7 @@ const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder 
 });
 SortControls.displayName = 'SortControls';
 
-const Toast = ({ message, isVisible }: { message: string; isVisible: boolean }) => (
-  <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-xl shadow-2xl z-60 bg-red-500 text-white flex items-center gap-2 transition-opacity duration-300 ${isVisible ? 'animate-fade-in' : 'animate-fade-out'}`} style={{ pointerEvents: isVisible ? 'auto' : 'none' }}><XCircle className="w-5 h-5" /><span className="font-semibold">{message}</span></div>
-);
+
 
 const ThemeGrid = memo(({ colors, selectedTheme, onSelectTheme, animKey }: any) => (
   <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

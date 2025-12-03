@@ -20,7 +20,7 @@ interface SidebarProps {
 // tooltip component
 const Tooltip = memo(({ text, colors }: { text: string; colors: any }) => (
     <div
-        className="absolute left-full ml-6 px-3 py-2 rounded-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-[60] top-1/2 -translate-y-1/2"
+        className="absolute left-full ml-6 px-3 py-2 rounded-xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-[60] top-1/2 -translate-y-1/2"
         style={{
             backgroundColor: colors.midDark,
             color: colors.softLight,

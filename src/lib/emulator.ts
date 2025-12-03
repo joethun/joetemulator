@@ -70,7 +70,7 @@ export function cleanupGame(): void {
   }
 }
 
-function configureEmulator(
+function createEmulatorConfig(
   gameName: string,
   gameFile: File | string,
   core: string,
@@ -78,11 +78,10 @@ function configureEmulator(
   autoLoad: boolean,
   autoSave: boolean,
   autoSaveDelay: number
-): void {
+) {
   const theme = THEMES[themeName] || THEMES.default;
 
-  // configure emulator
-  Object.assign(window, {
+  return {
     EJS_color: theme.gradientTo,
     EJS_backgroundColor: theme.darkBg,
     EJS_player: "#game",
@@ -111,7 +110,20 @@ function configureEmulator(
       saveSavFiles: { visible: false },
       loadSavFiles: { visible: false }
     }
-  });
+  };
+}
+
+function configureEmulator(
+  gameName: string,
+  gameFile: File | string,
+  core: string,
+  themeName: string,
+  autoLoad: boolean,
+  autoSave: boolean,
+  autoSaveDelay: number
+): void {
+  const config = createEmulatorConfig(gameName, gameFile, core, themeName, autoLoad, autoSave, autoSaveDelay);
+  Object.assign(window, config);
 }
 
 function loadEmulatorScript(): void {
@@ -122,6 +134,12 @@ function loadEmulatorScript(): void {
   document.body.appendChild(script);
 }
 
+function parseGameName(file: File | string): string {
+  const fileName = file instanceof File ? file.name : (file as string).split('/').pop() || 'game';
+  const lastDotIndex = fileName.lastIndexOf('.');
+  return lastDotIndex !== -1 ? fileName.slice(0, lastDotIndex) : fileName;
+}
+
 export async function loadGame(
   file: File | string,
   core: string,
@@ -130,9 +148,7 @@ export async function loadGame(
   autoSave: boolean = false,
   autoSaveDelay: number = 60000
 ): Promise<void> {
-  const fileName = file instanceof File ? file.name : (file as string).split('/').pop() || 'game';
-  const lastDotIndex = fileName.lastIndexOf('.');
-  const gameName = lastDotIndex !== -1 ? fileName.slice(0, lastDotIndex) : fileName;
+  const gameName = parseGameName(file);
 
   cleanupGame();
   toggleMenuElements(false);

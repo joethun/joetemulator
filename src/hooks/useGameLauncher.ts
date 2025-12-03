@@ -15,7 +15,7 @@ export function useGameLauncher(settings: any) {
                 await saveGameFile(game.id, file);
             }
 
-            if (file) {
+            if (file && game.core) {
                 await loadGame(
                     file,
                     game.core,
@@ -25,7 +25,8 @@ export function useGameLauncher(settings: any) {
                     settings.autoSaveInterval * 1000
                 );
             } else {
-                console.error('game file missing', game);
+                if (!file) console.error('game file missing', game);
+                if (!game.core) console.error('game core missing', game);
             }
         } catch (e) {
             console.error('launch failed', e);

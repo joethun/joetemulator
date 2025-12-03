@@ -6,6 +6,40 @@ import { getSystemNameByCore } from '@/lib/constants';
 const STORAGE_KEY = 'games';
 const MIGRATION_KEY = 'games_migrated_v1';
 
+async function migrateLegacyGames(games: Game[]) {
+  const alreadyMigrated = localStorage.getItem(MIGRATION_KEY) === 'true';
+  if (alreadyMigrated) return;
+
+  for (const game of games) {
+    if (game.fileData) {
+      try {
+        const response = await fetch(game.fileData);
+        const blob = await response.blob();
+        const file = new File([blob], game.fileName || game.title, { type: 'application/octet-stream' });
+        await saveGameFile(game.id, file);
+      } catch (error) {
+        console.error('migration failed for:', game.title, error);
+      }
+    }
+  }
+  localStorage.setItem(MIGRATION_KEY, 'true');
+}
+
+function cleanGameData(games: Game[]): Game[] {
+  return games.map(game => {
+    const gameWithoutData = { ...game };
+    delete gameWithoutData.fileData;
+
+    if (game.genre === 'ROM' && game.core) {
+      gameWithoutData.genre = getSystemNameByCore(game.core);
+    }
+    if (game.coverArt && !game.coverArtFit) {
+      gameWithoutData.coverArtFit = 'cover';
+    }
+    return gameWithoutData;
+  });
+}
+
 export function useGameLibrary() {
   const [games, setGames] = useState<Game[]>([]);
   const migrationCheckedRef = useRef(false);
@@ -23,35 +57,10 @@ export function useGameLibrary() {
       const alreadyMigrated = localStorage.getItem(MIGRATION_KEY) === 'true';
 
       // convert old base64 to opfs
-      if (!alreadyMigrated) {
-        for (const game of loadedGames) {
-          if (game.fileData) {
-            try {
-              const response = await fetch(game.fileData);
-              const blob = await response.blob();
-              const file = new File([blob], game.fileName || game.title, { type: 'application/octet-stream' });
-              await saveGameFile(game.id, file);
-            } catch (error) {
-              console.error('migration failed for:', game.title, error);
-            }
-          }
-        }
-        localStorage.setItem(MIGRATION_KEY, 'true');
-      }
+      await migrateLegacyGames(loadedGames);
 
       // clean legacy data
-      loadedGames = loadedGames.map(game => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { fileData, ...gameWithoutData } = game;
-
-        if (game.genre === 'ROM' && game.core) {
-          gameWithoutData.genre = getSystemNameByCore(game.core);
-        }
-        if (game.coverArt && !game.coverArtFit) {
-          gameWithoutData.coverArtFit = 'cover';
-        }
-        return gameWithoutData;
-      });
+      loadedGames = cleanGameData(loadedGames);
 
       setGames(loadedGames);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedGames));

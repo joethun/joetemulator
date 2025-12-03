@@ -30,39 +30,46 @@ interface FileHandler {
     handleIncomingFiles: (files: File[]) => Promise<void>;
 }
 
+function validateSelection(core: string | null | undefined, files: any[], games: Game[]): string | null {
+    if (!core) return "Please select a system";
+    if (files.length === 1 && games.some(g => g.fileName === files[0].file.name)) {
+        return `"${files[0].file.name}" is duplicate`;
+    }
+    return null;
+}
+
+async function processBatch(files: any[], core: string, pendingGame: any, processFile: any) {
+    const filesToProcess = [...files];
+    const meta = pendingGame ? { ...pendingGame } : undefined;
+
+    await Promise.all(filesToProcess.map((f: any, idx: number) =>
+        processFile(f.file, idx === 0 && meta ? 0 : f.index, core, idx === 0 ? meta : undefined)
+    ));
+}
+
 export function useSystemPickerFlow(ops: GameOperations, lib: GameLibrary, files: FileHandler) {
 
     const handleSystemPickerDone = useCallback(async () => {
-        // handle edit mode
         if (ops.editingGame) {
             lib.updateGame(ops.editingGame.id, ops.editingGame);
             ops.closeSystemPicker();
             return;
         }
 
-        // validate core selection
         const effectiveCore = ops.pendingFiles.length > 1 ? ops.pendingBatchCore : ops.pendingGame?.core;
-        if (!effectiveCore) {
-            return ops.showDuplicateError("Please select a system");
-        }
+        const error = validateSelection(effectiveCore, ops.pendingFiles, lib.games);
 
-        // check duplicates
-        if (ops.pendingFiles.length === 1 && lib.games.some((g: any) => g.fileName === ops.pendingFiles[0].file.name)) {
-            ops.showDuplicateError(`"${ops.pendingFiles[0].file.name}" is duplicate`);
-            return ops.closeSystemPicker();
+        if (error) {
+            ops.showDuplicateError(error);
+            if (error.includes("duplicate")) ops.closeSystemPicker();
+            return;
         }
-
-        // process batch upload
-        const filesToProcess = [...ops.pendingFiles];
-        const meta = ops.pendingGame ? { ...ops.pendingGame } : undefined;
 
         ops.closeSystemPicker();
         files.setIsProcessing(true);
 
         try {
-            await Promise.all(filesToProcess.map((f: any, idx: number) =>
-                files.processGameFile(f.file, idx === 0 && meta ? 0 : f.index, effectiveCore, idx === 0 ? meta : undefined)
-            ));
+            await processBatch(ops.pendingFiles, effectiveCore!, ops.pendingGame, files.processGameFile);
         } catch (e) {
             console.error("batch error:", e);
         } finally {

@@ -64,15 +64,16 @@ export function useFileHandler(
             await new Promise(r => setTimeout(r, 300));
 
             // remove temp fields
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { progress, isComplete, ...newGame } = tempGame;
+            const newGame = { ...tempGame };
+            delete newGame.progress;
+            delete newGame.isComplete;
             addGame(newGame);
         } catch (e) {
             console.error("upload failed", e);
         } finally {
             setUploads(prev => {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { [gameId]: _, ...rest } = prev;
+                const rest = { ...prev };
+                delete rest[gameId];
                 return rest;
             });
         }
@@ -83,31 +84,32 @@ export function useFileHandler(
         if (!files.length) return;
 
         // categorize files - check for duplicates only
-        const categorized = files.reduce((acc, file, i) => {
+        const duplicates: string[] = [];
+        const needsSystem: { file: File; index: number }[] = [];
+
+        files.forEach((file, i) => {
             if (isDuplicate(file.name)) {
-                acc.duplicates.push(file.name);
+                duplicates.push(file.name);
             } else {
-                // all non-duplicate files need system selection
-                acc.needsSystem.push({ file, index: i });
+                needsSystem.push({ file, index: i });
             }
-            return acc;
-        }, { needsSystem: [] as any[], duplicates: [] as string[] });
+        });
 
         // if all files are duplicates, show error
-        if (categorized.duplicates.length && !categorized.needsSystem.length) {
-            ops.showDuplicateError(categorized.duplicates.length === 1 ? 'file already in library' : 'selected files are duplicates');
+        if (duplicates.length && !needsSystem.length) {
+            ops.showDuplicateError(duplicates.length === 1 ? 'File already in library' : 'Selected files are duplicates');
             return;
         }
 
         // open system picker for all non-duplicate files
-        if (categorized.needsSystem.length) {
-            ops.setPendingFiles(categorized.needsSystem);
-            ops.setPendingGame(categorized.needsSystem.length === 1 ? {
+        if (needsSystem.length) {
+            ops.setPendingFiles(needsSystem);
+            ops.setPendingGame(needsSystem.length === 1 ? {
                 id: Date.now(),
-                title: categorized.needsSystem[0].file.name.replace(/\.[^/.]+$/, ''),
+                title: needsSystem[0].file.name.replace(/\.[^/.]+$/, ''),
                 genre: 'Unknown',
-                filePath: categorized.needsSystem[0].file.name,
-                fileName: categorized.needsSystem[0].file.name
+                filePath: needsSystem[0].file.name,
+                fileName: needsSystem[0].file.name
             } : null);
             ops.setPendingBatchCore(null);
             ops.setCoverArtFit('cover');
