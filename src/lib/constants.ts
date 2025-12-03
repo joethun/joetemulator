@@ -1,18 +1,3 @@
-// file extension to emulator core mapping
-export const FILE_EXTENSIONS: Record<string, string> = {
-  fds: "nes", nes: "nes", unif: "nes", unf: "nes",
-  gb: "gb", gbc: "gbc", gba: "gba",
-  smc: "snes", sfc: "snes", swc: "snes",
-  vb: "vb", vboy: "vb", z64: "n64", n64: "n64",
-  nds: "nds", sms: "segaMS", md: "segaMD", gen: "segaMD", smd: "segaMD",
-  gg: "segaGG", "32x": "sega32x", cso: "psp", pbp: "psp",
-  a26: "atari2600", a52: "atari5200", a78: "atari7800",
-  lnx: "lynx", j64: "jaguar", jag: "jaguar",
-  d64: "vice_x64", t64: "vice_x64", tap: "vice_x64", crt: "vice_x64",
-  col: "coleco", cv: "coleco", pce: "pce", ngp: "ngp", ngc: "ngp",
-  ws: "ws", wsc: "ws"
-};
-
 // system categories and configurations
 export const SYSTEM_PICKER: Record<string, Record<string, string>> = {
   "Nintendo": {

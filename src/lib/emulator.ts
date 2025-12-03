@@ -1,13 +1,7 @@
-import { FILE_EXTENSIONS } from './constants';
 import { THEMES } from '@/types';
 
 const CDN_PATH = "https://cdn.jsdelivr.net/gh/joethun/EmulatorJS-With-Cores/";
 const CORES_WITH_THREADS = new Set(['psp', 'dosbox_pure']);
-
-const EJS_CORE_TO_RETROARCH: Record<string, string> = {
-  segaGG: 'genesis_plus_gx',
-  nds: 'desmume'
-};
 
 declare global {
   interface Window {
@@ -23,9 +17,7 @@ if (typeof window !== 'undefined') window.gameRunning = false;
 
 let autoSaveInterval: NodeJS.Timeout | null = null;
 
-function detectCore(extension: string): string {
-  return FILE_EXTENSIONS[extension] || "nes";
-}
+
 
 function toggleMenuElements(show: boolean): void {
   if (typeof document === 'undefined') return;
@@ -87,7 +79,6 @@ function configureEmulator(
   autoSave: boolean,
   autoSaveDelay: number
 ): void {
-  const retroarchCore = EJS_CORE_TO_RETROARCH[core];
   const theme = THEMES[themeName] || THEMES.default;
 
   // configure emulator
@@ -106,7 +97,8 @@ function configureEmulator(
     EJS_defaultOptions: {
       "desmume_advanced_timing": "disabled",
       "webgl2Enabled": "enabled",
-      ...(retroarchCore && { retroarch_core: retroarchCore })
+      ...(core === "segaGG" && { retroarch_core: "genesis_plus_gx" }),
+      ...(core === "nds" && { retroarch_core: "desmume" })
     },
     EJS_ready: () => addEventListeners(),
     EJS_onGameStart: () => {
@@ -132,7 +124,7 @@ function loadEmulatorScript(): void {
 
 export async function loadGame(
   file: File | string,
-  coreOverride?: string,
+  core: string,
   themeName: string = 'default',
   autoLoad: boolean = false,
   autoSave: boolean = false,
@@ -140,9 +132,7 @@ export async function loadGame(
 ): Promise<void> {
   const fileName = file instanceof File ? file.name : (file as string).split('/').pop() || 'game';
   const lastDotIndex = fileName.lastIndexOf('.');
-  const fileExtension = lastDotIndex !== -1 ? fileName.slice(lastDotIndex + 1).toLowerCase() : '';
   const gameName = lastDotIndex !== -1 ? fileName.slice(0, lastDotIndex) : fileName;
-  const core = coreOverride || detectCore(fileExtension);
 
   cleanupGame();
   toggleMenuElements(false);

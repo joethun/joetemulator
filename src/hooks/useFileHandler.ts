@@ -11,7 +11,6 @@ interface GameOperations {
     setSystemPickerOpen: (open: boolean) => void;
     setCoverArtFit: (fit: 'cover' | 'contain') => void;
     coverArtFit: 'cover' | 'contain';
-    getSystemFromExtension: (ext: string) => string | null;
     setPendingBatchCore: (core: string | null) => void;
 }
 
@@ -83,27 +82,24 @@ export function useFileHandler(
     const handleIncomingFiles = useCallback(async (files: File[]) => {
         if (!files.length) return;
 
+        // categorize files - check for duplicates only
         const categorized = files.reduce((acc, file, i) => {
             if (isDuplicate(file.name)) {
                 acc.duplicates.push(file.name);
             } else {
-                const ext = file.name.split(".").pop()?.toLowerCase() || "";
-                const core = ops.getSystemFromExtension(ext);
-                if (core) acc.withCore.push({ file, index: i, core });
-                else acc.needsSystem.push({ file, index: i });
+                // all non-duplicate files need system selection
+                acc.needsSystem.push({ file, index: i });
             }
             return acc;
-        }, { withCore: [] as any[], needsSystem: [] as any[], duplicates: [] as string[] });
+        }, { needsSystem: [] as any[], duplicates: [] as string[] });
 
-        if (categorized.duplicates.length && !categorized.withCore.length && !categorized.needsSystem.length) {
+        // if all files are duplicates, show error
+        if (categorized.duplicates.length && !categorized.needsSystem.length) {
             ops.showDuplicateError(categorized.duplicates.length === 1 ? 'file already in library' : 'selected files are duplicates');
             return;
         }
 
-        // process files with known core
-        categorized.withCore.forEach(f => processGameFile(f.file, f.index, f.core));
-
-        // open picker for files needing system
+        // open system picker for all non-duplicate files
         if (categorized.needsSystem.length) {
             ops.setPendingFiles(categorized.needsSystem);
             ops.setPendingGame(categorized.needsSystem.length === 1 ? {

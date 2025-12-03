@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { Game } from '@/types';
-import { FILE_EXTENSIONS } from '@/lib/constants';
 
 export function useGameOperations() {
   // edit state
@@ -39,11 +38,6 @@ export function useGameOperations() {
     }, 200);
   }, []);
 
-  // detect system from file extension
-  const getSystemFromExtension = useCallback((extension: string): string | null => {
-    return FILE_EXTENSIONS[extension.toLowerCase()] || null;
-  }, []);
-
   // extract files from drag drop event
   const extractFilesFromDataTransfer = useCallback((dataTransfer: DataTransfer): File[] => {
     if (dataTransfer.items?.length) {
@@ -75,7 +69,6 @@ export function useGameOperations() {
     setCoverArtFit,
     showDuplicateError,
     closeSystemPicker,
-    getSystemFromExtension,
     extractFilesFromDataTransfer,
   };
 }
