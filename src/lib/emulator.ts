@@ -16,8 +16,13 @@ declare global {
 if (typeof window !== 'undefined') window.gameRunning = false;
 
 let autoSaveInterval: NodeJS.Timeout | null = null;
+let currentAutoSaveDelay: number = 60000;
 
-
+function resetAutoSaveTimer(): void {
+  if (autoSaveInterval) {
+    startAutoSave(currentAutoSaveDelay);
+  }
+}
 
 function toggleMenuElements(show: boolean): void {
   if (typeof document === 'undefined') return;
@@ -170,6 +175,8 @@ async function saveState(source: 'manual' | 'auto' = 'manual'): Promise<void> {
     const state = emulator.gameManager.getState();
     await emulator.storage.states.put(`${emulator.getBaseFileName()}.state`, state);
     window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type: 'save', source } }));
+    // reset timer when manual save occurs
+    if (source === 'manual') resetAutoSaveTimer();
   } catch (error: any) {
     console.error("save failed:", error);
     emulator.displayMessage(`error saving: ${error.message}`);
@@ -184,6 +191,8 @@ async function loadState(source: 'manual' | 'auto' = 'manual'): Promise<void> {
     if (state) {
       await emulator.gameManager.loadState(state);
       window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type: 'load', source } }));
+      // reset timer when manual load occurs
+      if (source === 'manual') resetAutoSaveTimer();
     }
   } catch (error: any) {
     console.error("load failed:", error);
@@ -194,6 +203,7 @@ async function loadState(source: 'manual' | 'auto' = 'manual'): Promise<void> {
 function startAutoSave(interval: number): void {
   if (autoSaveInterval) clearInterval(autoSaveInterval);
   const safeInterval = Math.max(15000, interval);
+  currentAutoSaveDelay = safeInterval;
 
   autoSaveInterval = setInterval(() => {
     if (window.gameRunning && getEmulator()) saveState('auto');
