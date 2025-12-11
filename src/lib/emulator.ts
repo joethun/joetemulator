@@ -15,78 +15,67 @@ declare global {
 
 if (typeof window !== 'undefined') window.gameRunning = false;
 
-let autoSaveInterval: NodeJS.Timeout | null = null;
-let currentAutoSaveDelay: number = 60000;
+let autoSaveInterval: ReturnType<typeof setInterval> | null = null;
+let currentAutoSaveDelay = 60000;
+let eventListenersAdded = false;
 
+const getEmulator = () => window.EJS_emulator?.started ? window.EJS_emulator : null;
 
-function toggleMenuElements(show: boolean): void {
+function toggleMenuElements(show: boolean) {
   if (typeof document === 'undefined') return;
-  const displayVal = show ? '' : 'display: none !important; visibility: hidden !important;';
-  const root = document.querySelector('div[style*="min-h-screen"]') as HTMLElement;
-
+  const css = show ? '' : 'display:none!important;visibility:hidden!important';
+  document.querySelectorAll<HTMLElement>('aside,footer,main,header,nav').forEach(el => el.style.cssText = css);
+  const root = document.querySelector<HTMLElement>('div[style*="min-h-screen"]');
   if (root) root.style.zIndex = show ? 'auto' : '-1';
-
-  // hide ui when game runs
-  const elements = document.querySelectorAll('aside, footer, main, header, nav');
-  elements.forEach(el => {
-    if (el instanceof HTMLElement) el.style.cssText = displayVal;
-  });
 }
 
-function setupGameDisplay(): void {
-  if (typeof document === 'undefined') return;
-  let gameDiv = document.getElementById("game");
-
-  if (!gameDiv) {
-    gameDiv = document.createElement("div");
-    gameDiv.id = "game";
-    document.body.appendChild(gameDiv);
-  }
-
-  gameDiv.innerHTML = "";
-  document.body.style.overflow = "hidden";
-  document.documentElement.style.overflow = "hidden";
-}
-
-export function cleanupGame(): void {
+export function cleanupGame() {
   const gameDiv = document.getElementById("game");
-  if (gameDiv) {
-    gameDiv.innerHTML = "";
-    gameDiv.style.display = "none";
-  }
+  if (gameDiv) { gameDiv.innerHTML = ""; gameDiv.style.display = "none"; }
 
-  if (autoSaveInterval) {
-    clearInterval(autoSaveInterval);
-    autoSaveInterval = null;
-  }
+  if (autoSaveInterval) { clearInterval(autoSaveInterval); autoSaveInterval = null; }
 
   document.querySelectorAll('script[src*="loader.js"]').forEach(s => s.remove());
   toggleMenuElements(true);
   window.gameRunning = false;
 
-  // cleanup global emulator vars
-  for (const key in window) {
-    if (key.startsWith('EJS_')) delete window[key];
-  }
+  Object.keys(window).filter(k => k.startsWith('EJS_')).forEach(k => delete window[k]);
 }
 
-function createEmulatorConfig(
-  gameName: string,
-  gameFile: File | string,
+export async function loadGame(
+  file: File | string,
   core: string,
-  themeName: string,
-  autoLoad: boolean,
-  autoSave: boolean,
-  autoSaveDelay: number
+  themeName = 'default',
+  autoLoad = false,
+  autoSave = false,
+  autoSaveDelay = 60000
 ) {
+  cleanupGame();
+  toggleMenuElements(false);
+
+  // setup game container
+  let gameDiv = document.getElementById("game");
+  if (!gameDiv) {
+    gameDiv = document.createElement("div");
+    gameDiv.id = "game";
+    document.body.appendChild(gameDiv);
+  }
+  gameDiv.innerHTML = "";
+  document.body.style.overflow = document.documentElement.style.overflow = "hidden";
+  window.gameRunning = true;
+
+  // parse game name from file
+  const fileName = file instanceof File ? file.name : (file as string).split('/').pop() || 'game';
+  const gameName = fileName.includes('.') ? fileName.slice(0, fileName.lastIndexOf('.')) : fileName;
+
   const theme = THEMES[themeName] || THEMES.default;
 
-  return {
+  Object.assign(window, {
     EJS_color: theme.gradientTo,
     EJS_backgroundColor: theme.darkBg,
     EJS_player: "#game",
     EJS_gameName: gameName,
-    EJS_gameUrl: gameFile,
+    EJS_gameUrl: file,
     EJS_core: core,
     EJS_pathtodata: CDN_PATH,
     EJS_startOnLoaded: true,
@@ -94,127 +83,70 @@ function createEmulatorConfig(
     EJS_threads: CORES_WITH_THREADS.has(core),
     EJS_language: "en",
     EJS_defaultOptions: {
-      "desmume_advanced_timing": "disabled",
-      "webgl2Enabled": "enabled",
+      desmume_advanced_timing: "disabled",
+      webgl2Enabled: "enabled",
       ...(core === "segaGG" && { retroarch_core: "genesis_plus_gx" }),
       ...(core === "nds" && { retroarch_core: "desmume" })
     },
-    EJS_ready: () => addEventListeners(),
+    EJS_ready: addEventListeners,
     EJS_onGameStart: () => {
       if (autoLoad) loadState('auto');
       if (autoSave) startAutoSave(autoSaveDelay);
     },
-    EJS_Buttons: {
-      exitEmulation: false,
-      cacheManager: false,
-      saveSavFiles: { visible: false },
-      loadSavFiles: { visible: false }
-    }
-  };
-}
+    EJS_Buttons: { exitEmulation: false, cacheManager: false, saveSavFiles: { visible: false }, loadSavFiles: { visible: false } }
+  });
 
-function configureEmulator(
-  gameName: string,
-  gameFile: File | string,
-  core: string,
-  themeName: string,
-  autoLoad: boolean,
-  autoSave: boolean,
-  autoSaveDelay: number
-): void {
-  const config = createEmulatorConfig(gameName, gameFile, core, themeName, autoLoad, autoSave, autoSaveDelay);
-  Object.assign(window, config);
-}
-
-function loadEmulatorScript(): void {
-  if (typeof document === 'undefined') return;
+  // load emulator script
   const script = document.createElement("script");
   script.src = `${CDN_PATH}/loader.js`;
   script.onerror = () => console.error("failed to load ejs loader");
   document.body.appendChild(script);
 }
 
-function parseGameName(file: File | string): string {
-  const fileName = file instanceof File ? file.name : (file as string).split('/').pop() || 'game';
-  const lastDotIndex = fileName.lastIndexOf('.');
-  return lastDotIndex !== -1 ? fileName.slice(0, lastDotIndex) : fileName;
-}
-
-export async function loadGame(
-  file: File | string,
-  core: string,
-  themeName: string = 'default',
-  autoLoad: boolean = false,
-  autoSave: boolean = false,
-  autoSaveDelay: number = 60000
-): Promise<void> {
-  const gameName = parseGameName(file);
-
-  cleanupGame();
-  toggleMenuElements(false);
-  setupGameDisplay();
-  window.gameRunning = true;
-
-  configureEmulator(gameName, file, core, themeName, autoLoad, autoSave, autoSaveDelay);
-  loadEmulatorScript();
-}
-
-function getEmulator(): any | null {
-  return window.EJS_emulator?.started ? window.EJS_emulator : null;
-}
-
-async function saveState(source: 'manual' | 'auto' = 'manual'): Promise<void> {
-  const emulator = getEmulator();
-  if (!emulator) return;
+async function saveState(source: 'manual' | 'auto' = 'manual') {
+  const emu = getEmulator();
+  if (!emu) return;
   try {
-    const state = emulator.gameManager.getState();
-    await emulator.storage.states.put(`${emulator.getBaseFileName()}.state`, state);
+    const state = emu.gameManager.getState();
+    await emu.storage.states.put(`${emu.getBaseFileName()}.state`, state);
     window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type: 'save', source } }));
-    // reset timer when manual save occurs
     if (source === 'manual' && autoSaveInterval) startAutoSave();
-  } catch (error: any) {
-    console.error("save failed:", error);
-    emulator.displayMessage(`error saving: ${error.message}`);
+  } catch (e: any) {
+    console.error("save failed:", e);
+    emu.displayMessage(`error saving: ${e.message}`);
   }
 }
 
-async function loadState(source: 'manual' | 'auto' = 'manual'): Promise<void> {
-  const emulator = getEmulator();
-  if (!emulator) return;
+async function loadState(source: 'manual' | 'auto' = 'manual') {
+  const emu = getEmulator();
+  if (!emu) return;
   try {
-    const state = await emulator.storage.states.get(`${emulator.getBaseFileName()}.state`);
-    if (state) {
-      await emulator.gameManager.loadState(state);
-      window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type: 'load', source } }));
-      // reset timer when manual load occurs
-      if (source === 'manual' && autoSaveInterval) startAutoSave();
-    }
-  } catch (error: any) {
-    console.error("load failed:", error);
-    emulator.displayMessage(`error loading: ${error.message}`);
+    const state = await emu.storage.states.get(`${emu.getBaseFileName()}.state`);
+    if (!state) return;
+    await emu.gameManager.loadState(state);
+    window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type: 'load', source } }));
+    if (source === 'manual' && autoSaveInterval) startAutoSave();
+  } catch (e: any) {
+    console.error("load failed:", e);
+    emu.displayMessage(`error loading: ${e.message}`);
   }
 }
 
-function startAutoSave(interval?: number): void {
+function startAutoSave(interval?: number) {
   if (interval) currentAutoSaveDelay = Math.max(15000, interval);
   if (autoSaveInterval) clearInterval(autoSaveInterval);
-
   autoSaveInterval = setInterval(() => {
     if (window.gameRunning && getEmulator()) saveState('auto');
   }, currentAutoSaveDelay);
 }
 
-let eventListenersAdded = false;
-function addEventListeners(): void {
+function addEventListeners() {
   if (eventListenersAdded || typeof document === 'undefined') return;
-
-  const handleKeydown = (event: KeyboardEvent) => {
+  document.addEventListener("keydown", e => {
     if (!window.gameRunning || !getEmulator()) return;
-    if (event.key === 'F1') { event.preventDefault(); saveState('manual'); }
-    else if (event.key === 'F2') { event.preventDefault(); loadState('manual'); }
-  };
-
-  document.addEventListener("keydown", handleKeydown);
+    if (e.key === 'F1') { e.preventDefault(); saveState('manual'); }
+    else if (e.key === 'F2') { e.preventDefault(); loadState('manual'); }
+  });
   eventListenersAdded = true;
 }
 

@@ -49,7 +49,7 @@ input::placeholder {
   max-height: 100% !important;
 }
 
-/* keyframe animations */
+/* fade in animation */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -64,6 +64,7 @@ input::placeholder {
   animation: fadeIn 0.2s ease-out both;
 }
 
+/* fade out animation */
 @keyframes fadeOut {
   from {
     opacity: 1;
@@ -78,6 +79,7 @@ input::placeholder {
   animation: fadeOut 0.2s ease-out forwards;
 }
 
+/* card enter animation */
 @keyframes cardEnter {
   from {
     opacity: 0;
@@ -92,6 +94,7 @@ input::placeholder {
   animation: cardEnter 0.2s ease-out both;
 }
 
+/* card exit animation */
 @keyframes cardExit {
   from {
     opacity: 1;
@@ -106,6 +109,7 @@ input::placeholder {
   animation: cardExit 0.2s ease-out forwards;
 }
 
+/* slide down animation */
 @keyframes slideDown {
   from {
     opacity: 1;
@@ -118,6 +122,7 @@ input::placeholder {
   }
 }
 
+/* slide up animation */
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -130,6 +135,7 @@ input::placeholder {
   }
 }
 
+/* shake animation for delete mode */
 @keyframes shake {
   from {
     transform: rotate(-1deg) translateX(-2px);
@@ -144,6 +150,7 @@ input::placeholder {
   animation: shake 0.075s linear infinite alternate;
 }
 
+/* slide in from left animation */
 @keyframes fadeInSlide {
   from {
     opacity: 0;
@@ -156,7 +163,7 @@ input::placeholder {
   }
 }
 
-/* snappy animations mode - set animations and transitions to 0.1s */
+/* snappy animations mode - speeds up all transitions */
 .snappy-animations *,
 .snappy-animations *::before,
 .snappy-animations *::after {

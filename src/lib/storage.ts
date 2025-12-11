@@ -1,75 +1,42 @@
 const GAME_DIR = 'games';
-const WRITE_CHUNK_SIZE = 64 * 1024 * 1024; // 64mb chunks
+const CHUNK_SIZE = 64 * 1024 * 1024;
 
-// cached directory handle for performance
 let dirHandle: FileSystemDirectoryHandle | null = null;
 
-// get directory with caching
-async function getDir(): Promise<FileSystemDirectoryHandle> {
-  if (!dirHandle) {
-    const root = await navigator.storage.getDirectory();
-    dirHandle = await root.getDirectoryHandle(GAME_DIR, { create: true });
-  }
-  return dirHandle;
+async function getDir() {
+  return dirHandle ||= await (await navigator.storage.getDirectory()).getDirectoryHandle(GAME_DIR, { create: true });
 }
 
-// save file in chunks for large files
-export async function saveGameFile(
-  gameId: number,
-  file: File,
-  onProgress?: (progress: number) => void
-): Promise<void> {
+export async function saveGameFile(gameId: number, file: File, onProgress?: (p: number) => void) {
   const dir = await getDir();
-  const handle = await dir.getFileHandle(`${gameId}.rom`, { create: true });
-  const writable = await handle.createWritable();
+  const writable = await (await dir.getFileHandle(`${gameId}.rom`, { create: true })).createWritable();
 
   try {
     const size = file.size;
-    let offset = 0;
-
-    // write file in chunks
-    while (offset < size) {
-      const end = Math.min(offset + WRITE_CHUNK_SIZE, size);
-      const chunk = file.slice(offset, end);
-
-      await writable.write(chunk);
-      offset = end;
-
-      if (onProgress) {
-        onProgress(Math.round((offset / size) * 100));
-      }
-
-      // yield to browser
-      if (offset < size) {
-        await new Promise(r => setTimeout(r, 0));
-      }
+    for (let offset = 0; offset < size; offset += CHUNK_SIZE) {
+      await writable.write(file.slice(offset, Math.min(offset + CHUNK_SIZE, size)));
+      onProgress?.(Math.round(((offset + CHUNK_SIZE) / size) * 100));
+      if (offset + CHUNK_SIZE < size) await new Promise(r => setTimeout(r, 0));
     }
-
     await writable.close();
-  } catch (error) {
+  } catch (e) {
     await writable.abort();
-    throw error;
+    throw e;
   }
 }
 
-// direct file read
 export async function getGameFile(gameId: number): Promise<File | null> {
   try {
-    const dir = await getDir();
-    const handle = await dir.getFileHandle(`${gameId}.rom`);
-    return await handle.getFile();
-  } catch (error) {
-    if ((error as any).name === 'NotFoundError') return null;
-    throw error;
+    return await (await (await getDir()).getFileHandle(`${gameId}.rom`)).getFile();
+  } catch (e) {
+    return (e as any).name === 'NotFoundError' ? null : (() => { throw e; })();
   }
 }
 
-// remove game file
-export async function deleteGameFile(gameId: number): Promise<void> {
+export async function deleteGameFile(gameId: number) {
   try {
-    const dir = await getDir();
-    await dir.removeEntry(`${gameId}.rom`);
-  } catch (error) {
-    if ((error as any).name !== 'NotFoundError') throw error;
+    await (await getDir()).removeEntry(`${gameId}.rom`);
+  } catch (e) {
+    if ((e as any).name !== 'NotFoundError') throw e;
   }
 }

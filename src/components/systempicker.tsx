@@ -39,13 +39,12 @@ export const SystemPickerModal = memo(({
     const [isRenameFocused, setIsRenameFocused] = useState(false);
     const [isSearchFocused, setIsSearchFocused] = useState(false);
 
-    // derived values
     const currentCore = editingGame?.core || (pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core);
     const showCoverArt = pendingFiles.length <= 1;
     const canRename = !!editingGame || pendingFiles.length === 1;
     const currentTitle = editingGame ? editingGame.title : (pendingGame?.title || '');
 
-    // filter systems
+    // filter systems by search query
     const categories = useMemo(() => {
         const filtered: Record<string, Array<[string, string]>> = {};
         Object.entries(SYSTEM_PICKER).forEach(([cat, systems]) => {
@@ -62,7 +61,7 @@ export const SystemPickerModal = memo(({
             style={{ animation: isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.2s ease-out forwards' }}
         >
             <div
-                className="p-6 rounded-xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl border overflow-hidden"
+                className="p-6 rounded-xl max-w-7xl w-full max-h-[90vh] flex flex-col shadow-2xl border overflow-hidden"
                 style={{
                     backgroundColor: colors.darkBg,
                     borderColor: colors.midDark,
@@ -91,11 +90,7 @@ export const SystemPickerModal = memo(({
                                 onChange={(e) => onRename(e.target.value)}
                                 onFocus={() => setIsRenameFocused(true)}
                                 onBlur={() => setIsRenameFocused(false)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        onDone();
-                                    }
-                                }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') onDone(); }}
                                 className="bg-transparent h-full flex-1 focus:outline-none text-2xl font-bold pr-6"
                                 style={{ color: colors.softLight }}
                                 placeholder="Game Title"
@@ -113,13 +108,8 @@ export const SystemPickerModal = memo(({
 
                 <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0 overflow-hidden">
                     {showCoverArt && (
-                        <CoverArtSection
-                            colors={colors}
-                            gradient={gradient}
-                            coverArtState={coverArtState}
-                        />
+                        <CoverArtSection colors={colors} gradient={gradient} coverArtState={coverArtState} />
                     )}
-
                     <SystemListSection
                         colors={colors}
                         categories={categories}
@@ -150,64 +140,79 @@ export const SystemPickerModal = memo(({
 
 SystemPickerModal.displayName = 'SystemPickerModal';
 
+// cover art management section
 const CoverArtSection = memo(({ colors, gradient, coverArtState }: any) => (
-    <div className="flex-shrink-0 w-full xl:w-80 space-y-4 max-h-[60vh] xl:max-h-full overflow-y-auto">
-        <div className="rounded-xl border overflow-hidden" style={{ borderColor: colors.midDark, backgroundColor: colors.darkBg }}>
-            {coverArtState.file ? (
-                <div className="relative group aspect-[4/5] bg-black/20">
-                    <img src={coverArtState.file} alt="Cover" className="w-full h-full" style={{ objectFit: coverArtState.fit, objectPosition: 'center' }} />
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={coverArtState.onRemove} className="p-2.5 rounded-xl hover:shadow-md active:scale-95 transition-all bg-red-500 text-white">
-                            <Trash2 className="w-5 h-5" />
+    <div className="flex-shrink-0 w-full xl:w-96 max-h-[60vh] xl:max-h-full overflow-y-auto">
+        <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }}>
+            <div className="flex items-center gap-3 sm:gap-5 mb-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.midDark, color: colors.highlight }}>
+                    <Image className="w-5 h-5 sm:w-6 sm:h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Cover Art</h3>
+                    <p className="text-xs sm:text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Upload or manage game artwork.</p>
+                </div>
+            </div>
+
+            <div className="h-px w-full mb-4" style={{ backgroundColor: colors.highlight + '30' }} />
+
+            <div className="space-y-4">
+                <div className="rounded-xl overflow-hidden border relative group bg-black/20" style={{ borderColor: colors.midDark }}>
+                    {coverArtState.file ? (
+                        <div className="aspect-[4/5] relative">
+                            <img src={coverArtState.file} alt="Cover" className="w-full h-full" style={{ objectFit: coverArtState.fit, objectPosition: 'center' }} />
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={coverArtState.onRemove} className="p-2.5 rounded-xl hover:shadow-md active:scale-95 transition-all bg-red-500 text-white">
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="aspect-[4/5] flex items-center justify-center p-6 text-center" style={{ backgroundColor: colors.midDark }}>
+                            <p className="text-sm font-medium opacity-60" style={{ color: colors.softLight }}>No Cover Art</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="space-y-3">
+                    {coverArtState.file && (
+                        <button onClick={() => coverArtState.onFitChange(coverArtState.fit === 'contain' ? 'cover' : 'contain')} className="w-full h-12 rounded-xl text-sm font-semibold active:scale-95 transition-all" style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
+                            {coverArtState.fit === 'contain' ? 'Zoom to Fill' : 'Shrink to Fit'}
                         </button>
+                    )}
+
+                    <div className="relative">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            id="art-upload"
+                            onChange={e => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                    const r = new FileReader();
+                                    r.onload = ev => coverArtState.onUpload(ev.target?.result);
+                                    r.readAsDataURL(f);
+                                }
+                                e.target.value = '';
+                            }}
+                        />
+                        <label
+                            htmlFor="art-upload"
+                            className="w-full h-12 flex items-center justify-center rounded-xl text-sm font-semibold active:scale-95 transition-all shadow-lg"
+                            style={{ ...(coverArtState.file ? { backgroundColor: colors.highlight } : gradient), color: colors.darkBg }}
+                        >
+                            {coverArtState.file ? 'Replace Cover Art' : 'Add Cover Art'}
+                        </label>
                     </div>
                 </div>
-            ) : (
-                <div className="aspect-[3/4] flex items-center justify-center p-6 text-center" style={{ backgroundColor: colors.midDark }}>
-                    <div>
-                        <Image className="w-8 h-8 mx-auto mb-4" style={{ color: colors.highlight }} />
-                        <p className="text-sm font-medium" style={{ color: colors.softLight }}>No Cover Art</p>
-                    </div>
-                </div>
-            )}
-
-            {coverArtState.file && (
-                <div className="p-4 border-t" style={{ borderColor: colors.highlight + '30' }}>
-                    <button onClick={() => coverArtState.onFitChange(coverArtState.fit === 'contain' ? 'cover' : 'contain')} className="w-full h-12 rounded-xl text-sm font-semibold active:scale-95 transition-all" style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>
-                        {coverArtState.fit === 'contain' ? 'Zoom to Fill' : 'Shrink to Fit'}
-                    </button>
-                </div>
-            )}
-
-            <div className="p-4 border-t" style={{ borderColor: colors.highlight + '30' }}>
-                <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    id="art-upload"
-                    onChange={e => {
-                        const f = e.target.files?.[0];
-                        if (f) {
-                            const r = new FileReader();
-                            r.onload = ev => coverArtState.onUpload(ev.target?.result);
-                            r.readAsDataURL(f);
-                        }
-                        e.target.value = '';
-                    }}
-                />
-                <label
-                    htmlFor="art-upload"
-                    className="w-full h-12 flex items-center justify-center rounded-xl text-sm font-semibold active:scale-95 transition-all"
-                    style={{ ...(coverArtState.file ? { backgroundColor: colors.highlight } : gradient), color: colors.darkBg }}
-                >
-                    {coverArtState.file ? 'Change Image' : 'Upload Cover Art'}
-                </label>
             </div>
         </div>
     </div>
 ));
 CoverArtSection.displayName = 'CoverArtSection';
 
+// system selection list
 const SystemListSection = memo(({ colors, categories, searchQuery, onSearchChange, currentCore, onSelectSystem, isSearchFocused, setIsSearchFocused }: any) => (
     <div className="flex-1 flex flex-col min-w-0">
         <SearchBar

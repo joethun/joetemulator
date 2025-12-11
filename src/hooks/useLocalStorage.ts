@@ -8,11 +8,9 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     if (typeof window === 'undefined') return;
     try {
       const item = localStorage.getItem(key);
-      if (item) {
-        setValue(JSON.parse(item));
-      }
+      if (item) setValue(JSON.parse(item));
     } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error);
+      console.error(`error reading localStorage key "${key}":`, error);
     }
     setIsHydrated(true);
   }, [key]);
@@ -22,7 +20,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
-      console.error(`Error writing to localStorage key "${key}":`, error);
+      console.error(`error writing to localStorage key "${key}":`, error);
     }
   }, [key, value, isHydrated]);
 

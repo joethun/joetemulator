@@ -1,29 +1,24 @@
 import { useCallback } from 'react';
 import { Game } from '@/types';
 
-export function useGameDeletion(lib: any, ui: any) {
+const ANIM_DELAY = 350;
 
+export function useGameDeletion(lib: any, ui: any) {
     const handleDeleteGame = useCallback(async (game: Game) => {
         if (!confirm(`Delete "${game.title}"?`)) return;
 
-        ui.setDeletingGameIds((prev: Set<number>) => new Set(prev).add(game.id));
-        await new Promise(r => setTimeout(r, 350)); // wait for animation
+        ui.setDeletingGameIds((p: Set<number>) => new Set(p).add(game.id));
+        await new Promise(r => setTimeout(r, ANIM_DELAY));
         await lib.deleteGame(game.id);
-
-        ui.setDeletingGameIds((prev: Set<number>) => {
-            const n = new Set(prev);
-            n.delete(game.id);
-            return n;
-        });
+        ui.setDeletingGameIds((p: Set<number>) => { const n = new Set(p); n.delete(game.id); return n; });
     }, [lib, ui]);
 
     const onMassDelete = useCallback(async () => {
         if (!ui.selectedGameIds.size || !confirm(`Delete ${ui.selectedGameIds.size} games?`)) return;
 
         ui.setDeletingGameIds(new Set(ui.selectedGameIds));
-        await new Promise(r => setTimeout(r, 350));
+        await new Promise(r => setTimeout(r, ANIM_DELAY));
         await Promise.all([...ui.selectedGameIds].map((id: number) => lib.deleteGame(id)));
-
         ui.exitDeleteMode();
         ui.setDeletingGameIds(new Set());
     }, [lib, ui]);

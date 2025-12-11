@@ -9,11 +9,9 @@ import { SystemPickerModal } from '@/components/systempicker';
 import { EmulatorNotification } from '@/components/emulatornotification';
 import {
   Trash2, ArrowUp, ArrowDown, ListFilter,
-  Save, Clock, Eye, EyeOff, Gamepad2, CircleCheck, XCircle, Zap
+  Save, Clock, Eye, EyeOff, Gamepad2, CircleCheck, Zap
 } from 'lucide-react';
 import { Alert } from '@/components/alert';
-
-// hooks
 import { useGameLibrary } from '@/hooks/useGameLibrary';
 import { useUIState } from '@/hooks/useUIState';
 import { useGameOperations } from '@/hooks/useGameOperations';
@@ -24,7 +22,6 @@ import { useGameLauncher } from '@/hooks/useGameLauncher';
 import { useGameDeletion } from '@/hooks/useGameDeletion';
 import { useSystemPickerFlow } from '@/hooks/useSystemPickerFlow';
 
-// constants
 const FONT_FAMILY = 'Lexend, sans-serif';
 const GRID_STYLE = {
   display: 'grid',
@@ -50,25 +47,17 @@ async function selectFiles(): Promise<File[]> {
 }
 
 export default function Home() {
-  // base state hooks
   const lib = useGameLibrary();
   const ui = useUIState();
   const ops = useGameOperations();
   const settings = useAppSettings();
-
-  // specialized logic hooks
   const files = useFileHandler(lib.games, lib.addGame, ops);
   const view = useGameList(lib.games, files.uploads, ui.gameSearchQuery, settings.sortBy, settings.sortOrder);
-
-  // action hooks
   const launcher = useGameLauncher(settings);
   const deletion = useGameDeletion(lib, ui);
   const pickerFlow = useSystemPickerFlow(ops, lib, files);
-
-  // local state
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // lifecycle
   useEffect(() => {
     ui.setIsMounted(true);
     lib.loadGamesFromStorage();
@@ -80,7 +69,6 @@ export default function Home() {
     if (ui.activeView === 'themes') ui.setThemeAnimationKey(k => k + 1);
   }, [ui.activeView, ui.setThemeAnimationKey]);
 
-  // drag handlers
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault(); e.stopPropagation();
     if (e.dataTransfer?.types.includes('Files')) {
@@ -108,7 +96,6 @@ export default function Home() {
     if (e.dataTransfer) await files.handleIncomingFiles(ops.extractFilesFromDataTransfer(e.dataTransfer));
   }, [ui, files, ops]);
 
-  // render game card
   const renderGameCard = useCallback((g: Game, i: number) => (
     <div key={g.id} className={ui.deletingGameIds.has(g.id) ? 'animate-card-exit' : 'animate-card-enter'}
       style={{ animationDelay: ui.deletingGameIds.has(g.id) ? '0s' : isInitialLoad ? `${i * 0.05}s` : '0s' }}>
@@ -259,8 +246,7 @@ export default function Home() {
   );
 }
 
-// extracted components
-
+// sort controls dropdown
 const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
@@ -292,8 +278,7 @@ const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder 
 });
 SortControls.displayName = 'SortControls';
 
-
-
+// theme selection grid
 const ThemeGrid = memo(({ colors, selectedTheme, onSelectTheme, animKey }: any) => (
   <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
     {Object.entries(THEMES).map(([name, t]: [string, any], idx) => (
@@ -311,6 +296,7 @@ const ThemeGrid = memo(({ colors, selectedTheme, onSelectTheme, animKey }: any) 
 ));
 ThemeGrid.displayName = 'ThemeGrid';
 
+// toggle switch for settings
 const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
   <button role="switch" aria-checked={checked} onClick={onChange} className={`relative inline-flex h-8 w-14 flex-shrink-0 rounded-full border-2 transition-colors duration-200 items-center ${checked ? 'border-transparent' : ''}`} style={{ backgroundColor: checked ? 'transparent' : colors.darkBg, borderColor: checked ? 'transparent' : colors.midDark, backgroundImage: checked ? gradient.backgroundImage : 'none', boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.3)' }}>
     <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full shadow transition duration-200 ml-0.5 ${checked ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: checked ? colors.darkBg : colors.softLight }} />
@@ -318,6 +304,7 @@ const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
 ));
 SettingsSwitch.displayName = 'SettingsSwitch';
 
+// settings page content
 const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon, reducedMotion, setReducedMotion }: any) => (
   <div className="animate-fade-in w-full grid gap-4">
     <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animation: 'fadeIn 0.4s ease-out both' }}>

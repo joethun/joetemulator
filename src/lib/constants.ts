@@ -26,11 +26,10 @@ export const SYSTEM_PICKER: Record<string, Record<string, string>> = {
   }
 };
 
-// lookup maps for performance
+// lookup maps for fast core resolution
 const coreToNameMap = new Map<string, string>();
 const coreToCategoryMap = new Map<string, string>();
 
-// populate lookup maps on init
 for (const [category, systems] of Object.entries(SYSTEM_PICKER)) {
   for (const [name, core] of Object.entries(systems)) {
     coreToNameMap.set(core, name);
@@ -38,12 +37,10 @@ for (const [category, systems] of Object.entries(SYSTEM_PICKER)) {
   }
 }
 
-// convert core to system name
 export function getSystemNameByCore(core: string): string {
   return coreToNameMap.get(core) || 'Unknown System';
 }
 
-// get manufacturer category from core
 export function getSystemCategory(core?: string): string {
   return core && coreToCategoryMap.get(core) || 'Other';
 }

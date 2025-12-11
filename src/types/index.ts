@@ -8,8 +8,8 @@ export interface Game {
   core?: string;
   coverArt?: string;
   coverArtFit?: 'cover' | 'contain';
-  progress?: number; // upload progress 0-100
-  isComplete?: boolean; // completion animation trigger
+  progress?: number;
+  isComplete?: boolean;
 }
 
 type ThemeColors = {
@@ -23,7 +23,6 @@ type ThemeColors = {
   gradientTo: string;
 };
 
-// theme color configurations
 export const THEMES: Record<string, ThemeColors> = {
   default: {
     highlight: '#8899cc', darkBg: '#0a0a0f', midDark: '#151520',
@@ -74,7 +73,6 @@ export const THEMES: Record<string, ThemeColors> = {
 
 export type ThemeConfig = ThemeColors;
 
-// gradient style generator
 export const getGradientStyle = (from: string, to: string) => ({
   backgroundImage: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`
 });

@@ -50,10 +50,7 @@ export const Sidebar = memo(({ activeView, colors, gradient, onNavClick, onAddGa
                     />
                     <Tooltip text="Joe T Emulator" colors={colors} />
                 </div>
-                <div
-                    className="w-12 h-px"
-                    style={{ backgroundColor: colors.highlight + '30' }}
-                />
+                <div className="w-12 h-px" style={{ backgroundColor: colors.highlight + '30' }} />
             </div>
 
             <nav className="flex-1 flex flex-col items-center gap-2 mt-2">
@@ -83,10 +80,7 @@ export const Sidebar = memo(({ activeView, colors, gradient, onNavClick, onAddGa
                     <button
                         onClick={onAddGame}
                         className="w-12 h-12 rounded-xl transition-all flex items-center justify-center"
-                        style={{
-                            ...gradient,
-                            color: colors.darkBg
-                        }}
+                        style={{ ...gradient, color: colors.darkBg }}
                     >
                         <Plus className="w-6 h-6" />
                     </button>

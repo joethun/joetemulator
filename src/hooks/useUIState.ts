@@ -2,7 +2,6 @@ import { useState, useCallback, useRef } from 'react';
 
 export function useUIState() {
   const [activeView, setActiveView] = useState<'library' | 'themes' | 'settings'>('library');
-
   const [isMounted, setIsMounted] = useState(false);
   const [gameSearchQuery, setGameSearchQuery] = useState('');
   const [gameSearchFocused, setGameSearchFocused] = useState(false);
@@ -15,33 +14,25 @@ export function useUIState() {
   const gameSearchInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
-  // toggle game selection
-  const toggleGameSelection = useCallback((gameId: number) => {
+  const toggleGameSelection = useCallback((id: number) => {
     setSelectedGameIds(prev => {
       const next = new Set(prev);
-      next.has(gameId) ? next.delete(gameId) : next.add(gameId);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }, []);
 
-  // exit delete mode
   const exitDeleteMode = useCallback(() => {
     setIsDeleteMode(false);
     setSelectedGameIds(new Set());
   }, []);
 
   return {
-    activeView, setActiveView,
-
-    isMounted, setIsMounted,
-    gameSearchQuery, setGameSearchQuery,
-    gameSearchFocused, setGameSearchFocused,
-    isDragActive, setIsDragActive,
-    themeAnimationKey, setThemeAnimationKey,
-    isDeleteMode, setIsDeleteMode,
-    selectedGameIds, setSelectedGameIds,
-    deletingGameIds, setDeletingGameIds,
-    gameSearchInputRef, dragCounterRef,
+    activeView, setActiveView, isMounted, setIsMounted,
+    gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused,
+    isDragActive, setIsDragActive, themeAnimationKey, setThemeAnimationKey,
+    isDeleteMode, setIsDeleteMode, selectedGameIds, setSelectedGameIds,
+    deletingGameIds, setDeletingGameIds, gameSearchInputRef, dragCounterRef,
     toggleGameSelection, exitDeleteMode,
   };
 }

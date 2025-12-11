@@ -2,53 +2,31 @@ import { useCallback } from 'react';
 import { getSystemNameByCore } from '@/lib/constants';
 import { Game } from '@/types';
 
-interface GameOperations {
+interface Ops {
     editingGame: Game | null;
     pendingGame: any;
     pendingFiles: any[];
     pendingBatchCore: string | null;
-    systemPickerOpen: boolean;
-    systemPickerClosing: boolean;
-    setEditingGame: (game: Game | null) => void;
-    setPendingGame: (game: any) => void;
-    setPendingBatchCore: (core: string | null) => void;
-    setCoverArtFit: (fit: 'cover' | 'contain') => void;
-    setSystemPickerOpen: (open: boolean) => void;
+    setEditingGame: (g: Game | null) => void;
+    setPendingGame: (g: any) => void;
+    setPendingBatchCore: (c: string | null) => void;
+    setCoverArtFit: (f: 'cover' | 'contain') => void;
+    setSystemPickerOpen: (o: boolean) => void;
     closeSystemPicker: () => void;
-    showDuplicateError: (message: string) => void;
-    extractFilesFromDataTransfer: (dt: DataTransfer) => File[];
+    showDuplicateError: (m: string) => void;
 }
 
-interface GameLibrary {
+interface Lib {
     games: Game[];
-    updateGame: (id: number, updates: Partial<Game>) => void;
+    updateGame: (id: number, u: Partial<Game>) => void;
 }
 
-interface FileHandler {
-    setIsProcessing: (processing: boolean) => void;
-    processGameFile: (file: File, index: number, core: string, meta?: any) => Promise<void>;
-    handleIncomingFiles: (files: File[]) => Promise<void>;
+interface Files {
+    setIsProcessing: (p: boolean) => void;
+    processGameFile: (f: File, i: number, c: string, m?: any) => Promise<void>;
 }
 
-function validateSelection(core: string | null | undefined, files: any[], games: Game[]): string | null {
-    if (!core) return "Please select a system";
-    if (files.length === 1 && games.some(g => g.fileName === files[0].file.name)) {
-        return `"${files[0].file.name}" is duplicate`;
-    }
-    return null;
-}
-
-async function processBatch(files: any[], core: string, pendingGame: any, processFile: any) {
-    const filesToProcess = [...files];
-    const meta = pendingGame ? { ...pendingGame } : undefined;
-
-    await Promise.all(filesToProcess.map((f: any, idx: number) =>
-        processFile(f.file, idx === 0 && meta ? 0 : f.index, core, idx === 0 ? meta : undefined)
-    ));
-}
-
-export function useSystemPickerFlow(ops: GameOperations, lib: GameLibrary, files: FileHandler) {
-
+export function useSystemPickerFlow(ops: Ops, lib: Lib, files: Files) {
     const handleSystemPickerDone = useCallback(async () => {
         if (ops.editingGame) {
             lib.updateGame(ops.editingGame.id, ops.editingGame);
@@ -56,12 +34,12 @@ export function useSystemPickerFlow(ops: GameOperations, lib: GameLibrary, files
             return;
         }
 
-        const effectiveCore = ops.pendingFiles.length > 1 ? ops.pendingBatchCore : ops.pendingGame?.core;
-        const error = validateSelection(effectiveCore, ops.pendingFiles, lib.games);
+        const core = ops.pendingFiles.length > 1 ? ops.pendingBatchCore : ops.pendingGame?.core;
 
-        if (error) {
-            ops.showDuplicateError(error);
-            if (error.includes("duplicate")) ops.closeSystemPicker();
+        if (!core) { ops.showDuplicateError("Please select a system"); return; }
+        if (ops.pendingFiles.length === 1 && lib.games.some(g => g.fileName === ops.pendingFiles[0].file.name)) {
+            ops.showDuplicateError(`"${ops.pendingFiles[0].file.name}" is duplicate`);
+            ops.closeSystemPicker();
             return;
         }
 
@@ -69,15 +47,18 @@ export function useSystemPickerFlow(ops: GameOperations, lib: GameLibrary, files
         files.setIsProcessing(true);
 
         try {
-            await processBatch(ops.pendingFiles, effectiveCore!, ops.pendingGame, files.processGameFile);
+            const meta = ops.pendingGame ? { ...ops.pendingGame } : undefined;
+            await Promise.all(ops.pendingFiles.map((f, i) =>
+                files.processGameFile(f.file, i === 0 && meta ? 0 : f.index, core, i === 0 ? meta : undefined)
+            ));
         } catch (e) {
             console.error("batch error:", e);
         } finally {
             files.setIsProcessing(false);
         }
-    }, [ops, lib.games, files, lib.updateGame]);
+    }, [ops, lib, files]);
 
-    const handleEditGame = useCallback((g: any) => {
+    const handleEditGame = useCallback((g: Game) => {
         ops.setEditingGame(g);
         ops.setPendingGame({ ...g });
         ops.setCoverArtFit(g.coverArtFit || 'cover');
@@ -85,25 +66,18 @@ export function useSystemPickerFlow(ops: GameOperations, lib: GameLibrary, files
     }, [ops]);
 
     const onSelectSystem = useCallback((core: string) => {
+        const update = { core, genre: getSystemNameByCore(core) };
         if (ops.pendingFiles.length > 1) {
             ops.setPendingBatchCore(core);
         } else {
-            const update = { core, genre: getSystemNameByCore(core) };
-            if (ops.editingGame) {
-                ops.setEditingGame({ ...ops.editingGame, ...update });
-            }
-            if (ops.pendingGame) {
-                ops.setPendingGame({ ...ops.pendingGame, ...update });
-            }
+            if (ops.editingGame) ops.setEditingGame({ ...ops.editingGame, ...update });
+            if (ops.pendingGame) ops.setPendingGame({ ...ops.pendingGame, ...update });
         }
     }, [ops]);
 
     const onRename = useCallback((title: string) => {
-        if (ops.editingGame) {
-            ops.setEditingGame({ ...ops.editingGame, title });
-        } else if (ops.pendingGame) {
-            ops.setPendingGame({ ...ops.pendingGame, title });
-        }
+        if (ops.editingGame) ops.setEditingGame({ ...ops.editingGame, title });
+        else if (ops.pendingGame) ops.setPendingGame({ ...ops.pendingGame, title });
     }, [ops]);
 
     return { handleSystemPickerDone, handleEditGame, onSelectSystem, onRename };
