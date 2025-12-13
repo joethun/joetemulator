@@ -3,11 +3,11 @@ export const SYSTEM_PICKER: Record<string, Record<string, string>> = {
   "Nintendo": {
     "NES": "nes", "Game Boy": "gb", "Game Boy Color": "gbc",
     "Game Boy Advance": "gba", "SNES": "snes", "Virtual Boy": "vb",
-    "N64": "n64", "DS": "nds",
+    "N64": "n64", "DS": "desmume",
   },
   "Sega": {
     "Master System": "segaMS", "Genesis": "segaMD",
-    "Game Gear": "segaGG", "CD": "segaCD", "32X": "sega32x", "Saturn": "segaSaturn",
+    "Game Gear": "genesis_plus_gx", "CD": "segaCD", "32X": "sega32x", "Saturn": "segaSaturn",
   },
   "Sony": { "PS1": "psx", "PSP": "psp" },
   "Atari": {

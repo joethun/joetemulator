@@ -83,9 +83,7 @@ export async function loadGame(
     EJS_language: "en",
     EJS_defaultOptions: {
       desmume_advanced_timing: "disabled",
-      webgl2Enabled: "enabled",
-      ...(core === "segaGG" && { retroarch_core: "genesis_plus_gx" }),
-      ...(core === "nds" && { retroarch_core: "desmume" })
+      webgl2Enabled: "enabled"
     },
     EJS_ready: addEventListeners,
     EJS_onGameStart: () => {
