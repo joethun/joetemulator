@@ -5,7 +5,6 @@ export function useUIState() {
   const [isMounted, setIsMounted] = useState(false);
   const [gameSearchQuery, setGameSearchQuery] = useState('');
   const [gameSearchFocused, setGameSearchFocused] = useState(false);
-  const [isDragActive, setIsDragActive] = useState(false);
   const [themeAnimationKey, setThemeAnimationKey] = useState(0);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<Set<number>>(new Set());
@@ -30,7 +29,7 @@ export function useUIState() {
   return {
     activeView, setActiveView, isMounted, setIsMounted,
     gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused,
-    isDragActive, setIsDragActive, themeAnimationKey, setThemeAnimationKey,
+    themeAnimationKey, setThemeAnimationKey,
     isDeleteMode, setIsDeleteMode, selectedGameIds, setSelectedGameIds,
     deletingGameIds, setDeletingGameIds, gameSearchInputRef, dragCounterRef,
     toggleGameSelection, exitDeleteMode,

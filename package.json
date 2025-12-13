@@ -10,20 +10,20 @@
   },
   "dependencies": {
     "babel-plugin-react-compiler": "^1.0.0",
-    "lucide-react": "^0.555.0",
-    "next": "^16.0.7",
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "lucide-react": "^0.561.0",
+    "next": "^16.0.10",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.1",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^24",
+    "@types/node": "^25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "baseline-browser-mapping": "^2.9.0",
+    "baseline-browser-mapping": "^2.9.7",
     "eslint": "^9",
-    "eslint-config-next": "16.0.5",
+    "eslint-config-next": "16.0.10",
     "tailwindcss": "^4",
     "typescript": "5.9.3"
   }

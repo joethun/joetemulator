@@ -22,7 +22,6 @@ let eventListenersAdded = false;
 const getEmulator = () => window.EJS_emulator?.started ? window.EJS_emulator : null;
 
 function toggleMenuElements(show: boolean) {
-  if (typeof document === 'undefined') return;
   const css = show ? '' : 'display:none!important;visibility:hidden!important';
   document.querySelectorAll<HTMLElement>('aside,footer,main,header,nav').forEach(el => el.style.cssText = css);
   const root = document.querySelector<HTMLElement>('div[style*="min-h-screen"]');

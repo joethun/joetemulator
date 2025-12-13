@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useCallback, useState, memo } from 'react';
-import { Game, THEMES } from '@/types';
+import { useEffect, useCallback, useState } from 'react';
+import { Game } from '@/types';
 import { GameCard } from '@/components/gamecard';
 import { Sidebar } from '@/components/sidebar';
 import { SearchBar } from '@/components/searchbar';
 import { SystemPickerModal } from '@/components/systempicker';
 import { EmulatorNotification } from '@/components/emulatornotification';
-import {
-  Trash2, ArrowUp, ArrowDown, ListFilter,
-  Save, Clock, Eye, EyeOff, Gamepad2, CircleCheck, Zap
-} from 'lucide-react';
+import { SortControls } from '@/components/sortcontrols';
+import { ThemeGrid } from '@/components/themegrid';
+import { SettingsView } from '@/components/settingsview';
+import { Trash2, Gamepad2 } from 'lucide-react';
 import { Alert } from '@/components/alert';
 import { useGameLibrary } from '@/hooks/useGameLibrary';
 import { useUIState } from '@/hooks/useUIState';
@@ -21,6 +21,7 @@ import { useGameList } from '@/hooks/useGameList';
 import { useGameLauncher } from '@/hooks/useGameLauncher';
 import { useGameDeletion } from '@/hooks/useGameDeletion';
 import { useSystemPickerFlow } from '@/hooks/useSystemPickerFlow';
+import { selectFiles } from '@/lib/files';
 
 const FONT_FAMILY = 'Lexend, sans-serif';
 const GRID_STYLE = {
@@ -29,22 +30,6 @@ const GRID_STYLE = {
   gap: 'clamp(1rem, 2vw, 1.5rem)',
   width: '100%',
 } as const;
-
-async function selectFiles(): Promise<File[]> {
-  if ('showOpenFilePicker' in window) {
-    // @ts-ignore
-    const handles = await window.showOpenFilePicker({ multiple: true });
-    return Promise.all(handles.map((fh: any) => fh.getFile()));
-  }
-
-  return new Promise(resolve => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.multiple = true;
-    input.onchange = (e: any) => resolve(Array.from(e.target.files || []));
-    input.click();
-  });
-}
 
 export default function Home() {
   const lib = useGameLibrary();
@@ -73,7 +58,6 @@ export default function Home() {
     e.preventDefault(); e.stopPropagation();
     if (e.dataTransfer?.types.includes('Files')) {
       ui.dragCounterRef.current++;
-      ui.setIsDragActive(true);
       e.dataTransfer.dropEffect = 'copy';
     }
   }, [ui]);
@@ -86,13 +70,11 @@ export default function Home() {
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault(); e.stopPropagation();
     ui.dragCounterRef.current--;
-    if (ui.dragCounterRef.current === 0) ui.setIsDragActive(false);
   }, [ui]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault(); e.stopPropagation();
     ui.dragCounterRef.current = 0;
-    ui.setIsDragActive(false);
     if (e.dataTransfer) await files.handleIncomingFiles(ops.extractFilesFromDataTransfer(e.dataTransfer));
   }, [ui, files, ops]);
 
@@ -245,117 +227,3 @@ export default function Home() {
     </div>
   );
 }
-
-// sort controls dropdown
-const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder }: any) => {
-  const [isOpen, setIsOpen] = useState(false);
-  return (
-    <div className="relative z-40">
-      {isOpen && <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />}
-      <button onClick={() => setIsOpen(!isOpen)} className="relative z-40 flex items-center rounded-xl border-[0.125rem] h-12 px-3 transition-all duration-300" style={{ backgroundColor: colors.darkBg, borderColor: isOpen ? colors.highlight : colors.midDark, color: isOpen ? colors.highlight : colors.softLight, boxShadow: isOpen ? `0 0 0 2px ${colors.highlight}30` : 'none' }}>
-        <ListFilter className="w-5 h-5" />
-      </button>
-      <div className="absolute top-full mt-2 right-0 z-40 rounded-xl border-[0.125rem] overflow-hidden transition-all duration-300 origin-top" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, maxHeight: isOpen ? '200px' : '0px', opacity: isOpen ? 1 : 0, visibility: isOpen ? 'visible' : 'hidden', boxShadow: isOpen ? '0 4px 12px rgba(0,0,0,0.3)' : 'none' }}>
-        <div className="p-3 space-y-2 min-w-[160px]">
-          <div className="flex flex-col gap-1">
-            <div className="text-[10px] font-bold uppercase tracking-wider mb-1 px-1 opacity-70" style={{ color: colors.softLight }}>Sort By</div>
-            {['title', 'system'].map(opt => (
-              <button key={opt} onClick={() => { setSortBy(opt); setIsOpen(false); }} className="px-3 py-2 rounded-xl text-sm font-medium capitalize transition-all active:scale-95 text-left" style={{ backgroundColor: sortBy === opt ? colors.highlight : colors.midDark, color: sortBy === opt ? colors.darkBg : colors.softLight }}>{opt}</button>
-            ))}
-          </div>
-          <div className="h-px" style={{ backgroundColor: colors.highlight + '30' }} />
-          <div className="flex flex-col gap-1">
-            <div className="text-[10px] font-bold uppercase tracking-wider mb-1 px-1 opacity-70" style={{ color: colors.softLight }}>Order</div>
-            <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')} className="px-3 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all active:scale-95" style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
-              {sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
-              {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
-SortControls.displayName = 'SortControls';
-
-// theme selection grid
-const ThemeGrid = memo(({ colors, selectedTheme, onSelectTheme, animKey }: any) => (
-  <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-    {Object.entries(THEMES).map(([name, t]: [string, any], idx) => (
-      <button key={name} onClick={() => onSelectTheme(name)} className="p-6 rounded-xl border-[0.125rem] relative overflow-hidden text-left transition-all hover:shadow-lg" style={{ backgroundColor: t.midDark, borderColor: selectedTheme === name ? t.play : t.highlight + '40', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', animation: `fadeIn 0.4s ease-out ${idx * 0.03}s both` }}>
-        <div className="flex justify-between mb-4">
-          <h3 className="text-xl font-bold capitalize" style={{ color: t.softLight }}>{name}</h3>
-          {selectedTheme === name && <CircleCheck className="w-6 h-6" style={{ color: t.play }} />}
-        </div>
-        <div className="flex gap-2">
-          {[t.darkBg, t.midDark, t.play, t.highlight].map((c: string, i: number) => <div key={i} className="flex-1 h-12 rounded-xl" style={{ backgroundColor: c }} />)}
-        </div>
-      </button>
-    ))}
-  </div>
-));
-ThemeGrid.displayName = 'ThemeGrid';
-
-// toggle switch for settings
-const SettingsSwitch = memo(({ checked, onChange, colors, gradient }: any) => (
-  <button role="switch" aria-checked={checked} onClick={onChange} className={`relative inline-flex h-8 w-14 flex-shrink-0 rounded-full border-2 transition-colors duration-200 items-center ${checked ? 'border-transparent' : ''}`} style={{ backgroundColor: checked ? 'transparent' : colors.darkBg, borderColor: checked ? 'transparent' : colors.midDark, backgroundImage: checked ? gradient.backgroundImage : 'none', boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.3)' }}>
-    <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full shadow transition duration-200 ml-0.5 ${checked ? 'translate-x-6' : 'translate-x-0'}`} style={{ backgroundColor: checked ? colors.darkBg : colors.softLight }} />
-  </button>
-));
-SettingsSwitch.displayName = 'SettingsSwitch';
-
-// settings page content
-const SettingsView = memo(({ colors, gradient, autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon, reducedMotion, setReducedMotion }: any) => (
-  <div className="animate-fade-in w-full grid gap-4">
-    <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animation: 'fadeIn 0.4s ease-out both' }}>
-      <div className="flex items-center justify-between gap-4 sm:gap-6">
-        <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.midDark, color: colors.highlight }}><Clock className="w-5 h-5 sm:w-6 sm:h-6" /></div>
-          <div className="flex-1 min-w-0"><h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Save State</h3><p className="text-xs sm:text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Automatically save your game state periodically.</p></div>
-        </div>
-        <SettingsSwitch checked={autoSaveState} onChange={() => setAutoSaveState(!autoSaveState)} colors={colors} gradient={gradient} />
-      </div>
-      <div className="overflow-hidden transition-all duration-300" style={{ maxHeight: autoSaveState ? '300px' : '0px', opacity: autoSaveState ? 1 : 0, marginTop: autoSaveState ? '1.5rem' : '0px', visibility: autoSaveState ? 'visible' : 'hidden' }}>
-        <div className="pt-4 border-t space-y-4 pl-0 sm:pl-16" style={{ borderColor: colors.highlight + '30' }}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3"><Clock className="w-4 h-4" style={{ color: colors.highlight }} /><span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span></div>
-            <div className="flex flex-wrap items-center gap-2">{[15, 30, 45, 60].map(v => (
-              <button key={v} onClick={() => setAutoSaveInterval(v)} className="px-3 py-1 rounded-xl text-sm font-medium h-9 transition-all active:scale-95 flex items-center justify-center flex-1 sm:flex-none" style={{ backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, color: autoSaveInterval === v ? colors.darkBg : colors.softLight }}>{v}s</button>
-            ))}</div>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">{autoSaveIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Save Icon</span></div>
-            <SettingsSwitch checked={autoSaveIcon} onChange={() => setAutoSaveIcon(!autoSaveIcon)} colors={colors} gradient={gradient} />
-          </div>
-        </div>
-      </div>
-    </div>
-    <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animation: 'fadeIn 0.4s ease-out 0.03s both' }}>
-      <div className="flex items-center justify-between gap-4 sm:gap-6">
-        <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.midDark, color: colors.highlight }}><Save className="w-5 h-5 sm:w-6 sm:h-6" /></div>
-          <div className="flex-1 min-w-0"><h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Auto-Load State</h3><p className="text-xs sm:text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Resume gameplay from your last state automatically.</p></div>
-        </div>
-        <SettingsSwitch checked={autoLoadState} onChange={() => setAutoLoadState(!autoLoadState)} colors={colors} gradient={gradient} />
-      </div>
-      <div className="overflow-hidden transition-all duration-300" style={{ maxHeight: autoLoadState ? '200px' : '0px', opacity: autoLoadState ? 1 : 0, marginTop: autoLoadState ? '1.5rem' : '0px', visibility: autoLoadState ? 'visible' : 'hidden' }}>
-        <div className="pt-4 border-t pl-0 sm:pl-16" style={{ borderColor: colors.highlight + '30' }}>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">{autoLoadIcon ? <Eye className="w-4 h-4" style={{ color: colors.highlight }} /> : <EyeOff className="w-4 h-4" style={{ color: colors.highlight }} />}<span className="text-sm font-medium" style={{ color: colors.softLight }}>Show Load Icon</span></div>
-            <SettingsSwitch checked={autoLoadIcon} onChange={() => setAutoLoadIcon(!autoLoadIcon)} colors={colors} gradient={gradient} />
-          </div>
-        </div>
-      </div>
-    </div>
-    <div className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col" style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', animation: 'fadeIn 0.4s ease-out 0.06s both' }}>
-      <div className="flex items-center justify-between gap-4 sm:gap-6">
-        <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: colors.midDark, color: colors.highlight }}><Zap className="w-5 h-5 sm:w-6 sm:h-6" /></div>
-          <div className="flex-1 min-w-0"><h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>Snappy Animations</h3><p className="text-xs sm:text-sm leading-relaxed opacity-70" style={{ color: colors.softLight }}>Speed up animations for a faster experience.</p></div>
-        </div>
-        <SettingsSwitch checked={reducedMotion} onChange={() => setReducedMotion(!reducedMotion)} colors={colors} gradient={gradient} />
-      </div>
-    </div>
-  </div>
-));
-SettingsView.displayName = 'SettingsView';
