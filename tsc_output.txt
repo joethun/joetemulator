@@ -1,0 +1,3 @@
+src/app/page.tsx(436,223): error TS2322: Type 'RefObject<HTMLInputElement | null>' is not assignable to type 'RefObject<HTMLInputElement>'.
+  Type 'HTMLInputElement | null' is not assignable to type 'HTMLInputElement'.
+    Type 'null' is not assignable to type 'HTMLInputElement'.

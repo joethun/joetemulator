@@ -1,0 +1,50 @@
+import { useMemo } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { THEMES, getGradientStyle, ThemeColors, GradientStyle } from '@/types';
+
+/**
+ * manages app-wide settings with localStorage persistence
+ */
+export function useAppSettings() {
+    const [selectedTheme, setSelectedTheme, themeHydrated] = useLocalStorage('theme', 'default');
+    const [sortBy, setSortBy, sortByHydrated] = useLocalStorage<'title' | 'system'>('sortBy', 'title');
+    const [sortOrder, setSortOrder, sortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
+    const [autoLoadState, setAutoLoadState, autoLoadHydrated] = useLocalStorage('autoLoadState', true);
+    const [autoLoadIcon, setAutoLoadIcon] = useLocalStorage('autoLoadIcon', true);
+    const [autoSaveState, setAutoSaveState, autoSaveHydrated] = useLocalStorage('autoSaveState', true);
+    const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 60);
+    const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
+
+    const currentColors: ThemeColors = useMemo(
+        () => THEMES[selectedTheme as keyof typeof THEMES] || THEMES.default,
+        [selectedTheme]
+    );
+
+    const gradientStyle: GradientStyle = useMemo(
+        () => getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo),
+        [currentColors]
+    );
+
+    // check if all critical settings are hydrated
+    const isHydrated = [
+        themeHydrated,
+        sortByHydrated,
+        sortOrderHydrated,
+        autoLoadHydrated,
+        autoSaveHydrated
+    ].every(Boolean);
+
+    return {
+        selectedTheme, setSelectedTheme,
+        sortBy, setSortBy,
+        sortOrder, setSortOrder,
+        autoLoadState, setAutoLoadState,
+        autoLoadIcon, setAutoLoadIcon,
+        autoSaveState, setAutoSaveState,
+        autoSaveInterval, setAutoSaveInterval,
+        autoSaveIcon, setAutoSaveIcon,
+        currentColors,
+        gradientStyle,
+        isHydrated,
+    };
+}
