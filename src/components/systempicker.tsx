@@ -223,7 +223,7 @@ const CoverArtSection = memo(({ colors, gradient, coverArtState }: CoverArtSecti
                         {coverArtState.file ? (
                             <div className="aspect-[4/5] relative">
                                 <img src={coverArtState.file} alt="Cover" className="w-full h-full" style={{ objectFit: coverArtState.fit, objectPosition: 'center' }} />
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                     <button onClick={coverArtState.onRemove} className="p-2.5 rounded-xl hover:shadow-md active:scale-95 transition-all bg-red-500 text-white" aria-label="Remove cover art">
                                         <Trash2 className="w-5 h-5" />
                                     </button>
