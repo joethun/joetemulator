@@ -33,49 +33,49 @@ export type GradientStyle = {
 
 export const THEMES: Record<string, ThemeColors> = {
   default: {
-    highlight: '#8899cc', darkBg: '#0a0a0f', midDark: '#151520',
-    softLight: '#e8eef5', sidebarHover: '#1f2535',
-    gradientFrom: '#4a90e2', gradientTo: '#2563eb'
+    highlight: '#a9b7ff', darkBg: '#070a14', midDark: '#121a2d',
+    softLight: '#eef4ff', sidebarHover: '#182447',
+    gradientFrom: '#60a5fa', gradientTo: '#3b82f6'
   },
   red: {
-    highlight: '#fecaca', darkBg: '#0f0a0a', midDark: '#201515',
-    softLight: '#fef2f2', sidebarHover: '#351f1f',
-    gradientFrom: '#f87171', gradientTo: '#ef4444'
+    highlight: '#ffd1d1', darkBg: '#14070a', midDark: '#2b1218',
+    softLight: '#fff1f2', sidebarHover: '#3b1620',
+    gradientFrom: '#fb7185', gradientTo: '#e11d48'
   },
   orange: {
-    highlight: '#fde68a', darkBg: '#0f0c05', midDark: '#201810',
-    softLight: '#fffbeb', sidebarHover: '#352a1f',
-    gradientFrom: '#fbbf24', gradientTo: '#f59e0b'
+    highlight: '#ffe08a', darkBg: '#120a04', midDark: '#2a160a',
+    softLight: '#fff7ed', sidebarHover: '#3b1e10',
+    gradientFrom: '#fb923c', gradientTo: '#f97316'
   },
   yellow: {
-    highlight: '#fef08a', darkBg: '#0f0e05', midDark: '#201e10',
-    softLight: '#fefce8', sidebarHover: '#35321f',
-    gradientFrom: '#eab308', gradientTo: '#ca8a04'
+    highlight: '#fff3a3', darkBg: '#0f0d03', midDark: '#221c08',
+    softLight: '#fefce8', sidebarHover: '#3b300e',
+    gradientFrom: '#fde047', gradientTo: '#f59e0b'
   },
   green: {
-    highlight: '#bbf7d0', darkBg: '#050f05', midDark: '#102010',
-    softLight: '#f0fdf4', sidebarHover: '#1f351f',
-    gradientFrom: '#4ade80', gradientTo: '#22c55e'
+    highlight: '#b7ffd0', darkBg: '#04120a', midDark: '#0d2416',
+    softLight: '#ecfdf5', sidebarHover: '#123b24',
+    gradientFrom: '#34d399', gradientTo: '#10b981'
   },
   teal: {
-    highlight: '#99f6e4', darkBg: '#050f0f', midDark: '#102020',
-    softLight: '#f0fdfa', sidebarHover: '#1f3535',
-    gradientFrom: '#2dd4bf', gradientTo: '#14b8a6'
+    highlight: '#98fff0', darkBg: '#031114', midDark: '#0a222a',
+    softLight: '#ecfeff', sidebarHover: '#0f3642',
+    gradientFrom: '#22d3ee', gradientTo: '#06b6d4'
   },
   indigo: {
-    highlight: '#c7d2fe', darkBg: '#0a0a0f', midDark: '#151525',
-    softLight: '#eef2ff', sidebarHover: '#1f1f35',
-    gradientFrom: '#818cf8', gradientTo: '#6366f1'
+    highlight: '#cdd6ff', darkBg: '#060815', midDark: '#10163a',
+    softLight: '#eef2ff', sidebarHover: '#1a1f55',
+    gradientFrom: '#8b5cf6', gradientTo: '#6366f1'
   },
   purple: {
-    highlight: '#ddd6fe', darkBg: '#0e0a0f', midDark: '#1d1520',
-    softLight: '#faf5ff', sidebarHover: '#2a1f35',
-    gradientFrom: '#c084fc', gradientTo: '#a855f7'
+    highlight: '#e3d7ff', darkBg: '#0d0714', midDark: '#1c1030',
+    softLight: '#faf5ff', sidebarHover: '#2e1a52',
+    gradientFrom: '#d946ef', gradientTo: '#a855f7'
   },
   pink: {
-    highlight: '#fbcfe8', darkBg: '#0f0a0d', midDark: '#20151c',
-    softLight: '#fdf2f8', sidebarHover: '#351f2a',
-    gradientFrom: '#ec4899', gradientTo: '#be185d'
+    highlight: '#ffd1f0', darkBg: '#140614', midDark: '#2b102b',
+    softLight: '#fdf2f8', sidebarHover: '#3b1440',
+    gradientFrom: '#f472b6', gradientTo: '#db2777'
   },
 };
 
