@@ -10,21 +10,21 @@
   },
   "dependencies": {
     "babel-plugin-react-compiler": "^1.0.0",
-    "lucide-react": "^0.575.0",
-    "next": "^16.1.6",
+    "lucide-react": "^0.577.0",
+    "next": "^16.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "^5.15.8",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^25",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "baseline-browser-mapping": "^2.10.0",
-    "eslint": "^10",
-    "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4",
-    "typescript": "5.9.3"
+    "@netlify/plugin-nextjs": "^5.15.9",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "baseline-browser-mapping": "^2.10.8",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.0",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5.9.3"
   }
 }
