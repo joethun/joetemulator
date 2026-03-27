@@ -238,7 +238,7 @@ const CoverArtSection = memo(({ colors, gradient, coverArtState }: { colors: The
                             <input type="file" accept="image/*" className="hidden" id="art-upload" onChange={handleFileChange} />
                             <label
                                 htmlFor="art-upload"
-                                className="w-full h-12 flex items-center justify-center rounded-xl text-sm font-semibold shadow-lg transition-all active:scale-95 cursor-pointer"
+                                className="w-full h-12 flex items-center justify-center rounded-xl text-sm font-semibold shadow-lg transition-all active:scale-95"
                                 style={{ ...(coverArtState.file ? { backgroundColor: colors.highlight } : gradient), color: colors.darkBg }}
                             >
                                 {coverArtState.file ? 'Replace Cover Art' : 'Add Cover Art'}
