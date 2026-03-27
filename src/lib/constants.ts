@@ -1,9 +1,8 @@
-// system categories and configurations
 export const SYSTEM_PICKER: Record<string, Record<string, string>> = {
   "Nintendo": {
     "NES": "nes", "Game Boy": "gb", "Game Boy Color": "gbc",
     "Game Boy Advance": "gba", "SNES": "snes", "Virtual Boy": "vb",
-    "N64": "n64", "DS": "desmume",
+    "N64": "n64", "DS": "melonds",
   },
   "Sega": {
     "Master System": "segaMS", "Genesis": "segaMD",
@@ -26,9 +25,8 @@ export const SYSTEM_PICKER: Record<string, Record<string, string>> = {
   }
 };
 
-// lookup maps for fast core resolution
-export const coreToNameMap = new Map<string, string>();
-export const coreToCategoryMap = new Map<string, string>();
+const coreToNameMap = new Map<string, string>();
+const coreToCategoryMap = new Map<string, string>();
 
 for (const [category, systems] of Object.entries(SYSTEM_PICKER)) {
   for (const [name, core] of Object.entries(systems)) {
@@ -37,20 +35,8 @@ for (const [category, systems] of Object.entries(SYSTEM_PICKER)) {
   }
 }
 
-// get system name by core identifier
-export function getSystemNameByCore(core: string): string {
-  return coreToNameMap.get(core) || 'Unknown System';
-}
+export const getSystemNameByCore = (core: string): string =>
+  coreToNameMap.get(core) || 'Unknown System';
 
-// get system category by core identifier
-export function getSystemCategory(core?: string): string {
-  return core && coreToCategoryMap.get(core) || 'Other';
-}
-
-// get both name and category in one lookup
-export function getCoreInfo(core?: string): { name: string; category: string } {
-  return {
-    name: core ? getSystemNameByCore(core) : 'Unknown System',
-    category: getSystemCategory(core)
-  };
-}
+export const getSystemCategory = (core?: string): string =>
+  (core && coreToCategoryMap.get(core)) || 'Other';

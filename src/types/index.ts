@@ -4,7 +4,7 @@ export interface Game {
   genre: string;
   filePath?: string;
   fileName?: string;
-  fileData?: string; // legacy game support
+  fileData?: string;
   core?: string;
   coverArt?: string;
   coverArtFit?: 'cover' | 'contain';
@@ -12,10 +12,8 @@ export interface Game {
   isComplete?: boolean;
 }
 
-// view type for navigation
 export type ViewType = 'library' | 'themes' | 'settings';
 
-// theme color configuration
 export type ThemeColors = {
   highlight: string;
   darkBg: string;
@@ -26,7 +24,6 @@ export type ThemeColors = {
   gradientTo: string;
 };
 
-// gradient style object returned by getGradientStyle
 export type GradientStyle = {
   backgroundImage: string;
 };
@@ -78,8 +75,6 @@ export const THEMES: Record<string, ThemeColors> = {
     gradientFrom: '#f472b6', gradientTo: '#db2777'
   },
 };
-
-export type ThemeConfig = ThemeColors;
 
 export const getGradientStyle = (from: string, to: string): GradientStyle => ({
   backgroundImage: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`

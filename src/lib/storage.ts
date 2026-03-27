@@ -1,12 +1,8 @@
-// opfs game storage using chunked writes for large files
 const GAME_DIR = 'games';
 const CHUNK_SIZE = 64 * 1024 * 1024;
 
 let dirHandle: FileSystemDirectoryHandle | null = null;
 
-/**
- * gets or creates the games directory handle
- */
 async function getDir(): Promise<FileSystemDirectoryHandle> {
   if (!dirHandle) {
     const root = await navigator.storage.getDirectory();
@@ -15,29 +11,17 @@ async function getDir(): Promise<FileSystemDirectoryHandle> {
   return dirHandle;
 }
 
-/**
- * saves a game file to opfs with progress reporting
- */
-export async function saveGameFile(
-  gameId: number,
-  file: File,
-  onProgress?: (percent: number) => void
-): Promise<void> {
+const romName = (id: number) => `${id}.rom`;
+
+export async function saveGameFile(gameId: number, file: File, onProgress?: (percent: number) => void): Promise<void> {
   const dir = await getDir();
-  const fileHandle = await dir.getFileHandle(`${gameId}.rom`, { create: true });
-  const writable = await fileHandle.createWritable();
+  const writable = await (await dir.getFileHandle(romName(gameId), { create: true })).createWritable();
 
   try {
-    const size = file.size;
-    for (let offset = 0; offset < size; offset += CHUNK_SIZE) {
-      const chunk = file.slice(offset, Math.min(offset + CHUNK_SIZE, size));
-      await writable.write(chunk);
-      onProgress?.(Math.round(((offset + CHUNK_SIZE) / size) * 100));
-
-      // yield to main thread between chunks
-      if (offset + CHUNK_SIZE < size) {
-        await new Promise(r => setTimeout(r, 0));
-      }
+    for (let offset = 0; offset < file.size; offset += CHUNK_SIZE) {
+      await writable.write(file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size)));
+      onProgress?.(Math.round(((offset + CHUNK_SIZE) / file.size) * 100));
+      if (offset + CHUNK_SIZE < file.size) await new Promise(r => setTimeout(r, 0));
     }
     await writable.close();
   } catch (error) {
@@ -46,33 +30,19 @@ export async function saveGameFile(
   }
 }
 
-/**
- * retrieves a game file from opfs by id
- */
 export async function getGameFile(gameId: number): Promise<File | null> {
   try {
-    const dir = await getDir();
-    const fileHandle = await dir.getFileHandle(`${gameId}.rom`);
-    return await fileHandle.getFile();
-  } catch (error) {
-    if ((error as DOMException).name === 'NotFoundError') {
-      return null;
-    }
-    throw error;
+    return await (await (await getDir()).getFileHandle(romName(gameId))).getFile();
+  } catch (e) {
+    if ((e as DOMException).name === 'NotFoundError') return null;
+    throw e;
   }
 }
 
-/**
- * deletes a game file from opfs
- */
 export async function deleteGameFile(gameId: number): Promise<void> {
   try {
-    const dir = await getDir();
-    await dir.removeEntry(`${gameId}.rom`);
-  } catch (error) {
-    // ignore not found errors
-    if ((error as DOMException).name !== 'NotFoundError') {
-      throw error;
-    }
+    await (await getDir()).removeEntry(romName(gameId));
+  } catch (e) {
+    if ((e as DOMException).name !== 'NotFoundError') throw e;
   }
 }

@@ -4,108 +4,64 @@ import { saveGameFile, deleteGameFile } from '@/lib/storage';
 import { getSystemNameByCore } from '@/lib/constants';
 import { STORAGE_KEYS } from '@/lib/utils';
 
-// persist games array to localStorage
-const persistGames = (games: Game[]): void => {
-  localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(games));
+const persist = (games: Game[]) => localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(games));
+
+const updateAndPersist = (prev: Game[], fn: (games: Game[]) => Game[]) => {
+  const next = fn(prev);
+  persist(next);
+  return next;
 };
 
-/**
- * manages the game library with localStorage persistence
- */
 export function useGameLibrary() {
   const [games, setGames] = useState<Game[]>([]);
-  const migrationCheckedRef = useRef(false);
+  const migrated = useRef(false);
 
-  // load games from storage with legacy migration
   const loadGamesFromStorage = useCallback(async () => {
-    if (migrationCheckedRef.current) return;
-    migrationCheckedRef.current = true;
+    if (migrated.current) return;
+    migrated.current = true;
 
     try {
-      const savedGames = localStorage.getItem(STORAGE_KEYS.GAMES);
-      if (!savedGames) return;
+      const raw = localStorage.getItem(STORAGE_KEYS.GAMES);
+      if (!raw) return;
 
-      const parsed: Game[] = JSON.parse(savedGames);
+      const parsed: Game[] = JSON.parse(raw);
 
-      // migrate legacy base64 to opfs (one-time)
+      // one-time migration: legacy base64 -> OPFS
       if (localStorage.getItem(STORAGE_KEYS.GAMES_MIGRATED) !== 'true') {
-        const legacyGames = parsed.filter(g => g.fileData);
-
-        for (const game of legacyGames) {
+        for (const game of parsed.filter(g => g.fileData)) {
           try {
-            const response = await fetch(game.fileData!);
-            const blob = await response.blob();
-            const file = new File([blob], game.fileName || game.title, {
-              type: 'application/octet-stream'
-            });
-            await saveGameFile(game.id, file);
-          } catch {
-            // skip failed migrations
-          }
+            const blob = await (await fetch(game.fileData!)).blob();
+            await saveGameFile(game.id, new File([blob], game.fileName || game.title, { type: 'application/octet-stream' }));
+          } catch {}
         }
-
         localStorage.setItem(STORAGE_KEYS.GAMES_MIGRATED, 'true');
       }
 
-      // clean and normalize game data
-      const cleaned = parsed.map(game => {
-        const { fileData, ...rest } = game;
-        return {
-          ...rest,
-          genre: game.genre === 'ROM' && game.core
-            ? getSystemNameByCore(game.core)
-            : game.genre,
-          coverArtFit: game.coverArt && !game.coverArtFit
-            ? 'cover' as const
-            : game.coverArtFit
-        };
-      });
+      const cleaned = parsed.map(({ fileData, ...rest }) => ({
+        ...rest,
+        genre: rest.genre === 'ROM' && rest.core ? getSystemNameByCore(rest.core) : rest.genre,
+        coverArtFit: rest.coverArt && !rest.coverArtFit ? 'cover' as const : rest.coverArtFit
+      }));
 
       setGames(cleaned);
-      persistGames(cleaned);
+      persist(cleaned);
     } catch {
       setGames([]);
     }
   }, []);
 
-  // add a new game to the library
   const addGame = useCallback((game: Game) => {
-    setGames(prev => {
-      const next = [...prev, game];
-      persistGames(next);
-      return next;
-    });
+    setGames(prev => updateAndPersist(prev, g => [...g, game]));
   }, []);
 
-  // update an existing game
   const updateGame = useCallback((id: number, updates: Partial<Game>) => {
-    setGames(prev => {
-      const next = prev.map(g => g.id === id ? { ...g, ...updates } : g);
-      persistGames(next);
-      return next;
-    });
+    setGames(prev => updateAndPersist(prev, g => g.map(x => x.id === id ? { ...x, ...updates } : x)));
   }, []);
 
-  // delete a game and its file
   const deleteGame = useCallback(async (id: number) => {
-    try {
-      await deleteGameFile(id);
-    } catch {
-      // file may not exist
-    }
-
-    setGames(prev => {
-      const next = prev.filter(g => g.id !== id);
-      persistGames(next);
-      return next;
-    });
+    try { await deleteGameFile(id); } catch {}
+    setGames(prev => updateAndPersist(prev, g => g.filter(x => x.id !== id)));
   }, []);
 
-  return {
-    games,
-    loadGamesFromStorage,
-    addGame,
-    updateGame,
-    deleteGame
-  };
+  return { games, loadGamesFromStorage, addGame, updateGame, deleteGame };
 }

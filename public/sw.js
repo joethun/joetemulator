@@ -3,13 +3,11 @@
 const CACHE_NAME = 'joetemulator-v1';
 const PRECACHE_ASSETS = ['/', '/manifest.json'];
 
-// install
 self.addEventListener('install', (event) => {
     event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS)));
     self.skipWaiting();
 });
 
-// activate
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((names) => Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))))
@@ -17,14 +15,12 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// fetch
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
     if (url.origin !== location.origin) return;
 
-    // navigation: network first
     if (request.mode === 'navigate') {
         event.respondWith(
             fetch(request)
@@ -40,7 +36,6 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // other: cache first
     event.respondWith(
         caches.match(request).then((cached) => {
             if (cached) return cached;

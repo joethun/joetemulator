@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Game } from '@/types';
 import { GameCard } from '@/components/gamecard';
 import { Sidebar } from '@/components/sidebar';
@@ -21,6 +21,7 @@ import { useGameList } from '@/hooks/useGameList';
 import { useGameLauncher } from '@/hooks/useGameLauncher';
 import { useGameDeletion } from '@/hooks/useGameDeletion';
 import { useSystemPickerFlow } from '@/hooks/useSystemPickerFlow';
+import { useDragDrop } from '@/hooks/useDragDrop';
 import { selectFiles } from '@/lib/files';
 
 const FONT_FAMILY = 'Lexend, sans-serif';
@@ -41,79 +42,48 @@ export default function Home() {
   const launcher = useGameLauncher(settings);
   const deletion = useGameDeletion(lib, ui);
   const pickerFlow = useSystemPickerFlow(ops, lib, files);
+  const drag = useDragDrop(files.handleIncomingFiles);
+
   useEffect(() => {
     ui.setIsMounted(true);
     lib.loadGamesFromStorage();
   }, [lib.loadGamesFromStorage, ui.setIsMounted]);
 
-  // trigger animations when switching views
   useEffect(() => {
-    if (ui.activeView === 'themes') {
-      ui.setThemeAnimationKey(k => k + 1);
-    } else if (ui.activeView === 'library') {
-      ui.setLibraryAnimationKey(k => k + 1);
-    }
+    if (ui.activeView === 'themes') ui.setThemeAnimationKey(k => k + 1);
+    else if (ui.activeView === 'library') ui.setLibraryAnimationKey(k => k + 1);
   }, [ui.activeView, ui.setThemeAnimationKey, ui.setLibraryAnimationKey]);
-
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    if (e.dataTransfer?.types.includes('Files')) {
-      ui.dragCounterRef.current++;
-      e.dataTransfer.dropEffect = 'copy';
-    }
-  }, [ui]);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    ui.dragCounterRef.current--;
-  }, [ui]);
-
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    ui.dragCounterRef.current = 0;
-    if (e.dataTransfer) await files.handleIncomingFiles(ops.extractFilesFromDataTransfer(e.dataTransfer));
-  }, [ui, files, ops]);
 
   const handleAddGame = useCallback(async () => {
     try {
-      const f = await selectFiles();
-      await files.handleIncomingFiles(f);
+      await files.handleIncomingFiles(await selectFiles());
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== 'AbortError') console.error(err);
     }
   }, [files]);
 
-  const renderGameCard = useCallback((g: Game, i: number) => {
-    return (
-      <div key={g.id} className={ui.deletingGameIds.has(g.id) ? 'animate-card-exit' : ''}
-        style={{ 
-          animation: ui.deletingGameIds.has(g.id) ? undefined : `fadeIn 0.4s ease-out ${i * 0.03}s both`
-        }}>
-        <GameCard
-          game={g}
-          isSelected={ui.selectedGameIds.has(g.id)}
-          onPlay={launcher.handlePlayClick}
-          onDelete={deletion.handleDeleteGame}
-          onSelect={ui.toggleGameSelection}
-          isDeleteMode={ui.isDeleteMode}
-          onEnterDeleteMode={() => ui.setIsDeleteMode(true)}
-          colors={settings.currentColors}
-          onEdit={pickerFlow.handleEditGame}
-          onCoverArtClick={pickerFlow.handleEditGame}
-        />
-      </div>
-    );
-  }, [ui.deletingGameIds, ui.selectedGameIds, launcher.handlePlayClick, deletion.handleDeleteGame, ui.toggleGameSelection, ui.isDeleteMode, ui.setIsDeleteMode, settings.currentColors, pickerFlow.handleEditGame]);
+  const renderGameCard = useCallback((g: Game, i: number) => (
+    <div key={g.id} className={ui.deletingGameIds.has(g.id) ? 'animate-card-exit' : ''}
+      style={{ animation: ui.deletingGameIds.has(g.id) ? undefined : `fadeIn 0.4s ease-out ${i * 0.03}s both` }}>
+      <GameCard
+        game={g}
+        isSelected={ui.selectedGameIds.has(g.id)}
+        onPlay={launcher.handlePlayClick}
+        onDelete={deletion.handleDeleteGame}
+        onSelect={ui.toggleGameSelection}
+        isDeleteMode={ui.isDeleteMode}
+        onEnterDeleteMode={() => ui.setIsDeleteMode(true)}
+        colors={settings.currentColors}
+        onEdit={pickerFlow.handleEditGame}
+        onCoverArtClick={pickerFlow.handleEditGame}
+      />
+    </div>
+  ), [ui.deletingGameIds, ui.selectedGameIds, launcher.handlePlayClick, deletion.handleDeleteGame, ui.toggleGameSelection, ui.isDeleteMode, ui.setIsDeleteMode, settings.currentColors, pickerFlow.handleEditGame]);
 
   if (!ui.isMounted || !settings.isHydrated) return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />;
 
   return (
-    <div className={`min-h-screen flex`} style={{ backgroundColor: settings.currentColors.darkBg, fontFamily: FONT_FAMILY }}>
+    <div className="min-h-screen flex" style={{ backgroundColor: settings.currentColors.darkBg, fontFamily: FONT_FAMILY }}>
       <Sidebar
         activeView={ui.activeView}
         colors={settings.currentColors}
@@ -124,14 +94,14 @@ export default function Home() {
 
       <div className="flex-1 overflow-hidden ml-20">
         <main
-          className="pt-6 pb-4 px-4 sm:pb-6 sm:px-6 md:pb-8 md:px-8 overflow-y-auto scrollbar-hide"
+          className="pt-6 pb-4 px-4 sm:pb-6 sm:px-6 md:pb-8 md:px-8 overflow-y-auto"
           style={{ minHeight: '100vh' }}
-          onDragEnter={handleDragEnter}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          onDragEnter={drag.handleDragEnter}
+          onDragOver={drag.handleDragOver}
+          onDragLeave={drag.handleDragLeave}
+          onDrop={drag.handleDrop}
         >
-          <header className="mb-[32px] flex flex-col md:flex-row justify-between gap-6 md:items-center md:h-12">
+          <header className="mb-8 flex flex-col md:flex-row justify-between gap-6 md:items-center md:h-12">
             <h1 className="text-4xl font-extrabold tracking-tight capitalize" style={{ color: settings.currentColors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
               {ui.activeView}
               {ui.activeView === 'library' && <span className="ml-3">({view.sortedGames.length})</span>}
@@ -160,8 +130,8 @@ export default function Home() {
                 </div>
                 {ui.isDeleteMode && (
                   <div className="flex gap-3 w-full md:w-auto">
-                    <button onClick={deletion.onMassDelete} disabled={!ui.selectedGameIds.size} className="flex-1 md:flex-none px-5 py-2.5 rounded-xl h-12 flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60"><Trash2 className="w-5 h-5" /></button>
-                    <button onClick={() => ui.setIsDeleteMode(false)} className="flex-1 md:flex-none px-5 py-2.5 rounded-xl font-semibold h-12 transition-all active:scale-95" style={{ backgroundColor: settings.currentColors.highlight, color: settings.currentColors.darkBg }}>Cancel</button>
+                    <button onClick={deletion.onMassDelete} disabled={!ui.selectedGameIds.size} className="flex-1 md:flex-none h-12 px-5 rounded-xl flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60"><Trash2 className="w-5 h-5" /></button>
+                    <button onClick={() => ui.setIsDeleteMode(false)} className="flex-1 md:flex-none h-12 px-5 rounded-xl font-semibold transition-all active:scale-95" style={{ backgroundColor: settings.currentColors.highlight, color: settings.currentColors.darkBg }}>Cancel</button>
                   </div>
                 )}
               </div>
@@ -186,7 +156,7 @@ export default function Home() {
               <p className="mb-8 opacity-70" style={{ color: settings.currentColors.highlight }}>Add your ROMs by clicking the + button in the sidebar</p>
             </div>
           ) : view.sortedGames.length === 0 ? (
-            <div className="text-center py-20 opacity-60"><p style={{ color: settings.currentColors.softLight }}>No games found matching "{ui.gameSearchQuery}"</p></div>
+            <div className="text-center py-20 opacity-60"><p style={{ color: settings.currentColors.softLight }}>No games found matching &quot;{ui.gameSearchQuery}&quot;</p></div>
           ) : view.groupedGames ? (
             <div key={ui.libraryAnimationKey}>
               {Object.entries(view.groupedGames).map(([cat, catGames]) => (

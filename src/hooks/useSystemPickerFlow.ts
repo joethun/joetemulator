@@ -2,8 +2,7 @@ import { useCallback } from 'react';
 import { getSystemNameByCore } from '@/lib/constants';
 import { Game } from '@/types';
 
-// operations state from useGameOperations
-interface OperationsState {
+interface Ops {
     editingGame: Game | null;
     pendingGame: Partial<Game> | null;
     pendingFiles: Array<{ file: File; index: number }>;
@@ -17,51 +16,34 @@ interface OperationsState {
     showDuplicateError: (message: string) => void;
 }
 
-// library operations
-interface LibraryState {
+interface Lib {
     games: Game[];
     updateGame: (id: number, updates: Partial<Game>) => void;
 }
 
-// file handling operations
-interface FileState {
+interface Files {
     setIsProcessing: (processing: boolean) => void;
     processGameFile: (file: File, index: number, core: string, meta?: Partial<Game>) => Promise<void>;
 }
 
-/**
- * handles system picker workflow and game editing
- */
-export function useSystemPickerFlow(ops: OperationsState, lib: LibraryState, files: FileState) {
-    // complete the system picker flow
+export function useSystemPickerFlow(ops: Ops, lib: Lib, files: Files) {
     const handleSystemPickerDone = useCallback(async () => {
-        // handle editing existing game
         if (ops.editingGame) {
             lib.updateGame(ops.editingGame.id, ops.editingGame);
             ops.closeSystemPicker();
             return;
         }
 
-        // determine which core to use
-        const core = ops.pendingFiles.length > 1
-            ? ops.pendingBatchCore
-            : ops.pendingGame?.core;
-
+        const core = ops.pendingFiles.length > 1 ? ops.pendingBatchCore : ops.pendingGame?.core;
         if (!core) {
             ops.showDuplicateError("Please select a system");
             return;
         }
 
-        // check for duplicates in single file mode
-        if (ops.pendingFiles.length === 1) {
-            const isDuplicate = lib.games.some(
-                g => g.fileName === ops.pendingFiles[0].file.name
-            );
-            if (isDuplicate) {
-                ops.showDuplicateError(`"${ops.pendingFiles[0].file.name}" is duplicate`);
-                ops.closeSystemPicker();
-                return;
-            }
+        if (ops.pendingFiles.length === 1 && lib.games.some(g => g.fileName === ops.pendingFiles[0].file.name)) {
+            ops.showDuplicateError(`"${ops.pendingFiles[0].file.name}" is duplicate`);
+            ops.closeSystemPicker();
+            return;
         }
 
         ops.closeSystemPicker();
@@ -69,15 +51,9 @@ export function useSystemPickerFlow(ops: OperationsState, lib: LibraryState, fil
 
         try {
             const meta = ops.pendingGame ? { ...ops.pendingGame } : undefined;
-
             await Promise.all(
-                ops.pendingFiles.map((item, index) =>
-                    files.processGameFile(
-                        item.file,
-                        index === 0 && meta ? 0 : item.index,
-                        core,
-                        index === 0 ? meta : undefined
-                    )
+                ops.pendingFiles.map((item, i) =>
+                    files.processGameFile(item.file, i === 0 && meta ? 0 : item.index, core, i === 0 ? meta : undefined)
                 )
             );
         } catch (error) {
@@ -87,7 +63,6 @@ export function useSystemPickerFlow(ops: OperationsState, lib: LibraryState, fil
         }
     }, [ops, lib, files]);
 
-    // open system picker for editing a game
     const handleEditGame = useCallback((game: Game) => {
         ops.setEditingGame(game);
         ops.setPendingGame({ ...game });
@@ -95,40 +70,21 @@ export function useSystemPickerFlow(ops: OperationsState, lib: LibraryState, fil
         ops.setSystemPickerOpen(true);
     }, [ops]);
 
-    // handle system selection
     const onSelectSystem = useCallback((core: string) => {
-        const update = {
-            core,
-            genre: getSystemNameByCore(core)
-        };
+        const update = { core, genre: getSystemNameByCore(core) };
 
         if (ops.pendingFiles.length > 1) {
-            // batch mode: just set the core
             ops.setPendingBatchCore(core);
         } else {
-            // single mode: update the editing/pending game
-            if (ops.editingGame) {
-                ops.setEditingGame({ ...ops.editingGame, ...update });
-            }
-            if (ops.pendingGame) {
-                ops.setPendingGame({ ...ops.pendingGame, ...update });
-            }
+            if (ops.editingGame) ops.setEditingGame({ ...ops.editingGame, ...update });
+            if (ops.pendingGame) ops.setPendingGame({ ...ops.pendingGame, ...update });
         }
     }, [ops]);
 
-    // handle game rename
     const onRename = useCallback((title: string) => {
-        if (ops.editingGame) {
-            ops.setEditingGame({ ...ops.editingGame, title });
-        } else if (ops.pendingGame) {
-            ops.setPendingGame({ ...ops.pendingGame, title });
-        }
+        if (ops.editingGame) ops.setEditingGame({ ...ops.editingGame, title });
+        else if (ops.pendingGame) ops.setPendingGame({ ...ops.pendingGame, title });
     }, [ops]);
 
-    return {
-        handleSystemPickerDone,
-        handleEditGame,
-        onSelectSystem,
-        onRename
-    };
+    return { handleSystemPickerDone, handleEditGame, onSelectSystem, onRename };
 }

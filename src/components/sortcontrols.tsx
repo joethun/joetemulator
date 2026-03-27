@@ -14,26 +14,14 @@ interface SortControlsProps {
     setSortOrder: (order: SortOrder) => void;
 }
 
-// dropdown for sort options
-export const SortControls = memo(({
-    colors,
-    sortBy,
-    setSortBy,
-    sortOrder,
-    setSortOrder
-}: SortControlsProps) => {
+export const SortControls = memo(({ colors, sortBy, setSortBy, sortOrder, setSortOrder }: SortControlsProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const toggleOrder = useCallback(() => {
-        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    }, [sortOrder, setSortOrder]);
+    const toggleOrder = useCallback(() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'), [sortOrder, setSortOrder]);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            e.preventDefault();
-            setIsOpen(false);
-        }
+        if (e.key === 'Escape') { e.preventDefault(); setIsOpen(false); }
     }, []);
 
     const handleSortSelect = useCallback((option: SortOption) => {
@@ -41,29 +29,23 @@ export const SortControls = memo(({
         setIsOpen(false);
     }, [setSortBy]);
 
-    // close on click outside
     useEffect(() => {
         if (!isOpen) return;
-
         const handleClickOutside = (e: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-                setIsOpen(false);
-            }
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setIsOpen(false);
         };
-
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen]);
 
     return (
         <div className="relative z-40" ref={dropdownRef} onKeyDown={handleKeyDown}>
-            {/* trigger button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 aria-expanded={isOpen}
                 aria-haspopup="menu"
                 aria-label="Sort options"
-                className="relative z-40 flex items-center rounded-xl border-[0.125rem] h-12 px-3 transition-all duration-300"
+                className="flex items-center rounded-xl border-[0.125rem] h-12 px-3 transition-all"
                 style={{
                     backgroundColor: colors.darkBg,
                     borderColor: isOpen ? colors.highlight : colors.midDark,
@@ -74,9 +56,8 @@ export const SortControls = memo(({
                 <ListFilter className="w-5 h-5" />
             </button>
 
-            {/* dropdown menu */}
             <div
-                className="absolute top-full mt-2 right-0 z-40 rounded-xl border-[0.125rem] overflow-hidden transition-all duration-300 origin-top"
+                className="absolute top-full mt-2 right-0 rounded-xl border-[0.125rem] overflow-hidden transition-all duration-300 origin-top"
                 style={{
                     backgroundColor: colors.darkBg,
                     borderColor: colors.midDark,
@@ -87,20 +68,14 @@ export const SortControls = memo(({
                 }}
             >
                 <div className="p-3 space-y-2 min-w-[160px]">
-                    {/* sort by section */}
                     <div className="flex flex-col gap-1">
-                        <div
-                            className="text-[10px] font-bold uppercase tracking-wider mb-1 px-1 opacity-80"
-                            style={{ color: colors.highlight }}
-                        >
-                            Sort By
-                        </div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider mb-1 px-1 opacity-80" style={{ color: colors.highlight }}>Sort By</div>
                         {SORT_OPTIONS.map(option => (
                             <button
                                 key={option}
                                 onClick={() => handleSortSelect(option)}
                                 aria-pressed={sortBy === option}
-                                className="px-3 py-2 rounded-xl text-sm font-medium capitalize transition-all active:scale-95 text-left"
+                                className="px-3 py-2 rounded-xl text-sm font-medium capitalize text-left transition-all active:scale-95"
                                 style={{
                                     backgroundColor: sortBy === option ? colors.highlight : colors.midDark,
                                     color: sortBy === option ? colors.darkBg : colors.softLight
@@ -113,24 +88,14 @@ export const SortControls = memo(({
 
                     <div className="h-px" style={{ backgroundColor: colors.highlight + '30' }} />
 
-                    {/* order section */}
                     <div className="flex flex-col gap-1">
-                        <div
-                            className="text-[10px] font-bold uppercase tracking-wider mb-1 px-1 opacity-80"
-                            style={{ color: colors.highlight }}
-                        >
-                            Order
-                        </div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider mb-1 px-1 opacity-80" style={{ color: colors.highlight }}>Order</div>
                         <button
                             onClick={toggleOrder}
                             className="px-3 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all active:scale-95"
                             style={{ backgroundColor: colors.midDark, color: colors.softLight }}
                         >
-                            {sortOrder === 'asc' ? (
-                                <ArrowUp className="w-4 h-4" />
-                            ) : (
-                                <ArrowDown className="w-4 h-4" />
-                            )}
+                            {sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
                             {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
                         </button>
                     </div>

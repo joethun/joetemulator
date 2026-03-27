@@ -17,19 +17,9 @@ interface SettingsCardProps {
     isExpanded?: boolean;
 }
 
-// reusable settings card with optional toggle and expandable content
 export const SettingsCard = memo(({
-    colors,
-    gradient,
-    icon: Icon,
-    title,
-    description,
-    animationDelay = '0s',
-    control,
-    checked,
-    onToggle,
-    children,
-    isExpanded = false,
+    colors, gradient, icon: Icon, title, description,
+    animationDelay = '0s', control, checked, onToggle, children, isExpanded = false,
 }: SettingsCardProps) => (
     <div
         className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col"
@@ -43,39 +33,22 @@ export const SettingsCard = memo(({
         <div className="flex items-center justify-between gap-4 sm:gap-6">
             <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
                 <div
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0"
                     style={{ backgroundColor: colors.midDark, color: colors.highlight }}
                 >
                     <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <h3
-                        className="text-base sm:text-lg font-bold leading-tight mb-1"
-                        style={{ color: colors.softLight }}
-                    >
-                        {title}
-                    </h3>
-                    <p
-                        className="text-xs sm:text-sm leading-relaxed opacity-80"
-                        style={{ color: colors.highlight }}
-                    >
-                        {description}
-                    </p>
+                    <h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>{title}</h3>
+                    <p className="text-xs sm:text-sm leading-relaxed opacity-80" style={{ color: colors.highlight }}>{description}</p>
                 </div>
             </div>
 
-            {/* custom control or switch */}
             {control ? control : onToggle && (
-                <Switch
-                    checked={checked ?? false}
-                    onChange={onToggle}
-                    colors={colors}
-                    gradient={gradient}
-                />
+                <Switch checked={checked ?? false} onChange={onToggle} colors={colors} gradient={gradient} />
             )}
         </div>
 
-        {/* expandable children */}
         {children && (
             <div
                 className="overflow-hidden transition-all duration-300"
@@ -86,10 +59,7 @@ export const SettingsCard = memo(({
                     visibility: isExpanded ? 'visible' : 'hidden'
                 }}
             >
-                <div
-                    className="pt-4 border-t pl-0 sm:pl-16"
-                    style={{ borderColor: colors.highlight + '30' }}
-                >
+                <div className="pt-4 border-t pl-0 sm:pl-16" style={{ borderColor: colors.highlight + '30' }}>
                     {children}
                 </div>
             </div>
