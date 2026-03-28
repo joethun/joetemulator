@@ -33,7 +33,7 @@ export const Sidebar = memo(({ activeView, colors, gradient, onNavClick, onAddGa
 
     return (
         <aside
-            className="w-20 py-6 flex flex-col fixed inset-y-0 left-0 z-50"
+            className="w-20 py-6 flex flex-col fixed inset-y-0 left-0 z-50 select-none"
             style={{ backgroundColor: colors.midDark, boxShadow: '4px 0 12px rgba(0,0,0,0.3)' }}
         >
             <div className="flex flex-col items-center gap-4 mb-2">
@@ -58,8 +58,8 @@ export const Sidebar = memo(({ activeView, colors, gradient, onNavClick, onAddGa
                                     backgroundColor: isActive ? colors.highlight : 'transparent',
                                     color: isActive ? colors.darkBg : colors.softLight
                                 }}
-                                onMouseEnter={e => { if (!isActive) (e.target as HTMLElement).style.backgroundColor = colors.sidebarHover; }}
-                                onMouseLeave={e => { if (!isActive) (e.target as HTMLElement).style.backgroundColor = 'transparent'; }}
+                                onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.backgroundColor = colors.sidebarHover; }}
+                                onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
                             >
                                 <Icon className="w-6 h-6" />
                             </button>
