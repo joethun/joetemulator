@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  images: {
+    remotePatterns: [ { protocol: 'https', hostname: 'thumbnails.libretro.com' } ]
+  },
 
   async headers() {
     return [

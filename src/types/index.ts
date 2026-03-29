@@ -7,6 +7,7 @@ export interface Game {
   fileData?: string;
   core?: string;
   coverArt?: string;
+  autoCoverArt?: string;
   coverArtFit?: 'cover' | 'contain';
   progress?: number;
   isComplete?: boolean;

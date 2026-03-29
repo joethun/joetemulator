@@ -1,20 +1,17 @@
 "use client";
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
+import { Lexend } from 'next/font/google';
 import { Game } from '@/types';
 import { GameCard } from '@/components/gamecard';
 import { Sidebar } from '@/components/sidebar';
 import { SearchBar } from '@/components/searchbar';
-import { SystemPickerModal } from '@/components/systempicker';
 import { EmulatorNotification } from '@/components/emulatornotification';
 import { SortControls } from '@/components/sortcontrols';
-import { ThemeGrid } from '@/components/themegrid';
-import { SettingsView } from '@/components/settingsview';
-import { Trash2, Gamepad2 } from 'lucide-react';
 import { Alert } from '@/components/alert';
+import { Trash2, Gamepad2 } from 'lucide-react';
 import { useGameLibrary } from '@/hooks/useGameLibrary';
-import { useUIState } from '@/hooks/useUIState';
-import { useGameOperations } from '@/hooks/useGameOperations';
+import { useApp } from '@/hooks/useApp';
 import { useFileHandler } from '@/hooks/useFileHandler';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { useGameList } from '@/hooks/useGameList';
@@ -23,185 +20,222 @@ import { useGameDeletion } from '@/hooks/useGameDeletion';
 import { useSystemPickerFlow } from '@/hooks/useSystemPickerFlow';
 import { useDragDrop } from '@/hooks/useDragDrop';
 import { selectFiles } from '@/lib/files';
+import { SystemPickerModal } from '@/components/systempicker';
+import { ThemeGrid } from '@/components/themegrid';
+import { SettingsView } from '@/components/settingsview';
 
-const FONT_FAMILY = 'Lexend, sans-serif';
-const GRID_STYLE = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))',
-  gap: 'clamp(1rem, 2vw, 1.5rem)',
-  width: '100%',
-} as const;
+const lexend = Lexend({ subsets: ['latin'], display: 'swap' });
 
 export default function Home() {
   const lib = useGameLibrary();
-  const ui = useUIState();
-  const ops = useGameOperations();
+  const app = useApp();
   const settings = useAppSettings();
-  const files = useFileHandler(lib.games, lib.addGame, ops);
-  const view = useGameList(lib.games, files.uploads, ui.gameSearchQuery, settings.sortBy, settings.sortOrder);
+  const files = useFileHandler(lib.games, lib.addGame, app);
+  const view = useGameList(lib.games, files.uploads, app.gameSearchQuery, settings.sortOrder);
   const launcher = useGameLauncher(settings);
-  const deletion = useGameDeletion(lib, ui);
-  const pickerFlow = useSystemPickerFlow(ops, lib, files);
+  const deletion = useGameDeletion(lib, app);
+  const pickerFlow = useSystemPickerFlow(app, lib, files);
   const drag = useDragDrop(files.handleIncomingFiles);
 
-  useEffect(() => {
-    ui.setIsMounted(true);
-    lib.loadGamesFromStorage();
-  }, [lib.loadGamesFromStorage, ui.setIsMounted]);
+  const { currentColors, gradientStyle, sortOrder, setSortOrder, selectedTheme, setSelectedTheme, isHydrated } = settings;
+  const {
+    isMounted, setIsMounted, activeView, setActiveView, deletingGameIds, selectedGameIds, isDeleteMode, setIsDeleteMode,
+    toggleGameSelection, themeAnimationKey, setThemeAnimationKey, libraryAnimationKey, setLibraryAnimationKey,
+    gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused, gameSearchInputRef,
+    duplicateMessage, showDuplicateMessage, systemPickerOpen, systemPickerClosing, editingGame, pendingGame,
+    pendingFiles, systemSearchQuery, setSystemSearchQuery, closeSystemPicker, pendingBatchCore
+  } = app;
 
   useEffect(() => {
-    if (ui.activeView === 'themes') ui.setThemeAnimationKey(k => k + 1);
-    else if (ui.activeView === 'library') ui.setLibraryAnimationKey(k => k + 1);
-  }, [ui.activeView, ui.setThemeAnimationKey, ui.setLibraryAnimationKey]);
+    setIsMounted(true);
+    lib.loadGamesFromStorage();
+  }, [lib.loadGamesFromStorage, setIsMounted]);
+
+  useEffect(() => {
+    if (activeView === 'themes') setThemeAnimationKey((k: number) => k + 1);
+    else if (activeView === 'library') setLibraryAnimationKey((k: number) => k + 1);
+  }, [activeView, setThemeAnimationKey, setLibraryAnimationKey]);
 
   const handleAddGame = useCallback(async () => {
     try {
-      await files.handleIncomingFiles(await selectFiles());
+      const selected = await selectFiles();
+      await files.handleIncomingFiles(selected);
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== 'AbortError') console.error(err);
     }
   }, [files]);
 
-  const renderGameCard = useCallback((g: Game, i: number) => (
-    <div key={g.id} className={ui.deletingGameIds.has(g.id) ? 'animate-card-exit' : ''}
-      style={{ animation: ui.deletingGameIds.has(g.id) ? undefined : `fadeIn 0.4s ease-out ${i * 0.03}s both` }}>
-      <GameCard
-        game={g}
-        isSelected={ui.selectedGameIds.has(g.id)}
-        onPlay={launcher.handlePlayClick}
-        onDelete={deletion.handleDeleteGame}
-        onSelect={ui.toggleGameSelection}
-        isDeleteMode={ui.isDeleteMode}
-        onEnterDeleteMode={() => ui.setIsDeleteMode(true)}
-        colors={settings.currentColors}
-        onEdit={pickerFlow.handleEditGame}
-        onCoverArtClick={pickerFlow.handleEditGame}
-      />
-    </div>
-  ), [ui.deletingGameIds, ui.selectedGameIds, launcher.handlePlayClick, deletion.handleDeleteGame, ui.toggleGameSelection, ui.isDeleteMode, ui.setIsDeleteMode, settings.currentColors, pickerFlow.handleEditGame]);
+  const renderGameCard = useCallback((g: Game, i: number) => {
+    const isDeleting = deletingGameIds.has(g.id);
+    const animationStyle = isDeleting ? undefined : { animation: `fadeIn 0.4s ease-out ${i * 0.03}s both` };
 
-  if (!ui.isMounted || !settings.isHydrated) return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f', fontFamily: FONT_FAMILY }} />;
+    return (
+      <div key={g.id} className={isDeleting ? 'animate-card-exit' : ''} style={animationStyle}>
+        <GameCard
+          game={g}
+          isSelected={selectedGameIds.has(g.id)}
+          onPlay={launcher.handlePlayClick}
+          onDelete={deletion.handleDeleteGame}
+          onSelect={toggleGameSelection}
+          onUploadCover={(gameId, data) => lib.updateGame(gameId, { coverArt: data })}
+          onResetCover={(gameId) => {
+            const game = lib.games.find(x => x.id === gameId);
+            if (game?.autoCoverArt) lib.updateGame(gameId, { coverArt: game.autoCoverArt });
+          }}
+          isDeleteMode={isDeleteMode}
+          onEnterDeleteMode={() => setIsDeleteMode(true)}
+          colors={currentColors}
+          onEdit={pickerFlow.handleEditGame}
+          onCoverArtClick={pickerFlow.handleEditGame}
+        />
+      </div>
+    );
+  }, [deletingGameIds, selectedGameIds, isDeleteMode, setIsDeleteMode, toggleGameSelection, launcher.handlePlayClick, deletion.handleDeleteGame, pickerFlow.handleEditGame, currentColors, lib]);
+
+  const renderMainContent = () => {
+    if (activeView === 'themes') {
+      return <ThemeGrid colors={currentColors} selectedTheme={selectedTheme} onSelectTheme={setSelectedTheme} animKey={themeAnimationKey} />;
+    }
+    
+    if (activeView === 'settings') {
+      return (
+        <SettingsView
+          colors={currentColors} gradient={gradientStyle}
+          autoLoadState={settings.autoLoadState} setAutoLoadState={settings.setAutoLoadState}
+          autoSaveState={settings.autoSaveState} setAutoSaveState={settings.setAutoSaveState}
+          autoSaveInterval={settings.autoSaveInterval} setAutoSaveInterval={settings.setAutoSaveInterval}
+          autoSaveIcon={settings.autoSaveIcon} setAutoSaveIcon={settings.setAutoSaveIcon}
+          autoLoadIcon={settings.autoLoadIcon} setAutoLoadIcon={settings.setAutoLoadIcon}
+        />
+      );
+    }
+
+    if (!lib.games.length && !Object.keys(files.uploads).length) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
+          <div className="w-20 h-20 rounded-xl mb-6 flex items-center justify-center shadow-lg" style={{ backgroundColor: currentColors.midDark, color: currentColors.highlight }}>
+            <Gamepad2 className="w-10 h-10" />
+          </div>
+          <h3 className="text-xl font-bold mb-2" style={{ color: currentColors.softLight }}>No games found</h3>
+          <p className="mb-8 opacity-70" style={{ color: currentColors.highlight }}>Add your ROMs by clicking the + button in the sidebar</p>
+        </div>
+      );
+    }
+
+    if (!view.sortedGames.length) {
+      return (
+        <div className="text-center py-20 opacity-60">
+          <p style={{ color: currentColors.softLight }}>No games found matching &quot;{gameSearchQuery}&quot;</p>
+        </div>
+      );
+    }
+
+    if (view.groupedGames) {
+      return (
+        <div key={libraryAnimationKey}>
+          {Object.entries(view.groupedGames).map(([cat, catGames]) => (
+            <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
+              <div className="flex items-center mb-4">
+                <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: currentColors.highlight }}>{cat}</h4>
+                <div className="flex-1 h-px" style={{ backgroundColor: `${currentColors.highlight}30` }} />
+              </div>
+              <div className="grid gap-4 md:gap-6 w-full grid-cols-[repeat(auto-fill,minmax(min(150px,100%),1fr))] md:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]">{catGames.map(renderGameCard)}</div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return <div key={libraryAnimationKey} className="grid gap-4 md:gap-6 w-full grid-cols-[repeat(auto-fill,minmax(min(150px,100%),1fr))] md:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]">{view.sortedGames.map(renderGameCard)}</div>;
+  };
+
+  const MemoizedSidebar = useMemo(() => (
+    <Sidebar
+      activeView={activeView}
+      colors={currentColors}
+      gradient={gradientStyle}
+      onNavClick={setActiveView}
+      onAddGame={handleAddGame}
+    />
+  ), [activeView, currentColors, gradientStyle, setActiveView, handleAddGame]);
+
+  if (!isMounted || !isHydrated) {
+    return <div className={`min-h-screen ${lexend.className}`} style={{ backgroundColor: '#0a0a0f' }} />;
+  }
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: settings.currentColors.darkBg, fontFamily: FONT_FAMILY }}>
-      <Sidebar
-        activeView={ui.activeView}
-        colors={settings.currentColors}
-        gradient={settings.gradientStyle}
-        onNavClick={ui.setActiveView}
-        onAddGame={handleAddGame}
-      />
+    <div className={`min-h-screen flex ${lexend.className}`} style={{ backgroundColor: currentColors.darkBg }}>
+      {MemoizedSidebar}
 
-      <div className="flex-1 overflow-hidden ml-20">
+      <div className="flex-1 overflow-hidden md:ml-20">
         <main
-          className="pt-6 pb-4 px-4 sm:pb-6 sm:px-6 md:pb-8 md:px-8 overflow-y-auto"
-          style={{ minHeight: '100vh' }}
+          className="pt-6 pb-20 px-4 sm:px-6 md:pb-8 md:px-8 overflow-y-auto min-h-screen"
           onDragEnter={drag.handleDragEnter}
           onDragOver={drag.handleDragOver}
           onDragLeave={drag.handleDragLeave}
           onDrop={drag.handleDrop}
         >
           <header className="mb-8 flex flex-col md:flex-row justify-between gap-6 md:items-center md:h-12">
-            <h1 className="text-4xl font-extrabold tracking-tight capitalize" style={{ color: settings.currentColors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-              {ui.activeView}
-              {ui.activeView === 'library' && <span className="ml-3">({view.sortedGames.length})</span>}
+            <h1 className="text-4xl font-extrabold tracking-tight capitalize" style={{ color: currentColors.softLight, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+              {activeView}
+              {activeView === 'library' && <span className="ml-3">({view.sortedGames.length})</span>}
             </h1>
-            {ui.activeView === 'library' && (
+            
+            {activeView === 'library' && (
               <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
                 <div className="flex gap-3 items-center w-full md:w-auto">
                   <div className="flex-1 md:flex-initial md:w-[340px] min-w-0">
                     <SearchBar
-                      colors={settings.currentColors}
-                      value={ui.gameSearchQuery}
-                      onChange={ui.setGameSearchQuery}
-                      isFocused={ui.gameSearchFocused}
-                      onFocus={() => ui.setGameSearchFocused(true)}
-                      onBlur={() => ui.setGameSearchFocused(false)}
-                      inputRef={ui.gameSearchInputRef}
+                      colors={currentColors}
+                      value={gameSearchQuery}
+                      onChange={setGameSearchQuery}
+                      isFocused={gameSearchFocused}
+                      onFocus={() => setGameSearchFocused(true)}
+                      onBlur={() => setGameSearchFocused(false)}
+                      inputRef={gameSearchInputRef}
                     />
                   </div>
-                  <SortControls
-                    colors={settings.currentColors}
-                    sortBy={settings.sortBy}
-                    setSortBy={settings.setSortBy}
-                    sortOrder={settings.sortOrder}
-                    setSortOrder={settings.setSortOrder}
-                  />
+                  <SortControls colors={currentColors} sortOrder={sortOrder} setSortOrder={setSortOrder} />
                 </div>
-                {ui.isDeleteMode && (
+                
+                {isDeleteMode && (
                   <div className="flex gap-3 w-full md:w-auto">
-                    <button onClick={deletion.onMassDelete} disabled={!ui.selectedGameIds.size} className="flex-1 md:flex-none h-12 px-5 rounded-xl flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60"><Trash2 className="w-5 h-5" /></button>
-                    <button onClick={() => ui.setIsDeleteMode(false)} className="flex-1 md:flex-none h-12 px-5 rounded-xl font-semibold transition-all active:scale-95" style={{ backgroundColor: settings.currentColors.highlight, color: settings.currentColors.darkBg }}>Cancel</button>
+                    <button onClick={deletion.onMassDelete} disabled={!selectedGameIds.size} className="flex-1 md:flex-none h-12 px-5 rounded-xl flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60">
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => setIsDeleteMode(false)} className="flex-1 md:flex-none h-12 px-5 rounded-xl font-semibold transition-all active:scale-95" style={{ backgroundColor: currentColors.highlight, color: currentColors.darkBg }}>
+                      Cancel
+                    </button>
                   </div>
                 )}
               </div>
             )}
           </header>
 
-          {ui.activeView === 'themes' ? (
-            <ThemeGrid colors={settings.currentColors} selectedTheme={settings.selectedTheme} onSelectTheme={settings.setSelectedTheme} animKey={ui.themeAnimationKey} />
-          ) : ui.activeView === 'settings' ? (
-            <SettingsView
-              colors={settings.currentColors} gradient={settings.gradientStyle}
-              autoLoadState={settings.autoLoadState} setAutoLoadState={settings.setAutoLoadState}
-              autoSaveState={settings.autoSaveState} setAutoSaveState={settings.setAutoSaveState}
-              autoSaveInterval={settings.autoSaveInterval} setAutoSaveInterval={settings.setAutoSaveInterval}
-              autoSaveIcon={settings.autoSaveIcon} setAutoSaveIcon={settings.setAutoSaveIcon}
-              autoLoadIcon={settings.autoLoadIcon} setAutoLoadIcon={settings.setAutoLoadIcon}
-            />
-          ) : lib.games.length === 0 && Object.keys(files.uploads).length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
-              <div className="w-20 h-20 rounded-xl mb-6 flex items-center justify-center shadow-lg" style={{ backgroundColor: settings.currentColors.midDark, color: settings.currentColors.highlight }}><Gamepad2 className="w-10 h-10" /></div>
-              <h3 className="text-xl font-bold mb-2" style={{ color: settings.currentColors.softLight }}>No games found</h3>
-              <p className="mb-8 opacity-70" style={{ color: settings.currentColors.highlight }}>Add your ROMs by clicking the + button in the sidebar</p>
-            </div>
-          ) : view.sortedGames.length === 0 ? (
-            <div className="text-center py-20 opacity-60"><p style={{ color: settings.currentColors.softLight }}>No games found matching &quot;{ui.gameSearchQuery}&quot;</p></div>
-          ) : view.groupedGames ? (
-            <div key={ui.libraryAnimationKey}>
-              {Object.entries(view.groupedGames).map(([cat, catGames]) => (
-                <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
-                  <div className="flex items-center mb-4">
-                    <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: settings.currentColors.highlight }}>{cat}</h4>
-                    <div className="flex-1 h-px" style={{ backgroundColor: settings.currentColors.highlight + '30' }} />
-                  </div>
-                  <div style={GRID_STYLE}>{catGames.map(renderGameCard)}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div key={ui.libraryAnimationKey} style={GRID_STYLE}>{view.sortedGames.map(renderGameCard)}</div>
-          )}
+          {renderMainContent()}
         </main>
       </div>
 
-      {ops.duplicateMessage && <Alert message={ops.duplicateMessage} isVisible={ops.showDuplicateMessage} />}
-      <EmulatorNotification colors={settings.currentColors} autoSaveIcon={settings.autoSaveIcon} autoLoadIcon={settings.autoLoadIcon} />
+      {duplicateMessage && <Alert message={duplicateMessage} isVisible={showDuplicateMessage} />}
+      <EmulatorNotification colors={currentColors} autoSaveIcon={settings.autoSaveIcon} autoLoadIcon={settings.autoLoadIcon} />
 
-      {(ops.systemPickerOpen || ops.systemPickerClosing) && (
+      {(systemPickerOpen || systemPickerClosing) && (
         <SystemPickerModal
-          isOpen={ops.systemPickerOpen} isClosing={ops.systemPickerClosing} colors={settings.currentColors} gradient={settings.gradientStyle}
-          editingGame={ops.editingGame} pendingGame={ops.pendingGame} pendingFiles={ops.pendingFiles} searchQuery={ops.systemSearchQuery}
-          onSearchChange={ops.setSystemSearchQuery} onClose={ops.closeSystemPicker} onDone={pickerFlow.handleSystemPickerDone}
-          isProcessing={files.isProcessing} pendingBatchCore={ops.pendingBatchCore}
+          isOpen={systemPickerOpen}
+          isClosing={systemPickerClosing}
+          colors={currentColors}
+          gradient={gradientStyle}
+          editingGame={editingGame}
+          pendingGame={pendingGame}
+          pendingFiles={pendingFiles}
+          searchQuery={systemSearchQuery}
+          onSearchChange={setSystemSearchQuery}
+          onClose={closeSystemPicker}
+          onDone={pickerFlow.handleSystemPickerDone}
+          isProcessing={files.isProcessing}
+          pendingBatchCore={pendingBatchCore}
           onSelectSystem={pickerFlow.onSelectSystem}
           onRename={pickerFlow.onRename}
-          coverArtState={{
-            file: ops.editingGame ? ops.editingGame.coverArt : ops.pendingGame?.coverArt,
-            fit: ops.coverArtFit,
-            onFitChange: (f: 'cover' | 'contain') => {
-              ops.setCoverArtFit(f);
-              if (ops.editingGame) { lib.updateGame(ops.editingGame.id, { coverArtFit: f }); ops.setEditingGame({ ...ops.editingGame, coverArtFit: f }); }
-            },
-            onUpload: (d: string) => {
-              if (ops.editingGame) { lib.updateGame(ops.editingGame.id, { coverArt: d }); ops.setEditingGame({ ...ops.editingGame, coverArt: d }); }
-              else if (ops.pendingGame) ops.setPendingGame({ ...ops.pendingGame, coverArt: d });
-            },
-            onRemove: () => {
-              if (ops.editingGame) { lib.updateGame(ops.editingGame.id, { coverArt: undefined }); ops.setEditingGame({ ...ops.editingGame, coverArt: undefined }); }
-              else if (ops.pendingGame) ops.setPendingGame({ ...ops.pendingGame, coverArt: undefined });
-            }
-          }}
         />
       )}
     </div>

@@ -1,15 +1,21 @@
 import { useState, useCallback, useRef } from 'react';
 import { Game } from '@/types';
-import { saveGameFile, deleteGameFile } from '@/lib/storage';
+import { saveGameFile, deleteGameFile, migrateLegacyRoms } from '@/lib/storage';
 import { getSystemNameByCore } from '@/lib/constants';
 import { STORAGE_KEYS } from '@/lib/utils';
 
-const persist = (games: Game[]) => localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(games));
+const persist = (games: Game[]) => {
+    try {
+        localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(games));
+    } catch (e) {
+        console.error('Failed to persist games:', e);
+    }
+};
 
-const updateAndPersist = (prev: Game[], fn: (games: Game[]) => Game[]) => {
-  const next = fn(prev);
-  persist(next);
-  return next;
+const update = (prev: Game[], fn: (games: Game[]) => Game[]) => {
+    const next = fn(prev);
+    persist(next);
+    return next;
 };
 
 export function useGameLibrary() {
@@ -25,17 +31,7 @@ export function useGameLibrary() {
       if (!raw) return;
 
       const parsed: Game[] = JSON.parse(raw);
-
-      // one-time migration: legacy base64 -> OPFS
-      if (localStorage.getItem(STORAGE_KEYS.GAMES_MIGRATED) !== 'true') {
-        for (const game of parsed.filter(g => g.fileData)) {
-          try {
-            const blob = await (await fetch(game.fileData!)).blob();
-            await saveGameFile(game.id, new File([blob], game.fileName || game.title, { type: 'application/octet-stream' }));
-          } catch {}
-        }
-        localStorage.setItem(STORAGE_KEYS.GAMES_MIGRATED, 'true');
-      }
+      await migrateLegacyRoms(parsed);
 
       const cleaned = parsed.map(({ fileData, ...rest }) => ({
         ...rest,
@@ -51,16 +47,16 @@ export function useGameLibrary() {
   }, []);
 
   const addGame = useCallback((game: Game) => {
-    setGames(prev => updateAndPersist(prev, g => [...g, game]));
+    setGames(prev => update(prev, (g: Game[]) => [...g, game]));
   }, []);
 
   const updateGame = useCallback((id: number, updates: Partial<Game>) => {
-    setGames(prev => updateAndPersist(prev, g => g.map(x => x.id === id ? { ...x, ...updates } : x)));
+    setGames(prev => update(prev, (g: Game[]) => g.map((x: Game) => x.id === id ? { ...x, ...updates } : x)));
   }, []);
 
   const deleteGame = useCallback(async (id: number) => {
     try { await deleteGameFile(id); } catch {}
-    setGames(prev => updateAndPersist(prev, g => g.filter(x => x.id !== id)));
+    setGames(prev => update(prev, (g: Game[]) => g.filter((x: Game) => x.id !== id)));
   }, []);
 
   return { games, loadGamesFromStorage, addGame, updateGame, deleteGame };

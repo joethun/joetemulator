@@ -22,10 +22,10 @@ export const ThemeGrid = memo(({ selectedTheme, onSelectTheme, animKey }: ThemeG
                         onClick={handleSelect(name)}
                         aria-pressed={selected}
                         aria-label={`${name} theme`}
-                        className="p-6 rounded-xl border-[0.125rem] relative overflow-hidden text-left transition-all hover:shadow-lg"
+                        className="p-6 rounded-xl border-[0.125rem] relative overflow-hidden text-left transition-all hover:shadow-lg cursor-pointer"
                         style={{
                             backgroundColor: theme.midDark,
-                            borderColor: selected ? theme.gradientFrom : theme.highlight + '40',
+                            borderColor: selected ? theme.gradientFrom : `${theme.highlight}40`,
                             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
                             animation: `fadeIn 0.4s ease-out ${i * 0.03}s both`
                         }}

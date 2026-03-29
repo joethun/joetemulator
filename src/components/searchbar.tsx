@@ -25,14 +25,14 @@ export const SearchBar = memo(({
 
     return (
         <div
-            className="flex items-center rounded-xl border-[0.125rem] w-full h-12 min-w-0 transition-all"
+            className="flex items-center rounded-xl border-[0.125rem] w-full h-12 min-w-0 shrink-0 transition-all"
             style={{
                 backgroundColor: colors.darkBg,
                 borderColor: isFocused ? colors.highlight : colors.midDark,
                 boxShadow: isFocused ? `0 0 0 2px ${colors.highlight}30` : 'none'
             }}
         >
-            <div className="w-12 h-full flex items-center justify-center shrink-0" style={{ color: colors.softLight }}>
+            <div className="w-12 h-full flex items-center justify-center" style={{ color: colors.softLight }}>
                 <Search className="w-4 h-4" />
             </div>
             <input

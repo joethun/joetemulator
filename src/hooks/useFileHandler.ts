@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react';
 import { Game } from '@/types';
 import { saveGameFile } from '@/lib/storage';
 import { getSystemNameByCore } from '@/lib/constants';
-import { delay, PROGRESS_THROTTLE_MS } from '@/lib/utils';
+import { delay, PROGRESS_THROTTLE_MS, stripExt } from '@/lib/utils';
+import { calculateAutoCoverArt } from '@/lib/files';
 
 interface FileHandlerOps {
     showDuplicateError: (msg: string) => void;
@@ -14,23 +15,34 @@ interface FileHandlerOps {
     setPendingBatchCore: (core: string | null) => void;
 }
 
-const stripExt = (name: string) => name.replace(/\.[^/.]+$/, '');
-
 export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops: FileHandlerOps) {
     const [uploads, setUploads] = useState<Record<number, Game>>({});
     const [isProcessing, setIsProcessing] = useState(false);
 
     const processGameFile = useCallback(async (file: File, index: number, core: string, meta?: Partial<Game>) => {
         const gameId = Date.now() + index + Math.floor(Math.random() * 1000);
+
+        let coverArt = meta?.coverArt;
+        let systemName = meta?.genre || getSystemNameByCore(core);
+        let autoCoverUrl: string | undefined;
+
+        if (typeof window !== 'undefined') {
+            autoCoverUrl = (await calculateAutoCoverArt(file, core)) || undefined;
+            if (!coverArt) {
+                coverArt = autoCoverUrl;
+            }
+        }
+
         const tempGame: Game = {
             id: gameId,
             title: meta?.title || stripExt(file.name),
-            genre: meta?.genre || getSystemNameByCore(core),
+            genre: systemName,
             filePath: meta?.filePath || file.name,
             fileName: file.name,
             core,
-            coverArt: meta?.coverArt,
-            coverArtFit: meta?.coverArt ? (meta.coverArtFit || ops.coverArtFit) : undefined,
+            coverArt: coverArt,
+            autoCoverArt: autoCoverUrl,
+            coverArtFit: coverArt ? (meta?.coverArtFit || ops.coverArtFit) : undefined,
             progress: 0
         };
 

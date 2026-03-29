@@ -30,7 +30,10 @@ export const SettingsCard = memo(({
             animation: `fadeIn 0.4s ease-out ${animationDelay} both`
         }}
     >
-        <div className="flex items-center justify-between gap-4 sm:gap-6">
+        <div 
+            className={`flex items-center justify-between gap-4 sm:gap-6 ${onToggle ? 'cursor-pointer' : ''}`}
+            onClick={onToggle}
+        >
             <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
                 <div
                     className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0"
@@ -45,7 +48,9 @@ export const SettingsCard = memo(({
             </div>
 
             {control ? control : onToggle && (
-                <Switch checked={checked ?? false} onChange={onToggle} colors={colors} gradient={gradient} />
+                <div onClick={e => e.stopPropagation()}>
+                    <Switch checked={checked ?? false} onChange={onToggle} colors={colors} gradient={gradient} />
+                </div>
             )}
         </div>
 
@@ -53,13 +58,13 @@ export const SettingsCard = memo(({
             <div
                 className="overflow-hidden transition-all duration-300"
                 style={{
-                    maxHeight: isExpanded ? '300px' : '0px',
+                    maxHeight: isExpanded ? '400px' : '0px',
                     opacity: isExpanded ? 1 : 0,
                     marginTop: isExpanded ? '1.5rem' : '0px',
                     visibility: isExpanded ? 'visible' : 'hidden'
                 }}
             >
-                <div className="pt-4 border-t pl-0 sm:pl-16" style={{ borderColor: colors.highlight + '30' }}>
+                <div className="pt-4 border-t pl-0 sm:pl-16" style={{ borderColor: `${colors.highlight}30` }}>
                     {children}
                 </div>
             </div>

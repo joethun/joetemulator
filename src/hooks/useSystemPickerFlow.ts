@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { getSystemNameByCore } from '@/lib/constants';
 import { Game } from '@/types';
+import { calculateAutoCoverArt } from '@/lib/files';
 
 interface Ops {
     editingGame: Game | null;
@@ -76,8 +77,22 @@ export function useSystemPickerFlow(ops: Ops, lib: Lib, files: Files) {
         if (ops.pendingFiles.length > 1) {
             ops.setPendingBatchCore(core);
         } else {
-            if (ops.editingGame) ops.setEditingGame({ ...ops.editingGame, ...update });
-            if (ops.pendingGame) ops.setPendingGame({ ...ops.pendingGame, ...update });
+            if (ops.editingGame) {
+                ops.setEditingGame({ ...ops.editingGame, ...update });
+            }
+            if (ops.pendingGame) {
+                const updatedGame = { ...ops.pendingGame, ...update };
+                ops.setPendingGame(updatedGame);
+
+                const file = ops.pendingFiles[0]?.file;
+                if (file && !ops.pendingGame.coverArt) {
+                    calculateAutoCoverArt(file, core).then(cover => {
+                        if (cover) {
+                            ops.setPendingGame({ ...updatedGame, coverArt: cover, autoCoverArt: cover });
+                        }
+                    });
+                }
+            }
         }
     }, [ops]);
 

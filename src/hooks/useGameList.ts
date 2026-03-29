@@ -2,14 +2,12 @@ import { useMemo } from 'react';
 import { Game } from '@/types';
 import { getSystemCategory } from '@/lib/constants';
 
-type SortOption = 'title' | 'system';
 type SortOrder = 'asc' | 'desc';
 
 export function useGameList(
     games: Game[],
     uploads: Record<number, Game>,
     searchQuery: string,
-    sortBy: SortOption,
     sortOrder: SortOrder
 ) {
     const sortedGames = useMemo(() => {
@@ -31,18 +29,15 @@ export function useGameList(
         const dir = sortOrder === 'asc' ? 1 : -1;
 
         return filtered.sort((a, b) => {
-            if (sortBy === 'title') return dir * a.title.localeCompare(b.title);
             return dir * (
                 getSystemCategory(a.core).localeCompare(getSystemCategory(b.core)) ||
                 a.genre.localeCompare(b.genre) ||
                 a.title.localeCompare(b.title)
             );
         });
-    }, [games, uploads, sortBy, sortOrder, searchQuery]);
+    }, [games, uploads, sortOrder, searchQuery]);
 
     const groupedGames = useMemo(() => {
-        if (sortBy !== 'system') return null;
-
         const groups: Record<string, Game[]> = {};
         for (const game of sortedGames) {
             const cat = getSystemCategory(game.core);
@@ -55,7 +50,7 @@ export function useGameList(
         );
 
         return Object.fromEntries(sortedKeys.map(k => [k, groups[k]]));
-    }, [sortedGames, sortBy, sortOrder]);
+    }, [sortedGames, sortOrder]);
 
     return { sortedGames, groupedGames };
 }

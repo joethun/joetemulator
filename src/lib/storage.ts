@@ -41,8 +41,25 @@ export async function getGameFile(gameId: number): Promise<File | null> {
 
 export async function deleteGameFile(gameId: number): Promise<void> {
   try {
-    await (await getDir()).removeEntry(romName(gameId));
+    const dir = await getDir();
+    await dir.removeEntry(romName(gameId));
   } catch (e) {
     if ((e as DOMException).name !== 'NotFoundError') throw e;
   }
+}
+
+export async function migrateLegacyRoms(games: any[]): Promise<void> {
+  const MIGRATED_KEY = 'joet_emulator_roms_migrated';
+  if (localStorage.getItem(MIGRATED_KEY) === 'true') return;
+
+  for (const game of games.filter(g => g.fileData)) {
+    try {
+      const resp = await fetch(game.fileData);
+      const blob = await resp.blob();
+      await saveGameFile(game.id, new File([blob], game.fileName || game.title, { type: 'application/octet-stream' }));
+    } catch (e) {
+      console.error(`Migration failed for ${game.title}:`, e);
+    }
+  }
+  localStorage.setItem(MIGRATED_KEY, 'true');
 }
