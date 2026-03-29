@@ -110,7 +110,7 @@ export const GameContextMenu = memo(({
         onChange={handleFileChange}
       />
       <div className="p-3">
-        <div className="text-[10px] font-bold uppercase tracking-wider mb-2 px-1 opacity-80 truncate" style={{ color: colors.highlight }}>
+        <div className="text-[10px] font-bold uppercase tracking-wider mb-2 px-1 opacity-80 truncate select-none" style={{ color: colors.highlight }}>
           {gameTitle}
         </div>
         <div className="flex flex-col gap-1">

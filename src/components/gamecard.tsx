@@ -146,8 +146,9 @@ export const GameCard = memo(({
             src={game.coverArt}
             alt={game.title}
             fill
+            draggable={false}
             onError={() => setImgError(true)}
-            style={{ objectFit: game.coverArtFit || 'cover', objectPosition: 'center' }}
+            style={{ objectFit: game.coverArtFit || 'cover', objectPosition: 'center', userSelect: 'none' }}
           />
         ) : (
           <div className="flex items-center justify-center h-full w-full px-2 sm:px-4" style={{ color: colors.darkBg }}>

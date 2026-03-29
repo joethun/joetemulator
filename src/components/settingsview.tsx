@@ -67,9 +67,9 @@ export const SettingsView = memo(({
                                     key={v}
                                     onClick={handleIntervalClick(v)}
                                     aria-pressed={autoSaveInterval === v}
-                                    className="px-3 py-1 rounded-xl h-9 text-sm font-medium flex-1 sm:flex-none flex items-center justify-center transition-all active:scale-95"
-                                    style={{ 
-                                        backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark, 
+                                    className="px-3 py-1 rounded-xl h-9 text-sm font-medium flex-1 sm:flex-none flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                                    style={{
+                                        backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark,
                                         color: autoSaveInterval === v ? colors.darkBg : colors.softLight,
                                     }}
                                 >
@@ -78,7 +78,7 @@ export const SettingsView = memo(({
                             ))}
                         </div>
                     </div>
-                    <SettingItem 
+                    <SettingItem
                         colors={colors} gradient={gradient} label="Show Save Icon" icon={autoSaveIcon ? Eye : EyeOff}
                         checked={autoSaveIcon} onToggle={() => setAutoSaveIcon(!autoSaveIcon)}
                     />
@@ -92,7 +92,7 @@ export const SettingsView = memo(({
                 checked={autoLoadState} onToggle={() => setAutoLoadState(!autoLoadState)}
                 isExpanded={autoLoadState}
             >
-                <SettingItem 
+                <SettingItem
                     colors={colors} gradient={gradient} label="Show Load Icon" icon={autoLoadIcon ? Eye : EyeOff}
                     checked={autoLoadIcon} onToggle={() => setAutoLoadIcon(!autoLoadIcon)}
                 />
