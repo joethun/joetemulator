@@ -134,7 +134,7 @@ export const SaveStateManager = memo(({
     }, [isOpen, refresh]);
 
     const handleDelete = useCallback(async (key: string) => {
-        if (!confirm(`Delete this save state from ${gameTitle}?`)) return;
+        if (!confirm(`Delete this save state for ${gameTitle}?`)) return;
         setDeletingKey(key);
         await new Promise(r => setTimeout(r, 350));
         await removeState(key, gameName);
