@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { getSystemNameByCore } from '@/lib/constants';
 import { Game } from '@/types';
-import { calculateAutoCoverArt } from '@/lib/files';
+import { prewarmDat } from '@/lib/files';
 
 interface Ops {
     editingGame: Game | null;
@@ -23,8 +23,8 @@ interface Lib {
 }
 
 interface Files {
-    setIsProcessing: (processing: boolean) => void;
-    processGameFile: (file: File, index: number, core: string, meta?: Partial<Game>) => Promise<void>;
+    setIsProcessing: (v: boolean) => void;
+    processGameFile: (file: File, core: string, meta?: Partial<Game>) => Promise<void>;
 }
 
 export function useSystemPickerFlow(ops: Ops, lib: Lib, files: Files) {
@@ -36,10 +36,7 @@ export function useSystemPickerFlow(ops: Ops, lib: Lib, files: Files) {
         }
 
         const core = ops.pendingFiles.length > 1 ? ops.pendingBatchCore : ops.pendingGame?.core;
-        if (!core) {
-            ops.showDuplicateError("Please select a system");
-            return;
-        }
+        if (!core) { ops.showDuplicateError('Please select a system'); return; }
 
         if (ops.pendingFiles.length === 1 && lib.games.some(g => g.fileName === ops.pendingFiles[0].file.name)) {
             ops.showDuplicateError(`"${ops.pendingFiles[0].file.name}" is duplicate`);
@@ -49,16 +46,13 @@ export function useSystemPickerFlow(ops: Ops, lib: Lib, files: Files) {
 
         ops.closeSystemPicker();
         files.setIsProcessing(true);
-
         try {
             const meta = ops.pendingGame ? { ...ops.pendingGame } : undefined;
-            await Promise.all(
-                ops.pendingFiles.map((item, i) =>
-                    files.processGameFile(item.file, i === 0 && meta ? 0 : item.index, core, i === 0 ? meta : undefined)
-                )
-            );
-        } catch (error) {
-            console.error("batch processing error:", error);
+            await Promise.all(ops.pendingFiles.map((item, i) =>
+                files.processGameFile(item.file, core, i === 0 ? meta : undefined)
+            ));
+        } catch (err) {
+            console.error('batch processing error:', err);
         } finally {
             files.setIsProcessing(false);
         }
@@ -73,26 +67,13 @@ export function useSystemPickerFlow(ops: Ops, lib: Lib, files: Files) {
 
     const onSelectSystem = useCallback((core: string) => {
         const update = { core, genre: getSystemNameByCore(core) };
-
+        // Prewarm the DAT fetch so it's cached by the time Done is pressed
+        prewarmDat(core);
         if (ops.pendingFiles.length > 1) {
             ops.setPendingBatchCore(core);
         } else {
-            if (ops.editingGame) {
-                ops.setEditingGame({ ...ops.editingGame, ...update });
-            }
-            if (ops.pendingGame) {
-                const updatedGame = { ...ops.pendingGame, ...update };
-                ops.setPendingGame(updatedGame);
-
-                const file = ops.pendingFiles[0]?.file;
-                if (file && !ops.pendingGame.coverArt) {
-                    calculateAutoCoverArt(file, core).then(cover => {
-                        if (cover) {
-                            ops.setPendingGame({ ...updatedGame, coverArt: cover, autoCoverArt: cover });
-                        }
-                    });
-                }
-            }
+            if (ops.editingGame) ops.setEditingGame({ ...ops.editingGame, ...update });
+            if (ops.pendingGame) ops.setPendingGame({ ...ops.pendingGame, ...update });
         }
     }, [ops]);
 

@@ -6,7 +6,6 @@ import { SYSTEM_PICKER } from '@/lib/constants';
 import { SearchBar } from '@/components/searchbar';
 import { Game, ThemeColors, GradientStyle } from '@/types';
 
-
 interface SystemPickerProps {
     isOpen: boolean;
     isClosing: boolean;

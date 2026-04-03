@@ -167,7 +167,6 @@ function startAutoSave(interval?: number): void {
   }, currentAutoSaveDelay);
 }
 
-// F1 to save, F2 to load
 function addEventListeners(): void {
   if (eventListenersAdded) return;
 

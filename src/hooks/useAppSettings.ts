@@ -4,8 +4,7 @@ import { THEMES, getGradientStyle } from '@/types';
 
 export function useAppSettings() {
     const [selectedTheme, setSelectedTheme, themeHydrated] = useLocalStorage('theme', 'default');
-    const [sortBy, setSortBy, sortByHydrated] = useLocalStorage<'system'>('sortBy', 'system');
-    const [sortOrder, setSortOrder, sortOrderHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
+    const [sortOrder, setSortOrder, sortHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
     const [autoLoadState, setAutoLoadState, autoLoadHydrated] = useLocalStorage('autoLoadState', true);
     const [autoLoadIcon, setAutoLoadIcon] = useLocalStorage('autoLoadIcon', true);
     const [autoSaveState, setAutoSaveState, autoSaveHydrated] = useLocalStorage('autoSaveState', true);
@@ -14,11 +13,10 @@ export function useAppSettings() {
 
     const currentColors = useMemo(() => THEMES[selectedTheme] || THEMES.default, [selectedTheme]);
     const gradientStyle = useMemo(() => getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), [currentColors]);
-    const isHydrated = themeHydrated && sortByHydrated && sortOrderHydrated && autoLoadHydrated && autoSaveHydrated;
+    const isHydrated = themeHydrated && sortHydrated && autoLoadHydrated && autoSaveHydrated;
 
     return {
         selectedTheme, setSelectedTheme,
-        sortBy, setSortBy,
         sortOrder, setSortOrder,
         autoLoadState, setAutoLoadState,
         autoLoadIcon, setAutoLoadIcon,

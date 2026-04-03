@@ -1,25 +1,21 @@
-import { memo, useCallback } from 'react';
+import { memo } from 'react';
 import { CircleCheck } from 'lucide-react';
-import { THEMES, getGradientStyle, ThemeColors } from '@/types';
+import { THEMES, getGradientStyle } from '@/types';
 
 interface ThemeGridProps {
-    colors: ThemeColors;
     selectedTheme: string;
     onSelectTheme: (theme: string) => void;
     animKey: number;
 }
 
-export const ThemeGrid = memo(({ selectedTheme, onSelectTheme, animKey }: ThemeGridProps) => {
-    const handleSelect = useCallback((name: string) => () => onSelectTheme(name), [onSelectTheme]);
-
-    return (
+export const ThemeGrid = memo(({ selectedTheme, onSelectTheme, animKey }: ThemeGridProps) => (
         <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(THEMES).map(([name, theme], i) => {
                 const selected = selectedTheme === name;
                 return (
                     <button
                         key={name}
-                        onClick={handleSelect(name)}
+                        onClick={() => onSelectTheme(name)}
                         aria-pressed={selected}
                         aria-label={`${name} theme`}
                         className="p-6 rounded-xl border-[0.125rem] relative overflow-hidden text-left transition-all hover:shadow-lg cursor-pointer"
@@ -47,7 +43,6 @@ export const ThemeGrid = memo(({ selectedTheme, onSelectTheme, animKey }: ThemeG
                 );
             })}
         </div>
-    );
-});
+));
 
 ThemeGrid.displayName = 'ThemeGrid';

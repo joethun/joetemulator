@@ -1,78 +1,134 @@
 import { getSystemNameByCore } from '@/lib/constants';
-import { fuzzyMatchTitle, stripExt } from '@/lib/utils';
+import { stripExt } from '@/lib/utils';
 
 export async function selectFiles(): Promise<File[]> {
     if ('showOpenFilePicker' in window) {
         const handles = await (window as any).showOpenFilePicker({ multiple: true });
         return Promise.all(handles.map((h: any) => h.getFile()));
     }
-
     return new Promise(resolve => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.multiple = true;
-        input.onchange = () => resolve(Array.from(input.files || []));
+        const input = Object.assign(document.createElement('input'), {
+            type: 'file', multiple: true,
+            onchange: () => resolve(Array.from(input.files || []))
+        });
         input.click();
     });
 }
 
-const fileHashCache = new WeakMap<File, Promise<{
-    crc: string | number;
+// Hex lookup table — much faster than Array.from().map(b => b.toString(16))
+const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
+const toHex = (buf: ArrayBuffer, offset = 0, len = (buf.byteLength - offset)) => {
+    const bytes = new Uint8Array(buf, offset, len);
+    let s = '';
+    for (let i = 0; i < bytes.length; i++) s += HEX[bytes[i]];
+    return s;
+};
+
+// ROM extensions to look for inside zip archives, ordered by priority
+const ROM_EXTENSIONS = new Set([
+    'nes', 'sfc', 'smc', 'gb', 'gbc', 'gba', 'n64', 'z64', 'v64', 'nds',
+    'md', 'gen', 'smd', 'sms', 'gg', 'iso', 'bin', 'img', 'cue', 'chd',
+    'psx', 'pbp', 'cso', 'a26', 'a52', 'a78', 'lnx', 'j64',
+    'pce', 'pcx', 'fx', 'ws', 'wsc', 'ngp', 'ngc',
+    'adf', 'd64', 'prg', 't64', 'tap', 'crt', 'col', 'rom', 'jag',
+]);
+
+const ROM_EXT_RANK = [...ROM_EXTENSIONS].reduce<Record<string, number>>((acc, ext, i) => {
+    acc[ext] = i; return acc;
+}, {});
+
+const fileExt = (name: string) => name.split('.').pop()?.toLowerCase() ?? '';
+
+async function extractRomBytesFromZip(file: File): Promise<ArrayBuffer | null> {
+    const header = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+    const isZip = header[0] === 0x50 && header[1] === 0x4B &&
+        (header[2] === 0x03 || header[2] === 0x05 || header[2] === 0x07);
+    if (!isZip) return null;
+
+    try {
+        const JSZip = (await import('jszip')).default;
+        const zip = await JSZip.loadAsync(await file.arrayBuffer());
+        const entries = Object.values(zip.files).filter(f => !f.dir);
+        if (!entries.length) return null;
+
+        const candidates = entries.filter(f => ROM_EXTENSIONS.has(fileExt(f.name)));
+        const pool = candidates.length ? candidates : entries;
+
+        pool.sort((a, b) => {
+            const rankDiff = (ROM_EXT_RANK[fileExt(a.name)] ?? 999) - (ROM_EXT_RANK[fileExt(b.name)] ?? 999);
+            if (rankDiff !== 0) return rankDiff;
+            return ((b as any)._data?.uncompressedSize ?? 0) - ((a as any)._data?.uncompressedSize ?? 0);
+        });
+
+        return pool[0].async('arraybuffer');
+    } catch (err) {
+        console.warn('Zip extraction failed:', err);
+        return null;
+    }
+}
+
+type FileHashes = {
+    crc: string;
     chdSha1: string | null;
     serialId: string | null;
     fileSha1: string | null;
-    pureCUEStr: string | null;
-}>>();
+};
 
-async function getFileHashes(file: File, systemName: string) {
-    if (fileHashCache.has(file)) return fileHashCache.get(file)!;
+// Raw buffer work that is system-agnostic — cached independently of system
+type RawFileData = {
+    buffer: ArrayBuffer;
+    chdSha1: string | null;
+    serialId: string | null;
+    fileSha1: string | null;
+};
 
-    const promise = (async () => {
-        const buffer = await file.arrayBuffer();
-        let crc: string | number = '';
-        let chdSha1: string | null = null;
-        let serialId: string | null = null;
-        let fileSha1: string | null = null;
-        let pureCUEStr: string | null = null;
+const rawDataCache = new WeakMap<File, Promise<RawFileData>>();
 
-        if (buffer.byteLength <= 516 * 1024 * 1024) {
-            const { computeRomCrc } = await import('@/lib/crc32');
-            crc = computeRomCrc(new Uint8Array(buffer), systemName);
-        }
+async function getRawFileData(file: File): Promise<RawFileData> {
+    if (rawDataCache.has(file)) return rawDataCache.get(file)!;
+
+    const promise = (async (): Promise<RawFileData> => {
+        const zipBytes = await extractRomBytesFromZip(file);
+        const buffer = zipBytes ?? await file.arrayBuffer();
 
         const magic = new TextDecoder('ascii').decode(new Uint8Array(buffer, 0, 8));
+
         if (magic === 'MComprHD') {
             const view = new DataView(buffer);
             const version = view.getUint32(12, false);
-            let shaOffset = 0;
-            if (version === 5) shaOffset = 64;
-            else if (version === 4) shaOffset = 84;
-            if (shaOffset) {
-                chdSha1 = Array.from(new Uint8Array(buffer, shaOffset, 20)).map(b => b.toString(16).padStart(2, '0')).join('').toLowerCase();
-            }
-
-            const tailScanStr = new TextDecoder('ascii').decode(new Uint8Array(buffer, Math.max(0, buffer.byteLength - 1024 * 1024)));
-            const cueMatch = tailScanStr.match(/FILE "([^"]+?)(?: \((?:Track|Disc)[^)]*\))?\.(?:bin|iso|img)"/i);
-            if (cueMatch && cueMatch[1]) {
-                pureCUEStr = cueMatch[1].replace(/[&*/:<>?\\|]/g, '_');
-            }
-        } else {
-            try {
-                const sha1Buffer = await crypto.subtle.digest("SHA-1", buffer);
-                fileSha1 = Array.from(new Uint8Array(sha1Buffer)).map(b => b.toString(16).padStart(2, '0')).join('').toLowerCase();
-            } catch (e) { }
-
-            const scanLen = Math.min(buffer.byteLength, 4 * 1024 * 1024);
-            const headStr = new TextDecoder('ascii').decode(new Uint8Array(buffer, 0, scanLen)).replace(/\0/g, ' ');
-            const psMatch = headStr.match(/[ST][LCB][UEPKA][SPMEJ][-_]?\d{3}\.?\d{2}/i);
-            if (psMatch) serialId = psMatch[0].replace(/[-_.]/g, '').toLowerCase();
+            const shaOffset = version === 5 ? 64 : version === 4 ? 84 : 0;
+            const chdSha1 = shaOffset ? toHex(buffer, shaOffset, 20) : null;
+            return { buffer, chdSha1, serialId: null, fileSha1: null };
         }
 
-        return { crc, chdSha1, serialId, fileSha1, pureCUEStr };
+        let fileSha1: string | null = null;
+        try {
+            fileSha1 = toHex(await crypto.subtle.digest('SHA-1', buffer));
+        } catch { }
+
+        const scanLen = Math.min(buffer.byteLength, 512 * 1024);
+        const headStr = new TextDecoder('ascii').decode(new Uint8Array(buffer, 0, scanLen)).replace(/\0/g, ' ');
+        const psMatch = headStr.match(/[ST][LCB][UEPKA][SPMEJ][-_]?\d{3}\.?\d{2}/i);
+        const serialId = psMatch ? psMatch[0].replace(/[-_.]/g, '').toLowerCase() : null;
+
+        return { buffer, chdSha1: null, serialId, fileSha1 };
     })();
 
-    fileHashCache.set(file, promise);
+    // Evict on failure so the next call retries rather than getting a cached rejection
+    promise.catch(() => { if (rawDataCache.get(file) === promise) rawDataCache.delete(file); });
+    rawDataCache.set(file, promise);
     return promise;
+}
+
+async function getFileHashes(file: File, systemName: string): Promise<FileHashes> {
+    const { buffer, chdSha1, serialId, fileSha1 } = await getRawFileData(file);
+
+    const { computeRomCrc } = await import('@/lib/crc32');
+    const crc = buffer.byteLength <= 516 * 1024 * 1024
+        ? computeRomCrc(new Uint8Array(buffer), systemName)
+        : '';
+
+    return { crc, chdSha1, serialId, fileSha1 };
 }
 
 const LR_MAP: Record<string, string> = {
@@ -99,8 +155,6 @@ const LR_MAP: Record<string, string> = {
     'Jaguar': 'Atari - Jaguar',
     'Amiga': 'Commodore - Amiga',
     '64': 'Commodore - 64',
-    '128': 'Commodore - 128',
-    'PET': 'Commodore - PET',
     'VIC-20': 'Commodore - VIC-20',
     'Plus/4': 'Commodore - Plus-4',
     'FBNeo': 'FBNeo - Arcade Games',
@@ -111,64 +165,80 @@ const LR_MAP: Record<string, string> = {
     'Microsoft DOS': 'DOS',
     'ColecoVision': 'Coleco - ColecoVision',
     'SNK Neo Geo Pocket': 'SNK - Neo Geo Pocket',
-    'Bandai WonderSwan': 'Bandai - WonderSwan'
+    'Bandai WonderSwan': 'Bandai - WonderSwan',
 };
 
-export async function calculateAutoCoverArt(file: File | undefined, core: string, fallbackName?: string): Promise<string | null> {
-    if (typeof window === 'undefined') return null;
-    let coverArt: string | null = null;
-    let systemName = getSystemNameByCore(core);
+// Cache DAT JSON in memory — same system's DAT is only fetched once per session
+const datCache = new Map<string, Promise<Record<string, string>>>();
 
-    try {
-        const lrSys = LR_MAP[systemName] || systemName;
+function fetchDat(lrSys: string): Promise<Record<string, string>> {
+    if (datCache.has(lrSys)) return datCache.get(lrSys)!;
+    const p = fetch(`/dats/${lrSys}.json`)
+        .then(r => r.ok ? r.json() as Promise<Record<string, string>> : Promise.reject(new Error(`HTTP ${r.status}`)));
+    p.then(() => datCache.set(lrSys, p)).catch(() => {});
+    return p;
+}
 
-        let crc: string | number = '';
-        let chdSha1 = null;
-        let serialId = null;
-        let fileSha1 = null;
-        let pureCUEStr: string | null = null;
+/**
+ * Start fetching the DAT for a system immediately (e.g. when a system is selected
+ * in the picker), so it's cached by the time calculateAutoCoverArt is called.
+ */
+export function prewarmDat(core: string): void {
+    const systemName = getSystemNameByCore(core);
+    const lrSys = LR_MAP[systemName] ?? systemName;
+    fetchDat(lrSys);
+}
 
-        if (file) {
-            const hashes = await getFileHashes(file, systemName);
-            crc = hashes.crc;
-            chdSha1 = hashes.chdSha1;
-            serialId = hashes.serialId;
-            fileSha1 = hashes.fileSha1;
-            pureCUEStr = hashes.pureCUEStr;
-        }
+// Region preference order for name-based fallback
+const REGION_PRIORITY = ['(USA)', '(USA, Europe)', '(World)', '(Europe)', '(En)'];
 
-        const datRes = await fetch(`/dats/${lrSys}.json`);
-        if (datRes.ok) {
-            const datMap = await datRes.json();
-            const sCrc = String(crc);
-            const hashName = file ? (datMap[crc] || datMap[sCrc.toLowerCase()] || datMap[sCrc.toUpperCase()] || (fileSha1 && datMap[fileSha1]) || (chdSha1 && datMap[chdSha1]) || (serialId && datMap[serialId])) : null;
-            let baseName = file ? file.name : (fallbackName || 'Unknown');
-            let cleanName = stripExt(baseName).replace(/ \((Disc|CD) [A-Za-z0-9]+\)/i, '').replace(/[&*/:<>?\\|]/g, '_');
+// Normalize a title for fuzzy comparison: lowercase, strip all non-alphanumeric chars
+const normalizeTitle = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
-            if (hashName) {
-                coverArt = `https://thumbnails.libretro.com/${encodeURIComponent(lrSys)}/Named_Boxarts/${encodeURIComponent(hashName)}.png`;
-            } else {
-                const titles = Array.from(new Set(Object.values(datMap) as string[]));
-                let searchStr = pureCUEStr || cleanName;
+function findByName(cleanTitle: string, datMap: Record<string, string>): string | null {
+    const needle = normalizeTitle(cleanTitle);
+    let best: string | null = null;
+    let bestPriority = Infinity;
 
-                if (titles.includes(searchStr)) {
-                    coverArt = `https://thumbnails.libretro.com/${encodeURIComponent(lrSys)}/Named_Boxarts/${encodeURIComponent(searchStr)}.png`;
-                } else {
-                    const fuzzyMatch = fuzzyMatchTitle(searchStr, titles);
-                    let resolvedName = fuzzyMatch || searchStr;
-                    coverArt = `https://thumbnails.libretro.com/${encodeURIComponent(lrSys)}/Named_Boxarts/${encodeURIComponent(resolvedName)}.png`;
-                }
-            }
-        }
+    for (const title of Object.values(datMap)) {
+        // Strip region/version tags to get the bare title for comparison
+        const bare = normalizeTitle(title.replace(/\s*\([^)]*\)/g, '').trim());
+        if (bare !== needle) continue;
 
-        if (!coverArt) {
-            let baseName = file ? file.name : (fallbackName || 'Unknown');
-            let cleanName = stripExt(baseName).replace(/ \((Disc|CD) [A-Za-z0-9]+\)/i, '').replace(/[&*/:<>?\\|]/g, '_');
-            coverArt = `https://thumbnails.libretro.com/${encodeURIComponent(lrSys)}/Named_Boxarts/${encodeURIComponent(pureCUEStr || cleanName)}.png`;
-        }
-    } catch (err) {
-        console.warn('Auto cover art fetch failed:', err);
+        const priority = REGION_PRIORITY.findIndex(r => title.includes(r));
+        const p = priority === -1 ? REGION_PRIORITY.length : priority;
+        if (p < bestPriority) { bestPriority = p; best = title; }
     }
 
-    return coverArt;
+    return best;
+}
+
+export async function calculateAutoCoverArt(file: File, core: string, opfsFile?: File): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+
+    const systemName = getSystemNameByCore(core);
+    const lrSys = LR_MAP[systemName] ?? systemName;
+    const hashFile = opfsFile ?? file;
+
+    try {
+        const [hashes, datMap] = await Promise.all([
+            getFileHashes(hashFile, systemName),
+            fetchDat(lrSys).catch(() => ({} as Record<string, string>)),
+        ]);
+
+        const { crc, chdSha1, serialId, fileSha1 } = hashes;
+
+        const hashName =
+            datMap[crc] ?? datMap[crc.toLowerCase()] ??
+            (fileSha1 && datMap[fileSha1]) ??
+            (chdSha1 && datMap[chdSha1]) ??
+            (serialId && datMap[serialId]) ??
+            findByName(stripExt(file.name).replace(/\s*\([^)]*\)/g, '').trim(), datMap) ??
+            null;
+
+        if (!hashName) return null;
+        return `https://thumbnails.libretro.com/${encodeURIComponent(lrSys)}/Named_Boxarts/${encodeURIComponent(hashName)}.png`;
+    } catch {
+        return null;
+    }
 }

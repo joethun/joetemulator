@@ -80,6 +80,5 @@ export const SYSTEM_ASPECT_RATIOS: Record<string, number> = {
   "Bandai WonderSwan": 1.0
 };
 
-export const getSystemAspectRatio = (systemName?: string): number => {
-  return (systemName && SYSTEM_ASPECT_RATIOS[systemName]) || 0.8;
-};
+export const getSystemAspectRatio = (systemName?: string): number =>
+  (systemName && SYSTEM_ASPECT_RATIOS[systemName]) || 0.8;
