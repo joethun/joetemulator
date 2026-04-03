@@ -3,9 +3,10 @@
 import { memo, useCallback, useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Trash2, Check } from 'lucide-react';
-import { Game, ThemeColors, getGradientStyle } from '@/types';
+import { Game, ThemeColors, GradientStyle, getGradientStyle } from '@/types';
 import { GameContextMenu } from './gamecontextmenu';
 import { getSystemAspectRatio } from '@/lib/constants';
+import { stripExt } from '@/lib/utils';
 
 interface GameCardProps {
     game: Game;
@@ -15,9 +16,11 @@ interface GameCardProps {
     onSelect: (gameId: number) => void;
     onUploadCover: (gameId: number, data: string) => void;
     onResetCover: (gameId: number) => void;
+    onSaveStates: (title: string, name: string) => void;
     isSelected: boolean;
     isDeleteMode: boolean;
     colors: ThemeColors;
+    gradient: GradientStyle;
     priority?: boolean;
 }
 
@@ -57,7 +60,7 @@ const DeleteOverlay = memo(({ isSelected }: { isSelected: boolean }) => (
 DeleteOverlay.displayName = 'DeleteOverlay';
 
 export const GameCard = memo(({
-    game, onPlay, onEdit, onDelete, onSelect, onUploadCover, onResetCover, isSelected, isDeleteMode, colors, priority = false
+    game, onPlay, onEdit, onDelete, onSelect, onUploadCover, onResetCover, onSaveStates, isSelected, isDeleteMode, colors, gradient, priority = false
 }: GameCardProps) => {
     const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const didOpenMenu = useRef(false);
@@ -171,6 +174,7 @@ export const GameCard = memo(({
                 onDelete={() => onDelete(game)}
                 onUploadCover={(data) => onUploadCover(game.id, data)}
                 onResetCover={() => onResetCover(game.id)}
+                onSaveStates={() => onSaveStates(game.title, stripExt(game.fileName || game.title))}
                 gameTitle={game.title}
                 colors={colors}
                 hasAutoCover={!!game.autoCoverArt}

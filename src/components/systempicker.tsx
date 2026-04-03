@@ -148,14 +148,16 @@ export const SystemPickerModal = memo(({
                 </div>
 
                 <div className="flex justify-end gap-3 mt-8 pt-6 border-t" style={{ borderColor: `${colors.highlight}30` }}>
-                    <button
-                        onClick={onClose}
-                        disabled={isProcessing || isClosing}
-                        className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-                        style={{ backgroundColor: colors.highlight, color: colors.darkBg }}
-                    >
-                        Cancel
-                    </button>
+                    {!editingGame && (
+                        <button
+                            onClick={onClose}
+                            disabled={isProcessing || isClosing}
+                            className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                            style={{ backgroundColor: colors.highlight, color: colors.darkBg }}
+                        >
+                            Cancel
+                        </button>
+                    )}
                     {(editingGame || pendingFiles.length > 0) && (
                         <button
                             onClick={onDone}

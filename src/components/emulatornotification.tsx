@@ -26,7 +26,9 @@ export const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }
             if (source === 'auto' && ((type === 'save' && !autoSaveIcon) || (type === 'load' && !autoLoadIcon))) return;
 
             if (timer.current) clearTimeout(timer.current);
-            setNotif({ type, visible: true });
+            // Mount at visible:false first, then next frame flip to true so transition fires
+            setNotif({ type, visible: false });
+            requestAnimationFrame(() => setNotif({ type, visible: true }));
             timer.current = setTimeout(() => {
                 setNotif(s => s ? { ...s, visible: false } : null);
                 setTimeout(() => setNotif(null), FADE_MS);
@@ -47,7 +49,8 @@ export const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }
     const Icon = notif.type === 'save' ? Save : Upload;
 
     return createPortal(
-        <div className={`fixed top-4 left-4 z-[100] pointer-events-none transition-opacity duration-300 ${notif.visible ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="fixed top-4 left-4 z-[100] pointer-events-none transition-opacity duration-300"
+            style={{ opacity: notif.visible ? 1 : 0 }}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-sm shadow-lg"
                 style={{ backgroundColor: colors.midDark, color: colors.highlight }}>
                 <Icon className="w-5 h-5" />

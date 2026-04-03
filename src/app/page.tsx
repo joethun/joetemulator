@@ -20,6 +20,7 @@ import { useSystemPickerFlow } from '@/hooks/useSystemPickerFlow';
 import { useDragDrop } from '@/hooks/useDragDrop';
 import { selectFiles } from '@/lib/files';
 import { SystemPickerModal } from '@/components/systempicker';
+import { SaveStateManager } from '@/components/savestatemanager';
 import { ThemeGrid } from '@/components/themegrid';
 import { SettingsView } from '@/components/settingsview';
 
@@ -45,6 +46,7 @@ export default function Home() {
         duplicateMessage, showDuplicateMessage, systemPickerOpen, systemPickerClosing,
         editingGame, pendingGame, pendingFiles, systemSearchQuery, setSystemSearchQuery,
         closeSystemPicker, pendingBatchCore,
+        saveStateGame, saveStateOpen, saveStateClosing, openSaveStateManager, closeSaveStateManager,
     } = app;
 
     useEffect(() => {
@@ -81,12 +83,14 @@ export default function Home() {
                     onResetCover={handleResetCover}
                     isDeleteMode={isDeleteMode}
                     colors={currentColors}
+                    gradient={gradientStyle}
                     onEdit={pickerFlow.handleEditGame}
+                    onSaveStates={openSaveStateManager}
                     priority={i < 6}
                 />
             </div>
         );
-    }, [deletingGameIds, selectedGameIds, isDeleteMode, toggleGameSelection, launcher, deletion, pickerFlow, currentColors, handleUploadCover, handleResetCover]);
+    }, [deletingGameIds, selectedGameIds, isDeleteMode, toggleGameSelection, launcher, deletion, pickerFlow, currentColors, gradientStyle, handleUploadCover, handleResetCover, openSaveStateManager]);
 
     const mainContent = useMemo(() => {
         if (activeView === 'themes')
@@ -222,6 +226,18 @@ export default function Home() {
                     pendingBatchCore={pendingBatchCore}
                     onSelectSystem={pickerFlow.onSelectSystem}
                     onRename={pickerFlow.onRename}
+                />
+            )}
+            {(saveStateOpen || saveStateClosing) && saveStateGame && (
+                <SaveStateManager
+                    isOpen={saveStateOpen}
+                    isClosing={saveStateClosing}
+                    colors={currentColors}
+                    gradient={gradientStyle}
+                    gameTitle={saveStateGame.title}
+                    gameName={saveStateGame.name}
+                    onClose={closeSaveStateManager}
+                    onDuplicateError={app.showDuplicateError}
                 />
             )}
         </div>

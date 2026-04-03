@@ -27,6 +27,9 @@ export function useApp() {
     const [systemSearchQuery, setSystemSearchQuery] = useState('');
     const [pendingBatchCore, setPendingBatchCore] = useState<string | null>(null);
     const [coverArtFit, setCoverArtFit] = useState<'cover' | 'contain'>('cover');
+    const [saveStateGame, setSaveStateGame] = useState<{ title: string; name: string } | null>(null);
+    const [saveStateOpen, setSaveStateOpen] = useState(false);
+    const [saveStateClosing, setSaveStateClosing] = useState(false);
 
     const setActiveView = useCallback((view: ViewType) => {
         setActiveViewRaw(prev => {
@@ -54,6 +57,21 @@ export function useApp() {
         setShowDuplicateMessage(true);
         setTimeout(() => setShowDuplicateMessage(false), HIDE_DELAY);
         setTimeout(() => setDuplicateMessage(null), CLEAR_DELAY);
+    }, []);
+
+    const openSaveStateManager = useCallback((title: string, name: string) => {
+        setSaveStateGame({ title, name });
+        setSaveStateClosing(false);
+        setSaveStateOpen(true);
+    }, []);
+
+    const closeSaveStateManager = useCallback(() => {
+        setSaveStateClosing(true);
+        setTimeout(() => {
+            setSaveStateOpen(false);
+            setSaveStateClosing(false);
+            setSaveStateGame(null);
+        }, 200);
     }, []);
 
     const closeSystemPicker = useCallback(() => {
@@ -89,6 +107,8 @@ export function useApp() {
         systemSearchQuery, setSystemSearchQuery,
         pendingBatchCore, setPendingBatchCore,
         coverArtFit, setCoverArtFit,
+        saveStateGame, saveStateOpen, saveStateClosing,
+        openSaveStateManager, closeSaveStateManager,
         showDuplicateError, closeSystemPicker,
     };
 }

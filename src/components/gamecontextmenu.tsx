@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, Settings, Image as ImageIcon, RefreshCw } from 'lucide-react';
+import { Trash2, Settings, Image as ImageIcon, RefreshCw, Save } from 'lucide-react';
 import { ThemeColors } from '@/types';
 
 interface GameContextMenuProps {
@@ -13,6 +13,7 @@ interface GameContextMenuProps {
     onDelete: () => void;
     onUploadCover: (data: string) => void;
     onResetCover: () => void;
+    onSaveStates: () => void;
     gameTitle: string;
     colors: ThemeColors;
     hasAutoCover: boolean;
@@ -22,7 +23,7 @@ const MENU_W = 180;
 const MENU_H = 250;
 
 export const GameContextMenu = memo(({
-    isOpen, position, onClose, onEdit, onDelete, onUploadCover, onResetCover, gameTitle, colors, hasAutoCover
+    isOpen, position, onClose, onEdit, onDelete, onUploadCover, onResetCover, onSaveStates, gameTitle, colors, hasAutoCover
 }: GameContextMenuProps) => {
     const menuRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +97,7 @@ export const GameContextMenu = memo(({
                     {menuBtn(() => fileInputRef.current?.click(), 'Upload Cover', ImageIcon)}
                     {hasAutoCover && menuBtn(() => { onResetCover(); onClose(); }, 'Auto Cover', RefreshCw)}
                     <div className="h-px w-full my-1" style={{ backgroundColor: `${colors.highlight}20` }} />
+                    {menuBtn(() => { onClose(); requestAnimationFrame(onSaveStates); }, 'Save States', Save)}
                     {menuBtn(() => { onClose(); requestAnimationFrame(onEdit); }, 'System', Settings)}
                     {menuBtn(() => { onClose(); requestAnimationFrame(onDelete); }, 'Delete', Trash2, { backgroundColor: 'rgba(239,68,68,0.15)', color: 'rgb(248,113,113)' })}
                 </div>
