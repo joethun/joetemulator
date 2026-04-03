@@ -147,7 +147,7 @@ export const GameCard = memo(({
                         src={game.coverArt}
                         alt={game.title}
                         fill
-                        sizes="(max-width: 768px) 150px, 240px"
+                        sizes="(max-width: 640px) calc(50vw - 2rem), (max-width: 768px) 150px, (max-width: 1280px) calc(25vw - 2rem), 20vw"
                         loading={priority ? 'eager' : 'lazy'}
                         priority={priority}
                         draggable={false}
