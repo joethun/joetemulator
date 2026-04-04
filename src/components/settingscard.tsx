@@ -30,10 +30,7 @@ export const SettingsCard = memo(({
             animation: `fadeIn 0.4s ease-out ${animationDelay} both`
         }}
     >
-        <div 
-            className={`flex items-center justify-between gap-4 sm:gap-6 ${onToggle ? 'cursor-pointer' : ''}`}
-            onClick={onToggle}
-        >
+        <div className="flex items-center justify-between gap-4 sm:gap-6">
             <div className="flex items-center gap-3 sm:gap-5 overflow-hidden">
                 <div
                     className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0"
@@ -48,9 +45,7 @@ export const SettingsCard = memo(({
             </div>
 
             {control ? control : onToggle && (
-                <div onClick={e => e.stopPropagation()}>
-                    <Switch checked={checked ?? false} onChange={onToggle} colors={colors} gradient={gradient} />
-                </div>
+                <Switch checked={checked ?? false} onChange={onToggle} colors={colors} gradient={gradient} />
             )}
         </div>
 
