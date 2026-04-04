@@ -65,7 +65,10 @@ export const Sidebar = memo(({ activeView, colors, gradient, onNavClick, onAddGa
             style={{ backgroundColor: colors.midDark, boxShadow: '4px 0 12px rgba(0,0,0,0.3)' }}>
             <div className="flex flex-col items-center gap-4 mb-2">
                 <div className="relative group">
-                    <Image src="/favicon.ico" alt="Logo" width={48} height={48} className="object-contain opacity-90 pointer-events-none" />
+                    <a href="https://github.com/joethun/joetemulator" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository"
+                        className="block transition-all active:scale-95 cursor-pointer">
+                        <Image src="/icons/duck.png" alt="Logo" width={48} height={48} className="object-contain opacity-90 pointer-events-none" draggable={false} />
+                    </a>
                     <Tooltip text="Joe T Emulator" colors={colors} />
                 </div>
                 <div className="w-12 h-px" style={{ backgroundColor: `${colors.highlight}30` }} />
