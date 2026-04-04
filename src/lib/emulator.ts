@@ -3,7 +3,6 @@ import { isStateDuplicate } from '@/lib/savestates';
 import { stripExt } from '@/lib/utils';
 
 const EMULATOR_DATA_PATH = '/emulatorjs/';
-const CORES_WITH_THREADS = new Set(['psp', 'dosbox_pure']);
 const MAX_SLOTS = 10;
 const SLOT_MANIFEST_PREFIX = 'ejs_slots_';
 const TS_PREFIX = 'ejs_state_ts_';
@@ -106,7 +105,7 @@ export async function loadGame(
     EJS_pathtodata: EMULATOR_DATA_PATH,
     EJS_startOnLoaded: true,
     EJS_biosUrl: '',
-    EJS_threads: CORES_WITH_THREADS.has(core),
+    EJS_threads: true,
     EJS_language: 'en',
     EJS_defaultOptions: { desmume_advanced_timing: 'disabled', webgl2Enabled: 'enabled' },
     EJS_ready: addEventListeners,
