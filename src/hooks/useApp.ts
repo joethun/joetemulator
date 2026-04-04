@@ -1,10 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { ViewType, Game } from '@/types';
 
-const HIDE_DELAY = 2500;
-const CLEAR_DELAY = 3000;
-const PICKER_CLOSE_DELAY = 200;
-
 export function useApp() {
     const [activeView, setActiveViewRaw] = useState<ViewType>('library');
     const [isMounted, setIsMounted] = useState(false);
@@ -12,9 +8,6 @@ export function useApp() {
     const [gameSearchFocused, setGameSearchFocused] = useState(false);
     const [themeAnimationKey, setThemeAnimationKey] = useState(0);
     const [libraryAnimationKey, setLibraryAnimationKey] = useState(0);
-    const [isDeleteMode, setIsDeleteMode] = useState(false);
-    const [selectedGameIds, setSelectedGameIds] = useState<Set<number>>(new Set());
-    const [deletingGameIds, setDeletingGameIds] = useState<Set<number>>(new Set());
     const gameSearchInputRef = useRef<HTMLInputElement>(null);
 
     const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
@@ -39,24 +32,11 @@ export function useApp() {
         });
     }, []);
 
-    const toggleGameSelection = useCallback((id: number) => {
-        setSelectedGameIds(prev => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
-    }, []);
-
-    const exitDeleteMode = useCallback(() => {
-        setIsDeleteMode(false);
-        setSelectedGameIds(new Set());
-    }, []);
-
     const showDuplicateError = useCallback((msg: string) => {
         setDuplicateMessage(msg);
         setShowDuplicateMessage(true);
-        setTimeout(() => setShowDuplicateMessage(false), HIDE_DELAY);
-        setTimeout(() => setDuplicateMessage(null), CLEAR_DELAY);
+        setTimeout(() => setShowDuplicateMessage(false), 2500);
+        setTimeout(() => setDuplicateMessage(null), 3000);
     }, []);
 
     const openSaveStateManager = useCallback((title: string, name: string) => {
@@ -84,7 +64,7 @@ export function useApp() {
             setEditingGame(null);
             setSystemSearchQuery('');
             setPendingBatchCore(null);
-        }, PICKER_CLOSE_DELAY);
+        }, 200);
     }, []);
 
     return {
@@ -93,11 +73,7 @@ export function useApp() {
         gameSearchQuery, setGameSearchQuery,
         gameSearchFocused, setGameSearchFocused,
         themeAnimationKey, libraryAnimationKey,
-        isDeleteMode, setIsDeleteMode,
-        selectedGameIds,
-        deletingGameIds, setDeletingGameIds,
         gameSearchInputRef,
-        toggleGameSelection, exitDeleteMode,
         duplicateMessage, showDuplicateMessage,
         editingGame, setEditingGame,
         pendingGame, setPendingGame,

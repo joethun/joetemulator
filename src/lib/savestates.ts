@@ -1,7 +1,7 @@
 import { getSlotKeys } from '@/lib/emulator';
 
-export const TS_PREFIX = 'ejs_state_ts_';
-export const MANIFEST_PREFIX = 'ejs_slots_';
+const TS_PREFIX = 'ejs_state_ts_';
+const MANIFEST_PREFIX = 'ejs_slots_';
 export const NEXT_LOAD_KEY = 'ejs_load_on_next_';
 
 const DB_NAME = 'EmulatorJS-states';
@@ -51,7 +51,7 @@ function idbDelete(db: IDBDatabase, key: string): Promise<void> {
     });
 }
 
-export function toBytes(data: unknown): Uint8Array | null {
+function toBytes(data: unknown): Uint8Array | null {
     if (data instanceof Uint8Array) return data;
     if (data instanceof ArrayBuffer) return new Uint8Array(data);
     if (data && typeof data === 'object' && 'data' in data) {

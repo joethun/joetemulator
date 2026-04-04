@@ -41,7 +41,7 @@ export const getSystemNameByCore = (core: string): string =>
 export const getSystemCategory = (core?: string): string =>
   (core && coreToCategoryMap.get(core)) || 'Other';
 
-export const SYSTEM_ASPECT_RATIOS: Record<string, number> = {
+const SYSTEM_ASPECT_RATIOS: Record<string, number> = {
   // Nintendo
   "NES": 0.700,
   "Game Boy": 1.118,

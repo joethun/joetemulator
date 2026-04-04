@@ -114,7 +114,7 @@ export const SystemPickerModal = memo(({
                         onBlur={() => setIsSearchFocused(false)}
                         inputRef={null}
                     />
-                    <div className="flex-1 overflow-y-auto pr-2 mt-4 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto pr-2 mt-4">
                         {Object.entries(categories).map(([cat, systems]) => (
                             <div key={cat} className="mb-8 last:mb-0">
                                 <div className="flex items-center mb-4">

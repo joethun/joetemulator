@@ -1,5 +1,6 @@
 import { THEMES } from '@/types';
 import { isStateDuplicate } from '@/lib/savestates';
+import { stripExt } from '@/lib/utils';
 
 const EMULATOR_DATA_PATH = '/emulatorjs/';
 const CORES_WITH_THREADS = new Set(['psp', 'dosbox_pure']);
@@ -30,11 +31,6 @@ const isEmulatorPaused = () => { const e = getEmulator(); return !e || document.
 function toggleMenuElements(show: boolean): void {
   const css = show ? '' : 'display:none!important;visibility:hidden!important';
   document.querySelectorAll<HTMLElement>('aside,footer,main,header,nav').forEach(el => el.style.cssText = css);
-}
-
-function extractGameName(file: File | string): string {
-  const name = file instanceof File ? file.name : file.split('/').pop() || 'game';
-  return name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : name;
 }
 
 interface SlotManifest { slots: string[]; nextIndex: number; }
@@ -96,7 +92,8 @@ export async function loadGame(
   window.gameRunning = true;
 
   const theme = THEMES[themeName] || THEMES.default;
-  const gameName = gameBaseName ?? extractGameName(file);
+  gameDiv.style.setProperty('--game-bg', theme.darkBg);
+  const gameName = gameBaseName ?? stripExt(file instanceof File ? file.name : (file.split('/').pop() || 'game'));
   currentGameBaseName = gameName;
 
   Object.assign(window, {

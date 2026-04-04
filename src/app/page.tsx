@@ -8,14 +8,13 @@ import { SearchBar } from '@/components/searchbar';
 import { EmulatorNotification } from '@/components/emulatornotification';
 import { SortControls } from '@/components/sortcontrols';
 import { Alert } from '@/components/alert';
-import { Trash2, Gamepad2 } from 'lucide-react';
+import { Gamepad2 } from 'lucide-react';
 import { useGameLibrary } from '@/hooks/useGameLibrary';
 import { useApp } from '@/hooks/useApp';
 import { useFileHandler } from '@/hooks/useFileHandler';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { useGameList } from '@/hooks/useGameList';
 import { useGameLauncher } from '@/hooks/useGameLauncher';
-import { useGameDeletion } from '@/hooks/useGameDeletion';
 import { useSystemPickerFlow } from '@/hooks/useSystemPickerFlow';
 import { useDragDrop } from '@/hooks/useDragDrop';
 import { selectFiles } from '@/lib/files';
@@ -33,15 +32,13 @@ export default function Home() {
     const files = useFileHandler(lib.games, lib.addGame, app);
     const view = useGameList(lib.games, files.uploads, app.gameSearchQuery, settings.sortOrder);
     const launcher = useGameLauncher(settings);
-    const deletion = useGameDeletion(lib, app);
     const pickerFlow = useSystemPickerFlow(app, lib, files);
     const drag = useDragDrop(files.handleIncomingFiles);
 
     const { currentColors, gradientStyle, sortOrder, setSortOrder, selectedTheme, setSelectedTheme, isHydrated } = settings;
     const {
         isMounted, setIsMounted, activeView, setActiveView,
-        deletingGameIds, selectedGameIds, isDeleteMode, setIsDeleteMode,
-        toggleGameSelection, themeAnimationKey, libraryAnimationKey,
+        themeAnimationKey, libraryAnimationKey,
         gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused, gameSearchInputRef,
         duplicateMessage, showDuplicateMessage, systemPickerOpen, systemPickerClosing,
         editingGame, pendingGame, pendingFiles, systemSearchQuery, setSystemSearchQuery,
@@ -69,28 +66,26 @@ export default function Home() {
         if (game?.autoCoverArt) lib.updateGame(id, { coverArt: game.autoCoverArt });
     }, [lib]);
 
-    const renderGameCard = useCallback((g: Game, i: number) => {
-        const isDeleting = deletingGameIds.has(g.id);
-        return (
-            <div key={g.id} className={isDeleting ? 'animate-card-exit' : ''} style={isDeleting ? undefined : { animation: `fadeIn 0.4s ease-out ${i * 0.03}s both` }}>
-                <GameCard
-                    game={g}
-                    isSelected={selectedGameIds.has(g.id)}
-                    onPlay={launcher.handlePlayClick}
-                    onDelete={deletion.handleDeleteGame}
-                    onSelect={toggleGameSelection}
-                    onUploadCover={handleUploadCover}
-                    onResetCover={handleResetCover}
-                    isDeleteMode={isDeleteMode}
-                    colors={currentColors}
-                    gradient={gradientStyle}
-                    onEdit={pickerFlow.handleEditGame}
-                    onSaveStates={openSaveStateManager}
-                    priority={i < 6}
-                />
-            </div>
-        );
-    }, [deletingGameIds, selectedGameIds, isDeleteMode, toggleGameSelection, launcher, deletion, pickerFlow, currentColors, gradientStyle, handleUploadCover, handleResetCover, openSaveStateManager]);
+    const handleDeleteGame = useCallback(async (game: Game) => {
+        if (!confirm(`Delete "${game.title}"?`)) return;
+        await lib.deleteGame(game.id);
+    }, [lib]);
+
+    const renderGameCard = useCallback((g: Game, i: number) => (
+        <div key={g.id} style={{ animation: `fadeIn 0.4s ease-out ${i * 0.03}s both` }}>
+            <GameCard
+                game={g}
+                onPlay={launcher.handlePlayClick}
+                onDelete={handleDeleteGame}
+                onUploadCover={handleUploadCover}
+                onResetCover={handleResetCover}
+                colors={currentColors}
+                onEdit={pickerFlow.handleEditGame}
+                onSaveStates={openSaveStateManager}
+                priority={i < 6}
+            />
+        </div>
+    ), [launcher, pickerFlow, currentColors, handleDeleteGame, handleUploadCover, handleResetCover, openSaveStateManager]);
 
     const mainContent = useMemo(() => {
         if (activeView === 'themes')
@@ -126,24 +121,20 @@ export default function Home() {
                 </div>
             );
 
-        if (view.groupedGames) {
-            let globalIndex = 0;
-            return (
-                <div key={libraryAnimationKey}>
-                    {Object.entries(view.groupedGames).map(([cat, catGames]) => (
-                        <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
-                            <div className="flex items-center mb-4">
-                                <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: currentColors.highlight }}>{cat}</h4>
-                                <div className="flex-1 h-px" style={{ backgroundColor: `${currentColors.highlight}30` }} />
-                            </div>
-                            <div className={GRID_CLASS}>{catGames.map((g) => renderGameCard(g, globalIndex++))}</div>
+        let globalIndex = 0;
+        return (
+            <div key={libraryAnimationKey}>
+                {Object.entries(view.groupedGames).map(([cat, catGames]) => (
+                    <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
+                        <div className="flex items-center mb-4">
+                            <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: currentColors.highlight }}>{cat}</h4>
+                            <div className="flex-1 h-px" style={{ backgroundColor: `${currentColors.highlight}30` }} />
                         </div>
-                    ))}
-                </div>
-            );
-        }
-
-        return <div key={libraryAnimationKey} className={GRID_CLASS}>{view.sortedGames.map(renderGameCard)}</div>;
+                        <div className={GRID_CLASS}>{catGames.map((g) => renderGameCard(g, globalIndex++))}</div>
+                    </div>
+                ))}
+            </div>
+        );
     }, [activeView, currentColors, selectedTheme, setSelectedTheme, themeAnimationKey, gradientStyle, settings,
         lib.games, files.uploads, view, gameSearchQuery, libraryAnimationKey, renderGameCard]);
 
@@ -173,31 +164,19 @@ export default function Home() {
                         </h1>
 
                         {activeView === 'library' && (
-                            <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                                <div className="flex gap-3 items-center w-full md:w-auto">
-                                    <div className="flex-1 md:flex-initial md:w-[340px] min-w-0">
-                                        <SearchBar
-                                            colors={currentColors}
-                                            value={gameSearchQuery}
-                                            onChange={setGameSearchQuery}
-                                            isFocused={gameSearchFocused}
-                                            onFocus={() => setGameSearchFocused(true)}
-                                            onBlur={() => setGameSearchFocused(false)}
-                                            inputRef={gameSearchInputRef}
-                                        />
-                                    </div>
-                                    <SortControls colors={currentColors} sortOrder={sortOrder} setSortOrder={setSortOrder} />
+                            <div className="flex gap-3 items-center w-full md:w-auto">
+                                <div className="flex-1 md:flex-initial md:w-[340px] min-w-0">
+                                    <SearchBar
+                                        colors={currentColors}
+                                        value={gameSearchQuery}
+                                        onChange={setGameSearchQuery}
+                                        isFocused={gameSearchFocused}
+                                        onFocus={() => setGameSearchFocused(true)}
+                                        onBlur={() => setGameSearchFocused(false)}
+                                        inputRef={gameSearchInputRef}
+                                    />
                                 </div>
-                                {isDeleteMode && (
-                                    <div className="flex gap-3 w-full md:w-auto">
-                                        <button onClick={deletion.onMassDelete} disabled={!selectedGameIds.size} className="flex-1 md:flex-none h-12 px-5 rounded-xl flex items-center justify-center text-white bg-red-500 transition-all active:scale-95 disabled:opacity-60">
-                                            <Trash2 className="w-5 h-5" />
-                                        </button>
-                                        <button onClick={() => setIsDeleteMode(false)} className="flex-1 md:flex-none h-12 px-5 rounded-xl font-semibold transition-all active:scale-95" style={{ backgroundColor: currentColors.highlight, color: currentColors.darkBg }}>
-                                            Cancel
-                                        </button>
-                                    </div>
-                                )}
+                                <SortControls colors={currentColors} sortOrder={sortOrder} setSortOrder={setSortOrder} />
                             </div>
                         )}
                     </header>

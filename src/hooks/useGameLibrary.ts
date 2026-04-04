@@ -2,10 +2,11 @@ import { useState, useCallback, useRef } from 'react';
 import { Game } from '@/types';
 import { deleteGameFile, migrateLegacyRoms } from '@/lib/storage';
 import { getSystemNameByCore } from '@/lib/constants';
-import { STORAGE_KEYS } from '@/lib/utils';
+
+const GAMES_KEY = 'games';
 
 const persist = (games: Game[]) => {
-    try { localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(games)); }
+    try { localStorage.setItem(GAMES_KEY, JSON.stringify(games)); }
     catch (e) { console.error('Failed to persist games:', e); }
 };
 
@@ -21,7 +22,7 @@ export function useGameLibrary() {
         if (migrated.current) return;
         migrated.current = true;
         try {
-            const raw = localStorage.getItem(STORAGE_KEYS.GAMES);
+            const raw = localStorage.getItem(GAMES_KEY);
             if (!raw) return;
             const parsed: Game[] = JSON.parse(raw);
             await migrateLegacyRoms(parsed);

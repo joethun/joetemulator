@@ -8,7 +8,7 @@ const CRC_TABLE = (() => {
     return t;
 })();
 
-export function crc32(data: Uint8Array): string {
+function crc32(data: Uint8Array): string {
     let crc = -1;
     for (let i = 0; i < data.length; i++) {
         crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ data[i]) & 0xFF];

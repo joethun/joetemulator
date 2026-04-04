@@ -2,8 +2,7 @@
 
 import { memo, useCallback, useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Trash2, Check } from 'lucide-react';
-import { Game, ThemeColors, GradientStyle, getGradientStyle } from '@/types';
+import { Game, ThemeColors, getGradientStyle } from '@/types';
 import { GameContextMenu } from './gamecontextmenu';
 import { getSystemAspectRatio } from '@/lib/constants';
 import { stripExt } from '@/lib/utils';
@@ -13,14 +12,10 @@ interface GameCardProps {
     onPlay: (game: Game) => void;
     onEdit: (game: Game) => void;
     onDelete: (game: Game) => void;
-    onSelect: (gameId: number) => void;
     onUploadCover: (gameId: number, data: string) => void;
     onResetCover: (gameId: number) => void;
     onSaveStates: (title: string, name: string) => void;
-    isSelected: boolean;
-    isDeleteMode: boolean;
     colors: ThemeColors;
-    gradient: GradientStyle;
     priority?: boolean;
 }
 
@@ -45,22 +40,8 @@ const UploadOverlay = memo(({ progress, isComplete, colors }: { progress?: numbe
 ));
 UploadOverlay.displayName = 'UploadOverlay';
 
-const DeleteOverlay = memo(({ isSelected }: { isSelected: boolean }) => (
-    <>
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl pointer-events-none transition-opacity duration-300 bg-red-500/85" style={{ opacity: isSelected ? 1 : 0 }}>
-            <Trash2 className="w-12 h-12 md:w-16 md:h-16 text-white drop-shadow-xl" />
-        </div>
-        <div className="absolute bottom-3 right-3 z-10 scale-110">
-            <div className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center transition-all ${isSelected ? 'bg-white' : 'bg-transparent shadow-inner'}`}>
-                {isSelected && <Check className="w-4 h-4 text-red-500 stroke-[3]" />}
-            </div>
-        </div>
-    </>
-));
-DeleteOverlay.displayName = 'DeleteOverlay';
-
 export const GameCard = memo(({
-    game, onPlay, onEdit, onDelete, onSelect, onUploadCover, onResetCover, onSaveStates, isSelected, isDeleteMode, colors, gradient, priority = false
+    game, onPlay, onEdit, onDelete, onUploadCover, onResetCover, onSaveStates, colors, priority = false
 }: GameCardProps) => {
     const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const didOpenMenu = useRef(false);
@@ -71,13 +52,9 @@ export const GameCard = memo(({
     const [mobileHovered, setMobileHovered] = useState(false);
     const [imgError, setImgError] = useState(false);
 
-    // Clear long-press timer on unmount
     useEffect(() => () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }, []);
-
-    // Reset img error when cover changes
     useEffect(() => { setImgError(false); }, [game.coverArt]);
 
-    // Dismiss mobile hover on outside interaction
     useEffect(() => {
         if (!mobileHovered) return;
         const dismiss = (e: Event) => {
@@ -98,18 +75,17 @@ export const GameCard = memo(({
 
     const handleContextMenu = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
-        if (!isDeleteMode) openMenu(e.clientX, e.clientY);
-    }, [isDeleteMode, openMenu]);
+        openMenu(e.clientX, e.clientY);
+    }, [openMenu]);
 
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
         didOpenMenu.current = false;
-        if (isDeleteMode) return;
         const { clientX, clientY } = e.touches[0];
         longPressTimer.current = setTimeout(() => {
             openMenu(clientX, clientY);
             didOpenMenu.current = true;
         }, 400);
-    }, [isDeleteMode, openMenu]);
+    }, [openMenu]);
 
     const handleTouchEnd = useCallback((e: React.TouchEvent) => {
         if (longPressTimer.current) clearTimeout(longPressTimer.current);
@@ -121,26 +97,23 @@ export const GameCard = memo(({
 
     const handleClick = useCallback(() => {
         if (menuOpen) return;
-        if (isDeleteMode) { onSelect(game.id); return; }
         const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
         if (isTouch && !mobileHovered) { setMobileHovered(true); return; }
         onPlay(game);
-    }, [menuOpen, isDeleteMode, mobileHovered, onSelect, onPlay, game]);
+    }, [menuOpen, mobileHovered, onPlay, game]);
 
     return (
         <div
             ref={cardRef}
             className={`group relative overflow-hidden w-full rounded-xl border-[0.125rem] transition-all duration-300
                 ${isUploading ? 'cursor-default pointer-events-none' : 'cursor-pointer'}
-                ${mobileHovered ? 'shadow-lg scale-[1.025]' : 'hover:shadow-lg hover:scale-[1.025]'}
-                ${isDeleteMode ? 'animate-shake' : ''}`}
-            style={{ aspectRatio: getSystemAspectRatio(game.genre), backgroundColor: isDeleteMode && isSelected ? '#ef4444' : colors.midDark, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', borderColor: colors.midDark }}
+                ${mobileHovered ? 'shadow-lg scale-[1.025]' : 'hover:shadow-lg hover:scale-[1.025]'}`}
+            style={{ aspectRatio: getSystemAspectRatio(game.genre), backgroundColor: colors.midDark, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', borderColor: colors.midDark }}
             onClick={handleClick}
             onContextMenu={handleContextMenu}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
         >
-            {isDeleteMode && !isUploading && <DeleteOverlay isSelected={isSelected} />}
             {isUploading && <UploadOverlay progress={game.progress} isComplete={game.isComplete} colors={colors} />}
 
             <div className="h-full w-full relative flex items-center justify-center transition-transform duration-500 overflow-hidden"

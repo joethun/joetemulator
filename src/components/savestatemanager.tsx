@@ -9,8 +9,6 @@ import {
     fmtDate, groupByDay, SaveState, NEXT_LOAD_KEY,
 } from '@/lib/savestates';
 
-export { NEXT_LOAD_KEY } from '@/lib/savestates';
-
 // Shared button styles
 
 const BTN_BASE = 'w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer border-[0.125rem]';
@@ -190,7 +188,7 @@ export const SaveStateManager = memo(({
                 </div>
 
                 <div className="flex flex-col min-w-0" style={{ height: '320px' }}>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar" style={{ padding: '2px', margin: '-2px' }}>
+                    <div className="flex-1 overflow-y-auto" style={{ padding: '2px', margin: '-2px' }}>
                         {loading ? (
                             <div className="flex items-center justify-center py-16 opacity-50" style={{ color: colors.softLight }}>
                                 <span className="text-sm">Loading...</span>
