@@ -17,8 +17,8 @@ export async function selectFiles(): Promise<File[]> {
 
 // Hex lookup table — much faster than Array.from().map(b => b.toString(16))
 const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
-const toHex = (buf: ArrayBuffer, offset = 0, len = (buf.byteLength - offset)) => {
-    const bytes = new Uint8Array(buf, offset, len);
+const toHex = (buf: ArrayBuffer) => {
+    const bytes = new Uint8Array(buf);
     let s = '';
     for (let i = 0; i < bytes.length; i++) s += HEX[bytes[i]];
     return s;

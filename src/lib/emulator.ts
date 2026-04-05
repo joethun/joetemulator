@@ -12,8 +12,6 @@ declare global {
     EJS_emulator?: any;
     gameRunning: boolean;
     [key: string]: any;
-    saveToBrowserStorage: () => Promise<void>;
-    loadFromBrowserStorage: () => Promise<void>;
   }
 }
 
@@ -195,7 +193,4 @@ function addEventListeners(): void {
   eventListenersAdded = true;
 }
 
-if (typeof window !== 'undefined') {
-  window.saveToBrowserStorage = () => saveState('manual');
-  window.loadFromBrowserStorage = () => loadState('manual');
-}
+
