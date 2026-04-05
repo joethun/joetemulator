@@ -69,7 +69,6 @@ async function extractRomBytesFromZip(file: File): Promise<ArrayBuffer | null> {
 
 type FileHashes = {
     crc: string;
-    chdSha1: string | null;
     serialId: string | null;
     fileSha1: string | null;
 };
@@ -77,7 +76,6 @@ type FileHashes = {
 // Raw buffer work that is system-agnostic — cached independently of system
 type RawFileData = {
     buffer: ArrayBuffer;
-    chdSha1: string | null;
     serialId: string | null;
     fileSha1: string | null;
 };
@@ -91,16 +89,6 @@ async function getRawFileData(file: File): Promise<RawFileData> {
         const zipBytes = await extractRomBytesFromZip(file);
         const buffer = zipBytes ?? await file.arrayBuffer();
 
-        const magic = new TextDecoder('ascii').decode(new Uint8Array(buffer, 0, 8));
-
-        if (magic === 'MComprHD') {
-            const view = new DataView(buffer);
-            const version = view.getUint32(12, false);
-            const shaOffset = version === 5 ? 64 : version === 4 ? 84 : 0;
-            const chdSha1 = shaOffset ? toHex(buffer, shaOffset, 20) : null;
-            return { buffer, chdSha1, serialId: null, fileSha1: null };
-        }
-
         let fileSha1: string | null = null;
         try {
             fileSha1 = toHex(await crypto.subtle.digest('SHA-1', buffer));
@@ -111,7 +99,7 @@ async function getRawFileData(file: File): Promise<RawFileData> {
         const psMatch = headStr.match(/[ST][LCB][UEPKA][SPMEJ][-_]?\d{3}\.?\d{2}/i);
         const serialId = psMatch ? psMatch[0].replace(/[-_.]/g, '').toLowerCase() : null;
 
-        return { buffer, chdSha1: null, serialId, fileSha1 };
+        return { buffer, serialId, fileSha1 };
     })();
 
     // Evict on failure so the next call retries rather than getting a cached rejection
@@ -121,14 +109,14 @@ async function getRawFileData(file: File): Promise<RawFileData> {
 }
 
 async function getFileHashes(file: File, systemName: string): Promise<FileHashes> {
-    const { buffer, chdSha1, serialId, fileSha1 } = await getRawFileData(file);
+    const { buffer, serialId, fileSha1 } = await getRawFileData(file);
 
     const { computeRomCrc } = await import('@/lib/crc32');
     const crc = buffer.byteLength <= 516 * 1024 * 1024
         ? computeRomCrc(new Uint8Array(buffer), systemName)
         : '';
 
-    return { crc, chdSha1, serialId, fileSha1 };
+    return { crc, serialId, fileSha1 };
 }
 
 const LR_MAP: Record<string, string> = {
@@ -226,12 +214,11 @@ export async function calculateAutoCoverArt(file: File, core: string, opfsFile?:
             fetchDat(lrSys).catch(() => ({} as Record<string, string>)),
         ]);
 
-        const { crc, chdSha1, serialId, fileSha1 } = hashes;
+        const { crc, serialId, fileSha1 } = hashes;
 
         const hashName =
             datMap[crc] ?? datMap[crc.toLowerCase()] ??
             (fileSha1 && datMap[fileSha1]) ??
-            (chdSha1 && datMap[chdSha1]) ??
             (serialId && datMap[serialId]) ??
             findByName(stripExt(file.name).replace(/\s*\([^)]*\)/g, '').trim(), datMap) ??
             null;
