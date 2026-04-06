@@ -62,7 +62,7 @@ export const SettingsView = memo(({
                             <span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            {[15, 30, 45, 60].map(v => (
+                            {[30, 60, 120, 300, 600].map(v => (
                                 <button
                                     key={v}
                                     onClick={handleIntervalClick(v)}
@@ -73,7 +73,7 @@ export const SettingsView = memo(({
                                         color: autoSaveInterval === v ? colors.darkBg : colors.softLight,
                                     }}
                                 >
-                                    {v}s
+                                    {v >= 60 ? `${v / 60}m` : `${v}s`}
                                 </button>
                             ))}
                         </div>

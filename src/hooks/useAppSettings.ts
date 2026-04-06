@@ -8,7 +8,7 @@ export function useAppSettings() {
     const [autoLoadState, setAutoLoadState, autoLoadHydrated] = useLocalStorage('autoLoadState', true);
     const [autoLoadIcon, setAutoLoadIcon] = useLocalStorage('autoLoadIcon', true);
     const [autoSaveState, setAutoSaveState, autoSaveHydrated] = useLocalStorage('autoSaveState', true);
-    const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 60);
+    const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 300);
     const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
 
     const currentColors = useMemo(() => THEMES[selectedTheme] || THEMES.default, [selectedTheme]);
