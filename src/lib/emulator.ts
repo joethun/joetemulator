@@ -64,6 +64,7 @@ function cleanupGame(): void {
   toggleMenuElements(true);
   window.gameRunning = false;
   currentGameBaseName = '';
+  eventListenersAdded = false;
   for (const key of Object.keys(window)) {
     if (key.startsWith('EJS_')) delete window[key];
   }
@@ -152,9 +153,9 @@ async function saveState(source: 'manual' | 'auto' = 'manual'): Promise<void> {
     await emu.storage.states.put(slotKey, state);
     dispatchNotification('save', source);
     if (source === 'manual' && autoSaveInterval) startAutoSave();
-  } catch (error: any) {
+  } catch (error) {
     console.error('save failed:', error);
-    emu.displayMessage(`error saving: ${error.message}`);
+    emu.displayMessage(`error saving: ${(error as Error).message}`);
   }
 }
 
@@ -169,9 +170,9 @@ async function loadState(source: 'manual' | 'auto' = 'manual', specificKey?: str
     await emu.gameManager.loadState(state);
     dispatchNotification('load', source);
     if (source === 'manual' && autoSaveInterval) startAutoSave();
-  } catch (error: any) {
+  } catch (error) {
     console.error('load failed:', error);
-    emu.displayMessage(`error loading: ${error.message}`);
+    emu.displayMessage(`error loading: ${(error as Error).message}`);
   }
 }
 
@@ -192,5 +193,3 @@ function addEventListeners(): void {
   });
   eventListenersAdded = true;
 }
-
-

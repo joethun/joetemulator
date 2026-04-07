@@ -10,8 +10,6 @@ interface FileHandlerOps {
     setPendingFiles: (files: Array<{ file: File; index: number }>) => void;
     setPendingGame: (game: Partial<Game> | null) => void;
     setSystemPickerOpen: (open: boolean) => void;
-    setCoverArtFit: (fit: 'cover' | 'contain') => void;
-    coverArtFit: 'cover' | 'contain';
     setPendingBatchCore: (core: string | null) => void;
 }
 
@@ -47,7 +45,7 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
             core,
             coverArt: initialCover,
             autoCoverArt: undefined,
-            coverArtFit: initialCover ? (meta?.coverArtFit || ops.coverArtFit) : undefined,
+            coverArtFit: initialCover ? (meta?.coverArtFit || 'cover') : undefined,
             progress: 0,
         };
 
@@ -76,7 +74,7 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
             if (cover && active.current.has(gameId)) {
                 const existing = snapshots.current[gameId];
                 if (existing && (!existing.coverArt || existing.coverArt === existing.autoCoverArt)) {
-                    const updated = { ...existing, coverArt: cover, autoCoverArt: cover, coverArtFit: existing.coverArtFit || ops.coverArtFit };
+                    const updated = { ...existing, coverArt: cover, autoCoverArt: cover, coverArtFit: existing.coverArtFit || 'cover' };
                     snapshots.current[gameId] = updated;
                     setUploads(prev => prev[gameId] ? { ...prev, [gameId]: updated } : prev);
                 }
@@ -98,7 +96,7 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
             delete snapshots.current[gameId];
             setUploads(prev => { const { [gameId]: _, ...rest } = prev; return rest; });
         }
-    }, [addGame, ops, patchUpload]);
+    }, [addGame, patchUpload]);
 
     const handleIncomingFiles = useCallback(async (files: File[]) => {
         if (!files.length) return;
@@ -116,7 +114,6 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
             : null
         );
         ops.setPendingBatchCore(null);
-        ops.setCoverArtFit('cover');
         ops.setSystemPickerOpen(true);
     }, [games, ops]);
 

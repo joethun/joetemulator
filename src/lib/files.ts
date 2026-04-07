@@ -162,8 +162,9 @@ const datCache = new Map<string, Promise<Record<string, string>>>();
 function fetchDat(lrSys: string): Promise<Record<string, string>> {
     if (datCache.has(lrSys)) return datCache.get(lrSys)!;
     const p = fetch(`/dats/${lrSys}.json`)
-        .then(r => r.ok ? r.json() as Promise<Record<string, string>> : Promise.reject(new Error(`HTTP ${r.status}`)));
-    p.then(() => datCache.set(lrSys, p)).catch(() => {});
+        .then(r => r.ok ? r.json() as Promise<Record<string, string>> : Promise.reject(new Error(`HTTP ${r.status}`)))
+        .catch(err => { datCache.delete(lrSys); return Promise.reject(err); });
+    datCache.set(lrSys, p);
     return p;
 }
 

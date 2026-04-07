@@ -35,10 +35,14 @@ export default function Home() {
     const pickerFlow = useSystemPickerFlow(app, lib, files);
     const drag = useDragDrop(files.handleIncomingFiles);
 
-    const { currentColors, gradientStyle, sortOrder, setSortOrder, selectedTheme, setSelectedTheme, isHydrated } = settings;
+    const { currentColors, gradientStyle, sortOrder, setSortOrder, selectedTheme, setSelectedTheme, isHydrated,
+        autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState,
+        autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon,
+        autoLoadIcon, setAutoLoadIcon,
+    } = settings;
     const {
         isMounted, setIsMounted, activeView, setActiveView,
-        themeAnimationKey, libraryAnimationKey,
+        libraryAnimationKey,
         gameSearchQuery, setGameSearchQuery, gameSearchFocused, setGameSearchFocused, gameSearchInputRef,
         duplicateMessage, showDuplicateMessage, systemPickerOpen, systemPickerClosing,
         editingGame, pendingGame, pendingFiles, systemSearchQuery, setSystemSearchQuery,
@@ -50,6 +54,9 @@ export default function Home() {
         setIsMounted(true);
         lib.loadGamesFromStorage();
     }, []);
+
+    const handleSearchFocus = useCallback(() => setGameSearchFocused(true), [setGameSearchFocused]);
+    const handleSearchBlur = useCallback(() => setGameSearchFocused(false), [setGameSearchFocused]);
 
     const handleAddGame = useCallback(async () => {
         try {
@@ -89,17 +96,17 @@ export default function Home() {
 
     const mainContent = useMemo(() => {
         if (activeView === 'themes')
-            return <ThemeGrid selectedTheme={selectedTheme} onSelectTheme={setSelectedTheme} animKey={themeAnimationKey} />;
+            return <ThemeGrid selectedTheme={selectedTheme} onSelectTheme={setSelectedTheme} />;
 
         if (activeView === 'settings')
             return (
                 <SettingsView
                     colors={currentColors} gradient={gradientStyle}
-                    autoLoadState={settings.autoLoadState} setAutoLoadState={settings.setAutoLoadState}
-                    autoSaveState={settings.autoSaveState} setAutoSaveState={settings.setAutoSaveState}
-                    autoSaveInterval={settings.autoSaveInterval} setAutoSaveInterval={settings.setAutoSaveInterval}
-                    autoSaveIcon={settings.autoSaveIcon} setAutoSaveIcon={settings.setAutoSaveIcon}
-                    autoLoadIcon={settings.autoLoadIcon} setAutoLoadIcon={settings.setAutoLoadIcon}
+                    autoLoadState={autoLoadState} setAutoLoadState={setAutoLoadState}
+                    autoSaveState={autoSaveState} setAutoSaveState={setAutoSaveState}
+                    autoSaveInterval={autoSaveInterval} setAutoSaveInterval={setAutoSaveInterval}
+                    autoSaveIcon={autoSaveIcon} setAutoSaveIcon={setAutoSaveIcon}
+                    autoLoadIcon={autoLoadIcon} setAutoLoadIcon={setAutoLoadIcon}
                 />
             );
 
@@ -135,7 +142,10 @@ export default function Home() {
                 ))}
             </div>
         );
-    }, [activeView, currentColors, selectedTheme, setSelectedTheme, themeAnimationKey, gradientStyle, settings,
+    }, [activeView, currentColors, selectedTheme, setSelectedTheme, gradientStyle,
+        autoLoadState, setAutoLoadState, autoSaveState, setAutoSaveState,
+        autoSaveInterval, setAutoSaveInterval, autoSaveIcon, setAutoSaveIcon,
+        autoLoadIcon, setAutoLoadIcon,
         lib.games, files.uploads, view, gameSearchQuery, libraryAnimationKey, renderGameCard]);
 
     if (!isMounted || !isHydrated)
@@ -171,8 +181,8 @@ export default function Home() {
                                         value={gameSearchQuery}
                                         onChange={setGameSearchQuery}
                                         isFocused={gameSearchFocused}
-                                        onFocus={() => setGameSearchFocused(true)}
-                                        onBlur={() => setGameSearchFocused(false)}
+                                        onFocus={handleSearchFocus}
+                                        onBlur={handleSearchBlur}
                                         inputRef={gameSearchInputRef}
                                     />
                                 </div>
@@ -186,7 +196,7 @@ export default function Home() {
             </div>
 
             {duplicateMessage && <Alert message={duplicateMessage} isVisible={showDuplicateMessage} />}
-            <EmulatorNotification colors={currentColors} autoSaveIcon={settings.autoSaveIcon} autoLoadIcon={settings.autoLoadIcon} />
+            <EmulatorNotification colors={currentColors} autoSaveIcon={autoSaveIcon} autoLoadIcon={autoLoadIcon} />
 
             {(systemPickerOpen || systemPickerClosing) && (
                 <SystemPickerModal

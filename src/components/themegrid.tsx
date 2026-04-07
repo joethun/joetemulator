@@ -5,11 +5,10 @@ import { THEMES, getGradientStyle } from '@/types';
 interface ThemeGridProps {
     selectedTheme: string;
     onSelectTheme: (theme: string) => void;
-    animKey: number;
 }
 
-export const ThemeGrid = memo(({ selectedTheme, onSelectTheme, animKey }: ThemeGridProps) => (
-        <div key={animKey} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+export const ThemeGrid = memo(({ selectedTheme, onSelectTheme }: ThemeGridProps) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(THEMES).map(([name, theme], i) => {
                 const selected = selectedTheme === name;
                 return (

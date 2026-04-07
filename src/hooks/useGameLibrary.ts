@@ -33,7 +33,7 @@ export function useGameLibrary() {
             }));
             setGames(cleaned);
             persist(cleaned);
-        } catch { setGames([]); }
+        } catch (e) { console.error('Failed to load games:', e); setGames([]); }
     }, []);
 
     const addGame = useCallback((game: Game) => mutate(g => [...g, game]), [mutate]);

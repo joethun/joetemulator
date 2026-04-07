@@ -11,7 +11,6 @@ interface Ops {
     setEditingGame: (game: Game | null) => void;
     setPendingGame: (game: Partial<Game> | null) => void;
     setPendingBatchCore: (core: string | null) => void;
-    setCoverArtFit: (fit: 'cover' | 'contain') => void;
     setSystemPickerOpen: (open: boolean) => void;
     closeSystemPicker: () => void;
     showDuplicateError: (message: string) => void;
@@ -61,7 +60,6 @@ export function useSystemPickerFlow(ops: Ops, lib: Lib, files: Files) {
     const handleEditGame = useCallback((game: Game) => {
         ops.setEditingGame(game);
         ops.setPendingGame({ ...game });
-        ops.setCoverArtFit(game.coverArtFit || 'cover');
         ops.setSystemPickerOpen(true);
     }, [ops]);
 

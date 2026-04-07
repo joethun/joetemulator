@@ -55,7 +55,7 @@ interface StateRowProps {
 }
 
 const StateRow = memo(({ s, idx, isNextLoad, isDeleting, colors, gameName, onToggleNextLoad, onDelete }: StateRowProps) => (
-    <div key={s.key}
+    <div
         className={`py-3 px-4 rounded-xl border-[0.125rem] flex items-center gap-4 transition-[border-color,box-shadow] duration-200 ${isDeleting ? 'animate-card-exit' : ''}`}
         style={{
             backgroundColor: colors.darkBg,

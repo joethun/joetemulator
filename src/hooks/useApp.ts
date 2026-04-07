@@ -6,7 +6,6 @@ export function useApp() {
     const [isMounted, setIsMounted] = useState(false);
     const [gameSearchQuery, setGameSearchQuery] = useState('');
     const [gameSearchFocused, setGameSearchFocused] = useState(false);
-    const [themeAnimationKey, setThemeAnimationKey] = useState(0);
     const [libraryAnimationKey, setLibraryAnimationKey] = useState(0);
     const gameSearchInputRef = useRef<HTMLInputElement>(null);
 
@@ -19,15 +18,13 @@ export function useApp() {
     const [systemPickerClosing, setSystemPickerClosing] = useState(false);
     const [systemSearchQuery, setSystemSearchQuery] = useState('');
     const [pendingBatchCore, setPendingBatchCore] = useState<string | null>(null);
-    const [coverArtFit, setCoverArtFit] = useState<'cover' | 'contain'>('cover');
     const [saveStateGame, setSaveStateGame] = useState<{ title: string; name: string } | null>(null);
     const [saveStateOpen, setSaveStateOpen] = useState(false);
     const [saveStateClosing, setSaveStateClosing] = useState(false);
 
     const setActiveView = useCallback((view: ViewType) => {
         setActiveViewRaw(prev => {
-            if (view === 'themes') setThemeAnimationKey(k => k + 1);
-            else if (view === 'library' && prev !== 'library') setLibraryAnimationKey(k => k + 1);
+            if (view === 'library' && prev !== 'library') setLibraryAnimationKey(k => k + 1);
             return view;
         });
     }, []);
@@ -72,7 +69,7 @@ export function useApp() {
         isMounted, setIsMounted,
         gameSearchQuery, setGameSearchQuery,
         gameSearchFocused, setGameSearchFocused,
-        themeAnimationKey, libraryAnimationKey,
+        libraryAnimationKey,
         gameSearchInputRef,
         duplicateMessage, showDuplicateMessage,
         editingGame, setEditingGame,
@@ -82,7 +79,6 @@ export function useApp() {
         systemPickerClosing,
         systemSearchQuery, setSystemSearchQuery,
         pendingBatchCore, setPendingBatchCore,
-        coverArtFit, setCoverArtFit,
         saveStateGame, saveStateOpen, saveStateClosing,
         openSaveStateManager, closeSaveStateManager,
         showDuplicateError, closeSystemPicker,
