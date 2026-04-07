@@ -30,11 +30,6 @@ export type GradientStyle = {
 };
 
 export const THEMES: Record<string, ThemeColors> = {
-  default: {
-    highlight: '#a9b7ff', darkBg: '#070a14', midDark: '#121a2d',
-    softLight: '#eef4ff', sidebarHover: '#182447',
-    gradientFrom: '#60a5fa', gradientTo: '#3b82f6'
-  },
   red: {
     highlight: '#ffb3b3', darkBg: '#120406', midDark: '#280a0e',
     softLight: '#fff0f0', sidebarHover: '#3d0f14',
@@ -59,6 +54,11 @@ export const THEMES: Record<string, ThemeColors> = {
     highlight: '#7ffff0', darkBg: '#021012', midDark: '#082028',
     softLight: '#ecfeff', sidebarHover: '#0d3340',
     gradientFrom: '#2dd4bf', gradientTo: '#0891b2'
+  },
+  default: {
+    highlight: '#a9b7ff', darkBg: '#070a14', midDark: '#121a2d',
+    softLight: '#eef4ff', sidebarHover: '#182447',
+    gradientFrom: '#60a5fa', gradientTo: '#3b82f6'
   },
   indigo: {
     highlight: '#c4b5fd', darkBg: '#060612', midDark: '#0f0d2e',
