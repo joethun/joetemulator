@@ -189,11 +189,7 @@ export const SaveStateManager = memo(({
 
                 <div className="flex flex-col min-w-0" style={{ height: '320px' }}>
                     <div className="flex-1 overflow-y-auto" style={{ padding: '2px', margin: '-2px' }}>
-                        {loading ? (
-                            <div className="flex items-center justify-center py-16 opacity-50" style={{ color: colors.softLight }}>
-                                <span className="text-sm">Loading...</span>
-                            </div>
-                        ) : states.length === 0 ? (
+                        {loading ? null : states.length === 0 ? (
                             <EmptyState colors={colors} />
                         ) : (
                             <div className="flex flex-col gap-6 pr-2">
