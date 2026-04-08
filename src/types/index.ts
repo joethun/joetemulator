@@ -55,7 +55,7 @@ export const THEMES: Record<string, ThemeColors> = {
     softLight: '#ecfeff', sidebarHover: '#0d3340',
     gradientFrom: '#2dd4bf', gradientTo: '#0891b2'
   },
-  default: {
+  blue: {
     highlight: '#a9b7ff', darkBg: '#070a14', midDark: '#121a2d',
     softLight: '#eef4ff', sidebarHover: '#182447',
     gradientFrom: '#60a5fa', gradientTo: '#3b82f6'
