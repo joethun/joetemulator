@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
 import { Game } from '@/types';
 import { deleteGameFile, migrateLegacyRoms } from '@/lib/storage';
+import { deleteAllStates } from '@/lib/savestates';
 import { getSystemNameByCore } from '@/lib/constants';
+import { stripExt } from '@/lib/utils';
 
 const GAMES_KEY = 'games';
 
@@ -39,8 +41,10 @@ export function useGameLibrary() {
     const addGame = useCallback((game: Game) => mutate(g => [...g, game]), [mutate]);
     const updateGame = useCallback((id: number, updates: Partial<Game>) =>
         mutate(g => g.map(x => x.id === id ? { ...x, ...updates } : x)), [mutate]);
-    const deleteGame = useCallback(async (id: number) => {
+    const deleteGame = useCallback(async (id: number, fileName?: string, title?: string) => {
         try { await deleteGameFile(id); } catch { }
+        const baseName = fileName || title;
+        if (baseName) { try { await deleteAllStates(stripExt(baseName)); } catch { } }
         mutate(g => g.filter(x => x.id !== id));
     }, [mutate]);
 

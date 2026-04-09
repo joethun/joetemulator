@@ -22,7 +22,6 @@ interface Lib {
 }
 
 interface Files {
-    setIsProcessing: (v: boolean) => void;
     processGameFile: (file: File, core: string, meta?: Partial<Game>) => Promise<void>;
 }
 
@@ -44,7 +43,6 @@ export function useSystemPickerFlow(ops: Ops, lib: Lib, files: Files) {
         }
 
         ops.closeSystemPicker();
-        files.setIsProcessing(true);
         try {
             const meta = ops.pendingGame ? { ...ops.pendingGame } : undefined;
             await Promise.all(ops.pendingFiles.map((item, i) =>
@@ -52,8 +50,6 @@ export function useSystemPickerFlow(ops: Ops, lib: Lib, files: Files) {
             ));
         } catch (err) {
             console.error('batch processing error:', err);
-        } finally {
-            files.setIsProcessing(false);
         }
     }, [ops, lib, files]);
 

@@ -1,6 +1,6 @@
 import { getSlotKeys } from '@/lib/emulator';
 
-const TS_PREFIX = 'ejs_state_ts_';
+export const STATE_TS_PREFIX = 'ejs_state_ts_';
 const MANIFEST_PREFIX = 'ejs_slots_';
 export const NEXT_LOAD_KEY = 'ejs_load_on_next_';
 
@@ -64,7 +64,7 @@ function toBytes(data: unknown): Uint8Array | null {
 
 function getTimestamp(key: string): Date | null {
     try {
-        const raw = localStorage.getItem(TS_PREFIX + key);
+        const raw = localStorage.getItem(STATE_TS_PREFIX + key);
         if (!raw) return null;
         const d = new Date(raw);
         return isNaN(d.getTime()) ? null : d;
@@ -81,6 +81,24 @@ function hashBytes(bytes: Uint8Array): string {
 function isDuplicate(incoming: Uint8Array, existing: SaveState[]): boolean {
     const hash = hashBytes(incoming);
     return existing.some(s => { const b = toBytes(s.rawData); return b ? hashBytes(b) === hash : false; });
+}
+
+export async function deleteAllStates(gameName: string): Promise<void> {
+    const keys = getSlotKeys(gameName);
+    const db = await openDB();
+    if (db) {
+        for (const key of keys) await idbDelete(db, key);
+        const tracker = await idbGet<string[]>(db, '?EJS_KEYS!');
+        if (tracker) await idbPut(db, '?EJS_KEYS!', tracker.filter(k => !keys.includes(k)));
+        db.close();
+    }
+    try {
+        for (const key of keys) {
+            localStorage.removeItem(STATE_TS_PREFIX + key);
+            localStorage.removeItem(NEXT_LOAD_KEY + key);
+        }
+        localStorage.removeItem(MANIFEST_PREFIX + gameName);
+    } catch { /* noop */ }
 }
 
 export async function fetchStates(gameName: string): Promise<SaveState[]> {
@@ -112,7 +130,7 @@ export async function removeState(key: string, gameName: string): Promise<void> 
             m.slots = m.slots.filter((s: string) => s !== key);
             localStorage.setItem(MANIFEST_PREFIX + gameName, JSON.stringify(m));
         }
-        localStorage.removeItem(TS_PREFIX + key);
+        localStorage.removeItem(STATE_TS_PREFIX + key);
         localStorage.removeItem(NEXT_LOAD_KEY + key);
     } catch { /* noop */ }
 }
@@ -131,7 +149,7 @@ export async function importState(gameName: string, file: File): Promise<void> {
         const m = raw ? JSON.parse(raw) : { slots: [], nextIndex: 0 };
         if (!m.slots.includes(key)) m.slots = [...m.slots, key].slice(-10);
         localStorage.setItem(MANIFEST_PREFIX + gameName, JSON.stringify(m));
-        localStorage.setItem(TS_PREFIX + key, new Date(file.lastModified || Date.now()).toISOString());
+        localStorage.setItem(STATE_TS_PREFIX + key, new Date(file.lastModified || Date.now()).toISOString());
     } catch { /* noop */ }
 }
 

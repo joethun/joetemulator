@@ -1,11 +1,10 @@
 import { THEMES } from '@/types';
-import { isStateDuplicate } from '@/lib/savestates';
+import { isStateDuplicate, STATE_TS_PREFIX } from '@/lib/savestates';
 import { stripExt } from '@/lib/utils';
 
 const DATA_PATH = '/emulatorjs/';
 const MAX_SLOTS = 10;
 const SLOT_PREFIX = 'ejs_slots_';
-const TS_PREFIX = 'ejs_state_ts_';
 
 declare global {
   interface Window { EJS_emulator?: any; gameRunning: boolean; [key: string]: any; }
@@ -27,7 +26,7 @@ const toggleUI = (show: boolean) => {
 const notify = (type: 'save' | 'load', source: string) =>
   window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type, source } }));
 const stampSlot = (key: string) => {
-  try { localStorage.setItem(TS_PREFIX + key, new Date().toISOString()); } catch { /* noop */ }
+  try { localStorage.setItem(STATE_TS_PREFIX + key, new Date().toISOString()); } catch { /* noop */ }
 };
 
 interface SlotManifest { slots: string[]; nextIndex: number; }

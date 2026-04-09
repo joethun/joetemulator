@@ -18,9 +18,9 @@ const uniqueId = () => Date.now() * 1000 + (idCounter++ % 1000);
 
 export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops: FileHandlerOps) {
     const [uploads, setUploads] = useState<Record<number, Game>>({});
-    const [isProcessing, setIsProcessing] = useState(false);
     const snapshots = useRef<Record<number, Game>>({});
     const active = useRef<Set<number>>(new Set());
+    const { showDuplicateError, setPendingFiles, setPendingGame, setSystemPickerOpen, setPendingBatchCore } = ops;
 
     const patchUpload = useCallback((id: number, patch: Partial<Game>) => {
         setUploads(prev => {
@@ -94,7 +94,7 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
         } finally {
             active.current.delete(gameId);
             delete snapshots.current[gameId];
-            setUploads(prev => { const { [gameId]: _, ...rest } = prev; return rest; });
+            setUploads(prev => { const next = { ...prev }; delete next[gameId]; return next; });
         }
     }, [addGame, patchUpload]);
 
@@ -104,18 +104,18 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
         const fresh = files.filter(f => !existing.has(f.name));
 
         if (!fresh.length) {
-            ops.showDuplicateError(files.length === 1 ? 'File already in library' : 'Selected files are duplicates');
+            showDuplicateError(files.length === 1 ? 'File already in library' : 'Selected files are duplicates');
             return;
         }
 
-        ops.setPendingFiles(fresh.map((file, index) => ({ file, index })));
-        ops.setPendingGame(fresh.length === 1
+        setPendingFiles(fresh.map((file, index) => ({ file, index })));
+        setPendingGame(fresh.length === 1
             ? { id: Date.now(), title: stripExt(fresh[0].name), genre: 'Unknown', filePath: fresh[0].name, fileName: fresh[0].name }
             : null
         );
-        ops.setPendingBatchCore(null);
-        ops.setSystemPickerOpen(true);
-    }, [games, ops]);
+        setPendingBatchCore(null);
+        setSystemPickerOpen(true);
+    }, [games, showDuplicateError, setPendingFiles, setPendingGame, setPendingBatchCore, setSystemPickerOpen]);
 
-    return { uploads, processGameFile, handleIncomingFiles, isProcessing, setIsProcessing };
+    return { uploads, processGameFile, handleIncomingFiles };
 }

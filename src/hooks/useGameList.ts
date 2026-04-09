@@ -28,13 +28,16 @@ export function useGameList(
 
         const dir = sortOrder === 'asc' ? 1 : -1;
 
-        return filtered.sort((a, b) => {
-            return dir * (
-                getSystemCategory(a.core).localeCompare(getSystemCategory(b.core)) ||
-                a.genre.localeCompare(b.genre) ||
-                a.title.localeCompare(b.title)
-            );
-        });
+        return filtered
+            .map(g => ({ g, cat: getSystemCategory(g.core) }))
+            .sort((a, b) =>
+                dir * (
+                    a.cat.localeCompare(b.cat) ||
+                    a.g.genre.localeCompare(b.g.genre) ||
+                    a.g.title.localeCompare(b.g.title)
+                )
+            )
+            .map(({ g }) => g);
     }, [games, uploads, sortOrder, searchQuery]);
 
     const groupedGames = useMemo(() => {
