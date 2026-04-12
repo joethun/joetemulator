@@ -24,14 +24,14 @@ interface SettingsProps {
     autoSaveInterval: number; setAutoSaveInterval: (v: number) => void;
     autoSaveIcon: boolean; setAutoSaveIcon: (v: boolean) => void;
     autoLoadIcon: boolean; setAutoLoadIcon: (v: boolean) => void;
+    currentColors: ThemeColors;
+    gradientStyle: GradientStyle;
+    selectedTheme: string;
+    setSelectedTheme: (theme: string) => void;
 }
 
 interface UseMainContentProps {
     activeView: ViewType;
-    colors: ThemeColors;
-    gradient: GradientStyle;
-    selectedTheme: string;
-    onSelectTheme: (theme: string) => void;
     games: Game[];
     uploads: Record<number, Game>;
     sortedGames: Game[];
@@ -43,11 +43,12 @@ interface UseMainContentProps {
 }
 
 export function useMainContent({
-    activeView, colors, gradient, selectedTheme, onSelectTheme,
-    games, uploads, sortedGames, groupedGames,
+    activeView, games, uploads, sortedGames, groupedGames,
     gameSearchQuery, libraryAnimationKey,
     handlers, settings,
 }: UseMainContentProps) {
+    const { currentColors: colors, gradientStyle: gradient, selectedTheme, setSelectedTheme: onSelectTheme } = settings;
+
     const renderGameCard = useCallback((g: Game, i: number) => (
         <div key={g.id} style={{ animation: `fadeIn 0.4s ease-out ${i * 0.03}s both` }}>
             <GameCard

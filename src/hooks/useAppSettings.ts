@@ -11,7 +11,7 @@ export function useAppSettings() {
     const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 300);
     const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
 
-    const currentColors = useMemo(() => THEMES[selectedTheme] || THEMES.default, [selectedTheme]);
+    const currentColors = useMemo(() => THEMES[selectedTheme] || THEMES.blue, [selectedTheme]);
     const gradientStyle = useMemo(() => getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), [currentColors]);
     const isHydrated = themeHydrated && sortHydrated && autoLoadHydrated && autoSaveHydrated;
 

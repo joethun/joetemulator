@@ -28,6 +28,8 @@ export function useGameLibrary() {
             if (!raw) return;
             const parsed: Game[] = JSON.parse(raw);
             await migrateLegacyRoms(parsed);
+            // Strip legacy fileData field (migrated to OPFS)
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const cleaned = parsed.map(({ fileData, ...rest }) => ({
                 ...rest,
                 genre: rest.genre === 'ROM' && rest.core ? getSystemNameByCore(rest.core) : rest.genre,

@@ -1,13 +1,11 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { ViewType, Game } from '@/types';
 
 export function useApp() {
     const [activeView, setActiveViewRaw] = useState<ViewType>('library');
     const [isMounted, setIsMounted] = useState(false);
     const [gameSearchQuery, setGameSearchQuery] = useState('');
-    const [gameSearchFocused, setGameSearchFocused] = useState(false);
     const [libraryAnimationKey, setLibraryAnimationKey] = useState(0);
-    const gameSearchInputRef = useRef<HTMLInputElement>(null);
 
     const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
     const [showDuplicateMessage, setShowDuplicateMessage] = useState(false);
@@ -68,9 +66,7 @@ export function useApp() {
         activeView, setActiveView,
         isMounted, setIsMounted,
         gameSearchQuery, setGameSearchQuery,
-        gameSearchFocused, setGameSearchFocused,
         libraryAnimationKey,
-        gameSearchInputRef,
         duplicateMessage, showDuplicateMessage,
         editingGame, setEditingGame,
         pendingGame, setPendingGame,

@@ -10,7 +10,6 @@ interface SettingsCardProps {
     title: string;
     description: string;
     animationDelay?: string;
-    control?: ReactNode;
     checked?: boolean;
     onToggle?: () => void;
     children?: ReactNode;
@@ -19,7 +18,7 @@ interface SettingsCardProps {
 
 export const SettingsCard = memo(({
     colors, gradient, icon: Icon, title, description,
-    animationDelay = '0s', control, checked, onToggle, children, isExpanded = false,
+    animationDelay = '0s', checked, onToggle, children, isExpanded = false,
 }: SettingsCardProps) => (
     <div
         className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex flex-col"
@@ -44,7 +43,7 @@ export const SettingsCard = memo(({
                 </div>
             </div>
 
-            {control ? control : onToggle && (
+            {onToggle && (
                 <Switch checked={checked ?? false} onChange={onToggle} colors={colors} gradient={gradient} />
             )}
         </div>

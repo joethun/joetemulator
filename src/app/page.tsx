@@ -32,10 +32,6 @@ export default function Home() {
 
     const mainContent = useMainContent({
         activeView: app.activeView,
-        colors: settings.currentColors,
-        gradient: settings.gradientStyle,
-        selectedTheme: settings.selectedTheme,
-        onSelectTheme: settings.setSelectedTheme,
         games: lib.games,
         uploads: files.uploads,
         sortedGames: view.sortedGames,
@@ -50,13 +46,7 @@ export default function Home() {
             onEdit: pickerFlow.handleEditGame,
             onSaveStates: app.openSaveStateManager,
         },
-        settings: {
-            autoLoadState: settings.autoLoadState, setAutoLoadState: settings.setAutoLoadState,
-            autoSaveState: settings.autoSaveState, setAutoSaveState: settings.setAutoSaveState,
-            autoSaveInterval: settings.autoSaveInterval, setAutoSaveInterval: settings.setAutoSaveInterval,
-            autoSaveIcon: settings.autoSaveIcon, setAutoSaveIcon: settings.setAutoSaveIcon,
-            autoLoadIcon: settings.autoLoadIcon, setAutoLoadIcon: settings.setAutoLoadIcon,
-        },
+        settings,
     });
 
     useEffect(() => {
@@ -97,10 +87,6 @@ export default function Home() {
                                         colors={settings.currentColors}
                                         value={app.gameSearchQuery}
                                         onChange={app.setGameSearchQuery}
-                                        isFocused={app.gameSearchFocused}
-                                        onFocus={() => app.setGameSearchFocused(true)}
-                                        onBlur={() => app.setGameSearchFocused(false)}
-                                        inputRef={app.gameSearchInputRef}
                                     />
                                 </div>
                                 <SortControls colors={settings.currentColors} sortOrder={settings.sortOrder} setSortOrder={settings.setSortOrder} />
@@ -117,7 +103,6 @@ export default function Home() {
 
             {(app.systemPickerOpen || app.systemPickerClosing) && (
                 <SystemPickerModal
-                    isOpen={app.systemPickerOpen}
                     isClosing={app.systemPickerClosing}
                     colors={settings.currentColors}
                     gradient={settings.gradientStyle}
@@ -128,7 +113,6 @@ export default function Home() {
                     onSearchChange={app.setSystemSearchQuery}
                     onClose={app.closeSystemPicker}
                     onDone={pickerFlow.handleSystemPickerDone}
-                    isProcessing={false}
                     pendingBatchCore={app.pendingBatchCore}
                     onSelectSystem={pickerFlow.onSelectSystem}
                     onRename={pickerFlow.onRename}

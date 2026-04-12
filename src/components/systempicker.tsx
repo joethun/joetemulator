@@ -7,7 +7,6 @@ import { SearchBar } from '@/components/searchbar';
 import { Game, ThemeColors, GradientStyle } from '@/types';
 
 interface SystemPickerProps {
-    isOpen: boolean;
     isClosing: boolean;
     colors: ThemeColors;
     gradient: GradientStyle;
@@ -20,17 +19,15 @@ interface SystemPickerProps {
     onDone: () => void;
     onSelectSystem: (core: string) => void;
     onRename: (title: string) => void;
-    isProcessing: boolean;
     pendingBatchCore: string | null;
 }
 
 export const SystemPickerModal = memo(({
-    isOpen, isClosing, colors, gradient, editingGame, pendingGame, pendingFiles,
+    isClosing, colors, gradient, editingGame, pendingGame, pendingFiles,
     searchQuery, onSearchChange, onClose, onDone, onSelectSystem, onRename,
-    isProcessing, pendingBatchCore
+    pendingBatchCore
 }: SystemPickerProps) => {
     const [isRenameFocused, setIsRenameFocused] = useState(false);
-    const [isSearchFocused, setIsSearchFocused] = useState(false);
     const modalRef = useRef<HTMLDivElement>(null);
 
     const currentCore = editingGame?.core || (pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core);
@@ -61,7 +58,7 @@ export const SystemPickerModal = memo(({
             <div
                 ref={modalRef}
                 tabIndex={-1}
-                onKeyDown={e => { if (e.key === 'Escape' && !isProcessing) { e.preventDefault(); onClose(); } }}
+                onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } }}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="system-picker-title"
@@ -109,10 +106,6 @@ export const SystemPickerModal = memo(({
                 <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
                     <SearchBar
                         colors={colors} value={searchQuery} onChange={onSearchChange}
-                        isFocused={isSearchFocused}
-                        onFocus={() => setIsSearchFocused(true)}
-                        onBlur={() => setIsSearchFocused(false)}
-                        inputRef={null}
                     />
                     <div className="flex-1 overflow-y-auto pr-2 mt-4">
                         {Object.entries(categories).map(([cat, systems]) => (
@@ -151,7 +144,7 @@ export const SystemPickerModal = memo(({
                     {!editingGame && (
                         <button
                             onClick={onClose}
-                            disabled={isProcessing || isClosing}
+                            disabled={isClosing}
                             className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                             style={{ backgroundColor: colors.highlight, color: colors.darkBg }}
                         >
@@ -161,7 +154,7 @@ export const SystemPickerModal = memo(({
                     {(editingGame || pendingFiles.length > 0) && (
                         <button
                             onClick={onDone}
-                            disabled={isProcessing || isClosing || !systemSelected}
+                            disabled={isClosing || !systemSelected}
                             className="h-12 px-8 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                             style={{ ...gradient, color: colors.darkBg }}
                         >

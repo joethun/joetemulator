@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, Settings, Image as ImageIcon, RefreshCw, Save } from 'lucide-react';
 import { ThemeColors } from '@/types';
@@ -54,6 +54,8 @@ export const GameContextMenu = memo(({
         };
     }, [visible, closing, onClose]);
 
+    const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
+
     if (!visible) return null;
 
     const x = Math.min(position.x, window.innerWidth - MENU_W);
@@ -94,7 +96,7 @@ export const GameContextMenu = memo(({
                     {gameTitle}
                 </div>
                 <div className="flex flex-col gap-1">
-                    {menuBtn(() => fileInputRef.current?.click(), 'Upload Cover', ImageIcon)}
+                    {menuBtn(handleUploadClick, 'Upload Cover', ImageIcon)}
                     {hasAutoCover && menuBtn(() => { onResetCover(); onClose(); }, 'Auto Cover', RefreshCw)}
                     <div className="h-px w-full my-1" style={{ backgroundColor: `${colors.highlight}20` }} />
                     {menuBtn(() => { onClose(); requestAnimationFrame(onSaveStates); }, 'Save States', Save)}

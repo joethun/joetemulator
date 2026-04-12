@@ -50,10 +50,10 @@ export const GameCard = memo(({
     const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
     const [menuOpen, setMenuOpen] = useState(false);
     const [mobileHovered, setMobileHovered] = useState(false);
-    const [imgError, setImgError] = useState(false);
+    const [erroredSrc, setErroredSrc] = useState<string | undefined>(undefined);
+    const imgError = !!game.coverArt && erroredSrc === game.coverArt;
 
     useEffect(() => () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }, []);
-    useEffect(() => { setImgError(false); }, [game.coverArt]);
 
     useEffect(() => {
         if (!mobileHovered) return;
@@ -127,7 +127,7 @@ export const GameCard = memo(({
                         loading="eager"
                         priority={priority}
                         draggable={false}
-                        onError={() => setImgError(true)}
+                        onError={() => setErroredSrc(game.coverArt)}
                         style={{ objectFit: game.coverArtFit || 'cover', objectPosition: 'center', userSelect: 'none' }}
                     />
                 ) : (

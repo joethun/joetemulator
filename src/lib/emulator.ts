@@ -57,7 +57,6 @@ function cleanupGame(): void {
   toggleUI(true);
   window.gameRunning = false;
   currentGame = '';
-  eventListenersAdded = false;
   Object.keys(window).filter(k => k.startsWith('EJS_')).forEach(k => delete window[k]);
 }
 
