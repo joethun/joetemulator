@@ -1,17 +1,42 @@
-import { getSlotKeys } from '@/lib/emulator';
-
 export const STATE_TS_PREFIX = 'ejs_state_ts_';
-const MANIFEST_PREFIX = 'ejs_slots_';
+export const SLOT_PREFIX = 'ejs_slots_';
 export const NEXT_LOAD_KEY = 'ejs_load_on_next_';
 
+const MAX_SLOTS = 10;
 const DB_NAME = 'EmulatorJS-states';
 const STORE_NAME = 'states';
 
 export interface SaveState {
     key: string;
-    sizeBytes: number;
     savedAt: Date | null;
     rawData: unknown;
+}
+
+interface SlotManifest { slots: string[]; nextIndex: number; }
+
+function getManifest(name: string): SlotManifest {
+    try { const r = localStorage.getItem(SLOT_PREFIX + name); if (r) return JSON.parse(r); } catch { /* noop */ }
+    return { slots: [], nextIndex: 0 };
+}
+
+function saveManifest(name: string, m: SlotManifest) {
+    try { localStorage.setItem(SLOT_PREFIX + name, JSON.stringify(m)); } catch { /* noop */ }
+}
+
+export const getSlotKeys = (name: string) => getManifest(name).slots;
+
+export function getNextSlotKey(name: string): string {
+    const m = getManifest(name);
+    const key = `${name}.state${m.nextIndex}`;
+    saveManifest(name, {
+        slots: [...m.slots.filter(s => s !== key), key].slice(-MAX_SLOTS),
+        nextIndex: (m.nextIndex + 1) % MAX_SLOTS,
+    });
+    return key;
+}
+
+export function stampSlot(key: string): void {
+    try { localStorage.setItem(STATE_TS_PREFIX + key, new Date().toISOString()); } catch { /* noop */ }
 }
 
 function openDB(): Promise<IDBDatabase | null> {
@@ -83,6 +108,14 @@ function isDuplicate(incoming: Uint8Array, existing: SaveState[]): boolean {
     return existing.some(s => { const b = toBytes(s.rawData); return b ? hashBytes(b) === hash : false; });
 }
 
+function updateManifest(gameName: string, fn: (m: SlotManifest) => SlotManifest): void {
+    try {
+        const raw = localStorage.getItem(SLOT_PREFIX + gameName);
+        const m: SlotManifest = raw ? JSON.parse(raw) : { slots: [], nextIndex: 0 };
+        localStorage.setItem(SLOT_PREFIX + gameName, JSON.stringify(fn(m)));
+    } catch { /* noop */ }
+}
+
 export async function deleteAllStates(gameName: string): Promise<void> {
     const keys = getSlotKeys(gameName);
     const db = await openDB();
@@ -97,7 +130,7 @@ export async function deleteAllStates(gameName: string): Promise<void> {
             localStorage.removeItem(STATE_TS_PREFIX + key);
             localStorage.removeItem(NEXT_LOAD_KEY + key);
         }
-        localStorage.removeItem(MANIFEST_PREFIX + gameName);
+        localStorage.removeItem(SLOT_PREFIX + gameName);
     } catch { /* noop */ }
 }
 
@@ -110,7 +143,7 @@ export async function fetchStates(gameName: string): Promise<SaveState[]> {
     for (const key of keys) {
         const data = await idbGet<unknown>(db, key);
         if (data !== undefined)
-            states.push({ key, sizeBytes: toBytes(data)?.byteLength ?? 0, savedAt: getTimestamp(key), rawData: data });
+            states.push({ key, savedAt: getTimestamp(key), rawData: data });
     }
     db.close();
     return states.reverse();
@@ -123,13 +156,8 @@ export async function removeState(key: string, gameName: string): Promise<void> 
     const tracker = await idbGet<string[]>(db, '?EJS_KEYS!');
     if (tracker) await idbPut(db, '?EJS_KEYS!', tracker.filter(k => k !== key));
     db.close();
+    updateManifest(gameName, m => ({ ...m, slots: m.slots.filter(s => s !== key) }));
     try {
-        const raw = localStorage.getItem(MANIFEST_PREFIX + gameName);
-        if (raw) {
-            const m = JSON.parse(raw);
-            m.slots = m.slots.filter((s: string) => s !== key);
-            localStorage.setItem(MANIFEST_PREFIX + gameName, JSON.stringify(m));
-        }
         localStorage.removeItem(STATE_TS_PREFIX + key);
         localStorage.removeItem(NEXT_LOAD_KEY + key);
     } catch { /* noop */ }
@@ -144,11 +172,11 @@ export async function importState(gameName: string, file: File): Promise<void> {
     const key = `${gameName}.state_imported_${Date.now()}`;
     await idbPut(db, key, incoming);
     db.close();
+    updateManifest(gameName, m => ({
+        ...m,
+        slots: m.slots.includes(key) ? m.slots : [...m.slots, key].slice(-MAX_SLOTS),
+    }));
     try {
-        const raw = localStorage.getItem(MANIFEST_PREFIX + gameName);
-        const m = raw ? JSON.parse(raw) : { slots: [], nextIndex: 0 };
-        if (!m.slots.includes(key)) m.slots = [...m.slots, key].slice(-10);
-        localStorage.setItem(MANIFEST_PREFIX + gameName, JSON.stringify(m));
         localStorage.setItem(STATE_TS_PREFIX + key, new Date(file.lastModified || Date.now()).toISOString());
     } catch { /* noop */ }
 }

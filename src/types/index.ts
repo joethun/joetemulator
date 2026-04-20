@@ -2,9 +2,7 @@ export interface Game {
   id: number;
   title: string;
   genre: string;
-  filePath?: string;
   fileName?: string;
-  fileData?: string;
   core?: string;
   coverArt?: string;
   autoCoverArt?: string;

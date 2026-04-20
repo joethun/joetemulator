@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { Game } from '@/types';
-import { getGameFile, saveGameFile } from '@/lib/storage';
-import { loadGame, getSlotKeys } from '@/lib/emulator';
-import { NEXT_LOAD_KEY } from '@/lib/savestates';
+import { getGameFile } from '@/lib/storage';
+import { loadGame } from '@/lib/emulator';
+import { getSlotKeys, NEXT_LOAD_KEY } from '@/lib/savestates';
 import { stripExt } from '@/lib/utils';
 
 interface LauncherSettings {
@@ -15,12 +15,7 @@ interface LauncherSettings {
 export function useGameLauncher({ selectedTheme, autoLoadState, autoSaveState, autoSaveInterval }: LauncherSettings) {
     const handlePlayClick = useCallback(async (game: Game) => {
         try {
-            let file = await getGameFile(game.id);
-            if (!file && game.fileData) {
-                const blob = await (await fetch(game.fileData)).blob();
-                file = new File([blob], game.fileName || game.title, { type: 'application/octet-stream' });
-                await saveGameFile(game.id, file);
-            }
+            const file = await getGameFile(game.id);
             if (!file || !game.core) { console.error('missing file or core:', game); return; }
 
             const baseName = stripExt(game.fileName || game.title);

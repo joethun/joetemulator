@@ -1,10 +1,8 @@
 import { THEMES } from '@/types';
-import { isStateDuplicate, STATE_TS_PREFIX } from '@/lib/savestates';
+import { isStateDuplicate, getNextSlotKey, getSlotKeys, stampSlot } from '@/lib/savestates';
 import { stripExt } from '@/lib/utils';
 
 const DATA_PATH = '/emulatorjs/';
-const MAX_SLOTS = 10;
-const SLOT_PREFIX = 'ejs_slots_';
 
 declare global {
   interface Window { EJS_emulator?: any; gameRunning: boolean; [key: string]: any; }
@@ -25,29 +23,6 @@ const toggleUI = (show: boolean) => {
 };
 const notify = (type: 'save' | 'load', source: string) =>
   window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type, source } }));
-const stampSlot = (key: string) => {
-  try { localStorage.setItem(STATE_TS_PREFIX + key, new Date().toISOString()); } catch { /* noop */ }
-};
-
-interface SlotManifest { slots: string[]; nextIndex: number; }
-
-function getManifest(name: string): SlotManifest {
-  try { const r = localStorage.getItem(SLOT_PREFIX + name); if (r) return JSON.parse(r); } catch { /* noop */ }
-  return { slots: [], nextIndex: 0 };
-}
-
-function saveManifest(name: string, m: SlotManifest) {
-  try { localStorage.setItem(SLOT_PREFIX + name, JSON.stringify(m)); } catch { /* noop */ }
-}
-
-function getNextSlotKey(name: string): string {
-  const m = getManifest(name);
-  const key = `${name}.state${m.nextIndex}`;
-  saveManifest(name, { slots: [...m.slots.filter(s => s !== key), key].slice(-MAX_SLOTS), nextIndex: (m.nextIndex + 1) % MAX_SLOTS });
-  return key;
-}
-
-export const getSlotKeys = (name: string) => getManifest(name).slots;
 
 function cleanupGame(): void {
   const div = document.getElementById('game');

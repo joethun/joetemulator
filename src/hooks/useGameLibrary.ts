@@ -26,12 +26,13 @@ export function useGameLibrary() {
         try {
             const raw = localStorage.getItem(GAMES_KEY);
             if (!raw) return;
-            const parsed: Game[] = JSON.parse(raw);
+            const parsed: Array<Game & { fileData?: string; filePath?: string }> = JSON.parse(raw);
             await migrateLegacyRoms(parsed);
-            // Strip legacy fileData field (migrated to OPFS)
+            // Strip legacy fields (fileData migrated to OPFS; filePath folded into fileName)
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const cleaned = parsed.map(({ fileData, ...rest }) => ({
+            const cleaned: Game[] = parsed.map(({ fileData, filePath, ...rest }) => ({
                 ...rest,
+                fileName: rest.fileName || filePath,
                 genre: rest.genre === 'ROM' && rest.core ? getSystemNameByCore(rest.core) : rest.genre,
                 coverArtFit: rest.coverArt && !rest.coverArtFit ? 'cover' as const : rest.coverArtFit,
             }));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { Game, ThemeColors, GradientStyle, ViewType } from '@/types';
 import { GameCard } from '@/components/gamecard';
 import { ThemeGrid } from '@/components/themegrid';
@@ -30,7 +30,7 @@ interface SettingsProps {
     setSelectedTheme: (theme: string) => void;
 }
 
-interface UseMainContentProps {
+interface MainContentProps {
     activeView: ViewType;
     games: Game[];
     uploads: Record<number, Game>;
@@ -42,12 +42,11 @@ interface UseMainContentProps {
     settings: SettingsProps;
 }
 
-export function useMainContent({
+export const MainContent = memo(({
     activeView, games, uploads, sortedGames, groupedGames,
-    gameSearchQuery, libraryAnimationKey,
-    handlers, settings,
-}: UseMainContentProps) {
-    const { currentColors: colors, gradientStyle: gradient, selectedTheme, setSelectedTheme: onSelectTheme } = settings;
+    gameSearchQuery, libraryAnimationKey, handlers, settings,
+}: MainContentProps) => {
+    const { currentColors: colors } = settings;
 
     const renderGameCard = useCallback((g: Game, i: number) => (
         <div key={g.id} style={{ animation: `fadeIn 0.4s ease-out ${i * 0.03}s both` }}>
@@ -65,22 +64,7 @@ export function useMainContent({
         </div>
     ), [handlers, colors]);
 
-    const mainContent = useMemo(() => {
-        if (activeView === 'themes')
-            return <ThemeGrid selectedTheme={selectedTheme} onSelectTheme={onSelectTheme} />;
-
-        if (activeView === 'settings')
-            return (
-                <SettingsView
-                    colors={colors} gradient={gradient}
-                    autoLoadState={settings.autoLoadState} setAutoLoadState={settings.setAutoLoadState}
-                    autoSaveState={settings.autoSaveState} setAutoSaveState={settings.setAutoSaveState}
-                    autoSaveInterval={settings.autoSaveInterval} setAutoSaveInterval={settings.setAutoSaveInterval}
-                    autoSaveIcon={settings.autoSaveIcon} setAutoSaveIcon={settings.setAutoSaveIcon}
-                    autoLoadIcon={settings.autoLoadIcon} setAutoLoadIcon={settings.setAutoLoadIcon}
-                />
-            );
-
+    const library = useMemo(() => {
         if (!games.length && !Object.keys(uploads).length)
             return (
                 <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
@@ -108,14 +92,29 @@ export function useMainContent({
                             <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: colors.highlight }}>{cat}</h4>
                             <div className="flex-1 h-px" style={{ backgroundColor: `${colors.highlight}30` }} />
                         </div>
-                        <div className={GRID_CLASS}>{catGames.map((g) => renderGameCard(g, globalIndex++))}</div>
+                        <div className={GRID_CLASS}>{catGames.map(g => renderGameCard(g, globalIndex++))}</div>
                     </div>
                 ))}
             </div>
         );
-    }, [activeView, colors, gradient, selectedTheme, onSelectTheme, settings,
-        games, uploads, sortedGames, groupedGames,
-        gameSearchQuery, libraryAnimationKey, renderGameCard]);
+    }, [colors, games, uploads, sortedGames, groupedGames, gameSearchQuery, libraryAnimationKey, renderGameCard]);
 
-    return mainContent;
-}
+    if (activeView === 'themes')
+        return <ThemeGrid selectedTheme={settings.selectedTheme} onSelectTheme={settings.setSelectedTheme} />;
+
+    if (activeView === 'settings')
+        return (
+            <SettingsView
+                colors={colors} gradient={settings.gradientStyle}
+                autoLoadState={settings.autoLoadState} setAutoLoadState={settings.setAutoLoadState}
+                autoSaveState={settings.autoSaveState} setAutoSaveState={settings.setAutoSaveState}
+                autoSaveInterval={settings.autoSaveInterval} setAutoSaveInterval={settings.setAutoSaveInterval}
+                autoSaveIcon={settings.autoSaveIcon} setAutoSaveIcon={settings.setAutoSaveIcon}
+                autoLoadIcon={settings.autoLoadIcon} setAutoLoadIcon={settings.setAutoLoadIcon}
+            />
+        );
+
+    return library;
+});
+
+MainContent.displayName = 'MainContent';

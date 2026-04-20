@@ -10,7 +10,6 @@ import { useGameLauncher } from '@/hooks/useGameLauncher';
 import { useSystemPickerFlow } from '@/hooks/useSystemPickerFlow';
 import { useDragDrop } from '@/hooks/useDragDrop';
 import { useGameActions } from '@/hooks/useGameActions';
-import { useMainContent } from '@/hooks/useMainContent';
 import { Sidebar } from '@/components/sidebar';
 import { SearchBar } from '@/components/searchbar';
 import { SortControls } from '@/components/sortcontrols';
@@ -18,6 +17,7 @@ import { Alert } from '@/components/alert';
 import { EmulatorNotification } from '@/components/emulatornotification';
 import { SystemPickerModal } from '@/components/systempicker';
 import { SaveStateManager } from '@/components/savestatemanager';
+import { MainContent } from '@/components/maincontent';
 
 export default function Home() {
     const lib = useGameLibrary();
@@ -29,25 +29,6 @@ export default function Home() {
     const pickerFlow = useSystemPickerFlow(app, lib, files);
     const drag = useDragDrop(files.handleIncomingFiles);
     const actions = useGameActions(lib, files);
-
-    const mainContent = useMainContent({
-        activeView: app.activeView,
-        games: lib.games,
-        uploads: files.uploads,
-        sortedGames: view.sortedGames,
-        groupedGames: view.groupedGames,
-        gameSearchQuery: app.gameSearchQuery,
-        libraryAnimationKey: app.libraryAnimationKey,
-        handlers: {
-            onPlay: launcher.handlePlayClick,
-            onDelete: actions.handleDeleteGame,
-            onUploadCover: actions.handleUploadCover,
-            onResetCover: actions.handleResetCover,
-            onEdit: pickerFlow.handleEditGame,
-            onSaveStates: app.openSaveStateManager,
-        },
-        settings,
-    });
 
     useEffect(() => {
         app.setIsMounted(true);
@@ -94,7 +75,24 @@ export default function Home() {
                         )}
                     </header>
 
-                    {mainContent}
+                    <MainContent
+                        activeView={app.activeView}
+                        games={lib.games}
+                        uploads={files.uploads}
+                        sortedGames={view.sortedGames}
+                        groupedGames={view.groupedGames}
+                        gameSearchQuery={app.gameSearchQuery}
+                        libraryAnimationKey={app.libraryAnimationKey}
+                        handlers={{
+                            onPlay: launcher.handlePlayClick,
+                            onDelete: actions.handleDeleteGame,
+                            onUploadCover: actions.handleUploadCover,
+                            onResetCover: actions.handleResetCover,
+                            onEdit: pickerFlow.handleEditGame,
+                            onSaveStates: app.openSaveStateManager,
+                        }}
+                        settings={settings}
+                    />
                 </main>
             </div>
 

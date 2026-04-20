@@ -1,6 +1,25 @@
 import { useState, useCallback } from 'react';
 import { ViewType, Game } from '@/types';
 
+const CLOSE_ANIMATION_MS = 200;
+
+function useModal() {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
+
+    const open = useCallback(() => { setIsClosing(false); setIsOpen(true); }, []);
+    const close = useCallback((onReset?: () => void) => {
+        setIsClosing(true);
+        setTimeout(() => {
+            setIsOpen(false);
+            setIsClosing(false);
+            onReset?.();
+        }, CLOSE_ANIMATION_MS);
+    }, []);
+
+    return { isOpen, isClosing, open, close };
+}
+
 export function useApp() {
     const [activeView, setActiveViewRaw] = useState<ViewType>('library');
     const [isMounted, setIsMounted] = useState(false);
@@ -12,13 +31,12 @@ export function useApp() {
     const [editingGame, setEditingGame] = useState<Game | null>(null);
     const [pendingGame, setPendingGame] = useState<Partial<Game> | null>(null);
     const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; index: number }>>([]);
-    const [systemPickerOpen, setSystemPickerOpen] = useState(false);
-    const [systemPickerClosing, setSystemPickerClosing] = useState(false);
     const [systemSearchQuery, setSystemSearchQuery] = useState('');
     const [pendingBatchCore, setPendingBatchCore] = useState<string | null>(null);
     const [saveStateGame, setSaveStateGame] = useState<{ title: string; name: string } | null>(null);
-    const [saveStateOpen, setSaveStateOpen] = useState(false);
-    const [saveStateClosing, setSaveStateClosing] = useState(false);
+
+    const picker = useModal();
+    const saveState = useModal();
 
     const setActiveView = useCallback((view: ViewType) => {
         setActiveViewRaw(prev => {
@@ -36,31 +54,22 @@ export function useApp() {
 
     const openSaveStateManager = useCallback((title: string, name: string) => {
         setSaveStateGame({ title, name });
-        setSaveStateClosing(false);
-        setSaveStateOpen(true);
-    }, []);
+        saveState.open();
+    }, [saveState]);
 
     const closeSaveStateManager = useCallback(() => {
-        setSaveStateClosing(true);
-        setTimeout(() => {
-            setSaveStateOpen(false);
-            setSaveStateClosing(false);
-            setSaveStateGame(null);
-        }, 200);
-    }, []);
+        saveState.close(() => setSaveStateGame(null));
+    }, [saveState]);
 
     const closeSystemPicker = useCallback(() => {
-        setSystemPickerClosing(true);
-        setTimeout(() => {
-            setSystemPickerOpen(false);
-            setSystemPickerClosing(false);
+        picker.close(() => {
             setPendingFiles([]);
             setPendingGame(null);
             setEditingGame(null);
             setSystemSearchQuery('');
             setPendingBatchCore(null);
-        }, 200);
-    }, []);
+        });
+    }, [picker]);
 
     return {
         activeView, setActiveView,
@@ -71,11 +80,14 @@ export function useApp() {
         editingGame, setEditingGame,
         pendingGame, setPendingGame,
         pendingFiles, setPendingFiles,
-        systemPickerOpen, setSystemPickerOpen,
-        systemPickerClosing,
+        systemPickerOpen: picker.isOpen,
+        systemPickerClosing: picker.isClosing,
+        openSystemPicker: picker.open,
         systemSearchQuery, setSystemSearchQuery,
         pendingBatchCore, setPendingBatchCore,
-        saveStateGame, saveStateOpen, saveStateClosing,
+        saveStateGame,
+        saveStateOpen: saveState.isOpen,
+        saveStateClosing: saveState.isClosing,
         openSaveStateManager, closeSaveStateManager,
         showDuplicateError, closeSystemPicker,
     };

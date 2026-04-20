@@ -11,7 +11,7 @@ interface Ops {
     setEditingGame: (game: Game | null) => void;
     setPendingGame: (game: Partial<Game> | null) => void;
     setPendingBatchCore: (core: string | null) => void;
-    setSystemPickerOpen: (open: boolean) => void;
+    openSystemPicker: () => void;
     closeSystemPicker: () => void;
     showDuplicateError: (message: string) => void;
 }
@@ -56,7 +56,7 @@ export function useSystemPickerFlow(ops: Ops, lib: Lib, files: Files) {
     const handleEditGame = useCallback((game: Game) => {
         ops.setEditingGame(game);
         ops.setPendingGame({ ...game });
-        ops.setSystemPickerOpen(true);
+        ops.openSystemPicker();
     }, [ops]);
 
     const onSelectSystem = useCallback((core: string) => {

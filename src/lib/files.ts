@@ -24,18 +24,14 @@ const toHex = (buf: ArrayBuffer) => {
     return s;
 };
 
-// ROM extensions to look for inside zip archives, ordered by priority
-const ROM_EXTENSIONS = new Set([
+// ROM extensions, ordered by priority. Rank by index; `ext in ROM_EXT_RANK` is the presence check.
+const ROM_EXT_RANK: Record<string, number> = Object.fromEntries([
     'nes', 'sfc', 'smc', 'gb', 'gbc', 'gba', 'n64', 'z64', 'v64', 'nds',
     'md', 'gen', 'smd', 'sms', 'gg', 'iso', 'bin', 'img', 'cue', 'chd',
     'psx', 'pbp', 'cso', 'a26', 'a52', 'a78', 'lnx', 'j64',
     'pce', 'pcx', 'fx', 'ws', 'wsc', 'ngp', 'ngc',
     'adf', 'd64', 'prg', 't64', 'tap', 'crt', 'col', 'rom', 'jag',
-]);
-
-const ROM_EXT_RANK = [...ROM_EXTENSIONS].reduce<Record<string, number>>((acc, ext, i) => {
-    acc[ext] = i; return acc;
-}, {});
+].map((ext, i) => [ext, i]));
 
 const fileExt = (name: string) => name.split('.').pop()?.toLowerCase() ?? '';
 
@@ -51,7 +47,7 @@ async function extractRomBytesFromZip(file: File): Promise<ArrayBuffer | null> {
         const entries = Object.values(zip.files).filter(f => !f.dir);
         if (!entries.length) return null;
 
-        const candidates = entries.filter(f => ROM_EXTENSIONS.has(fileExt(f.name)));
+        const candidates = entries.filter(f => fileExt(f.name) in ROM_EXT_RANK);
         const pool = candidates.length ? candidates : entries;
 
         pool.sort((a, b) => {

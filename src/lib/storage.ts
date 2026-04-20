@@ -19,9 +19,10 @@ export async function saveGameFile(gameId: number, file: File, onProgress?: (per
 
   try {
     for (let offset = 0; offset < file.size; offset += CHUNK_SIZE) {
-      await writable.write(file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size)));
-      onProgress?.(Math.round(((offset + CHUNK_SIZE) / file.size) * 100));
-      if (offset + CHUNK_SIZE < file.size) await new Promise(r => setTimeout(r, 0));
+      const end = Math.min(offset + CHUNK_SIZE, file.size);
+      await writable.write(file.slice(offset, end));
+      onProgress?.(Math.round((end / file.size) * 100));
+      if (end < file.size) await new Promise(r => setTimeout(r, 0));
     }
     await writable.close();
   } catch (error) {

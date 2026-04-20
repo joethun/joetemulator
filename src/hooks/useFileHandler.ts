@@ -9,7 +9,7 @@ interface FileHandlerOps {
     showDuplicateError: (msg: string) => void;
     setPendingFiles: (files: Array<{ file: File; index: number }>) => void;
     setPendingGame: (game: Partial<Game> | null) => void;
-    setSystemPickerOpen: (open: boolean) => void;
+    openSystemPicker: () => void;
     setPendingBatchCore: (core: string | null) => void;
 }
 
@@ -20,7 +20,7 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
     const [uploads, setUploads] = useState<Record<number, Game>>({});
     const snapshots = useRef<Record<number, Game>>({});
     const active = useRef<Set<number>>(new Set());
-    const { showDuplicateError, setPendingFiles, setPendingGame, setSystemPickerOpen, setPendingBatchCore } = ops;
+    const { showDuplicateError, setPendingFiles, setPendingGame, openSystemPicker, setPendingBatchCore } = ops;
 
     const patchUpload = useCallback((id: number, patch: Partial<Game>) => {
         setUploads(prev => {
@@ -40,7 +40,6 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
             id: gameId,
             title: meta?.title || stripExt(file.name),
             genre: systemName,
-            filePath: meta?.filePath || file.name,
             fileName: file.name,
             core,
             coverArt: initialCover,
@@ -100,7 +99,7 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
 
     const handleIncomingFiles = useCallback(async (files: File[]) => {
         if (!files.length) return;
-        const existing = new Set(games.flatMap(g => [g.fileName, g.filePath].filter(Boolean)));
+        const existing = new Set(games.map(g => g.fileName).filter(Boolean));
         const fresh = files.filter(f => !existing.has(f.name));
 
         if (!fresh.length) {
@@ -110,12 +109,12 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
 
         setPendingFiles(fresh.map((file, index) => ({ file, index })));
         setPendingGame(fresh.length === 1
-            ? { id: Date.now(), title: stripExt(fresh[0].name), genre: 'Unknown', filePath: fresh[0].name, fileName: fresh[0].name }
+            ? { id: Date.now(), title: stripExt(fresh[0].name), genre: 'Unknown', fileName: fresh[0].name }
             : null
         );
         setPendingBatchCore(null);
-        setSystemPickerOpen(true);
-    }, [games, showDuplicateError, setPendingFiles, setPendingGame, setPendingBatchCore, setSystemPickerOpen]);
+        openSystemPicker();
+    }, [games, showDuplicateError, setPendingFiles, setPendingGame, setPendingBatchCore, openSystemPicker]);
 
     return { uploads, processGameFile, handleIncomingFiles };
 }
