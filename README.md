@@ -13,10 +13,9 @@
 
 ## Features
 
-- **30+ supported systems** - See below.
-- **Auto cover art** - Fetched from [thumbnails.libretro.com](https://thumbnails.libretro.com) based on hashing or the game title as a fallback.
-- **Save states** -  10 per game. Auto-saving and loading is supported.  
-- **Completely local** - All ROMs and save states stay in your browser.
+- **30+ supported systems**
+- **Auto cover art** - Fetched from [thumbnails.libretro.com](https://thumbnails.libretro.com) based on hashing or the game title as a fallback
+- **Completely local** - All ROMs and save states stay in your browser
 
 ## Supported Systems
 
