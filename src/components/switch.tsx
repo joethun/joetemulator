@@ -13,10 +13,10 @@ export const Switch = memo(({ checked, onChange, colors, gradient }: SwitchProps
         role="switch"
         aria-checked={checked}
         onClick={onChange}
-        className={`relative inline-flex h-8 w-14 shrink-0 rounded-full border-2 items-center transition-colors duration-200 cursor-pointer ${checked ? 'border-transparent' : ''}`}
+        className={`relative inline-flex h-8 w-14 shrink-0 rounded-full items-center transition-colors duration-200 cursor-pointer ${checked ? '' : 'border-2'}`}
         style={{
             backgroundColor: checked ? 'transparent' : colors.darkBg,
-            borderColor: checked ? 'transparent' : colors.midDark,
+            borderColor: checked ? undefined : colors.midDark,
             backgroundImage: checked ? gradient.backgroundImage : 'none'
         }}
     >
