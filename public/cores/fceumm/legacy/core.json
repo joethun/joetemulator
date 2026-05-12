@@ -1,0 +1,1 @@
+{"name":"fceumm","extensions":["fds","nes","unif","unf"],"makeoptions":{"buildpath":"./","makescript":"Makefile.libretro","arguments":[]},"options":{},"save":"srm","license":"Copying","repo":"https://github.com/EmulatorJS/libretro-fceumm"}

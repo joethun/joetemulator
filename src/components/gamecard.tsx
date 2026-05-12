@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useRef, useEffect, useState } from 'react';
+import { memo, useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Game, ThemeColors, getGradientStyle } from '@/types';
 import { GameContextMenu } from './gamecontextmenu';
@@ -68,39 +68,34 @@ export const GameCard = memo(({
         };
     }, [mobileHovered]);
 
-    const openMenu = useCallback((x: number, y: number) => {
+    const openMenu = (x: number, y: number) => {
         setMenuPos({ x, y });
         setMenuOpen(true);
-    }, []);
+    };
 
-    const handleContextMenu = useCallback((e: React.MouseEvent) => {
-        e.preventDefault();
-        openMenu(e.clientX, e.clientY);
-    }, [openMenu]);
-
-    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const handleTouchStart = (e: React.TouchEvent) => {
         didOpenMenu.current = false;
         const { clientX, clientY } = e.touches[0];
         longPressTimer.current = setTimeout(() => {
             openMenu(clientX, clientY);
             didOpenMenu.current = true;
         }, 400);
-    }, [openMenu]);
+    };
 
-    const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const handleTouchEnd = (e: React.TouchEvent) => {
         if (longPressTimer.current) clearTimeout(longPressTimer.current);
         if (didOpenMenu.current && e.cancelable) {
             e.preventDefault();
             didOpenMenu.current = false;
         }
-    }, []);
+    };
 
-    const handleClick = useCallback(() => {
+    const handleClick = () => {
         if (menuOpen) return;
         const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
         if (isTouch && !mobileHovered) { setMobileHovered(true); return; }
         onPlay(game);
-    }, [menuOpen, mobileHovered, onPlay, game]);
+    };
 
     return (
         <div
@@ -110,7 +105,7 @@ export const GameCard = memo(({
                 ${mobileHovered ? 'shadow-lg scale-[1.025]' : 'hover:shadow-lg hover:scale-[1.025]'}`}
             style={{ aspectRatio: getSystemAspectRatio(game.genre), backgroundColor: colors.midDark, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', borderColor: colors.midDark }}
             onClick={handleClick}
-            onContextMenu={handleContextMenu}
+            onContextMenu={e => { e.preventDefault(); openMenu(e.clientX, e.clientY); }}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
         >

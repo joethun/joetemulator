@@ -1,0 +1,1 @@
+{"name":"cap32","extensions":["dsk","sna","tap","cdt","voc","m3u","cpr","zip"],"makeoptions":{"buildpath":"./","makescript":"Makefile","arguments":[]},"options":{},"save":"SNA","license":"","repo":"https://github.com/EmulatorJS/libretro-cap32"}

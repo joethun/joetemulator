@@ -1,15 +1,20 @@
 import { getSystemNameByCore } from '@/lib/constants';
 import { stripExt } from '@/lib/utils';
 
+interface OpenFilePickerWindow extends Window {
+    showOpenFilePicker?: (opts: { multiple?: boolean }) => Promise<Array<{ getFile(): Promise<File> }>>;
+}
+
 export async function selectFiles(): Promise<File[]> {
-    if ('showOpenFilePicker' in window) {
-        const handles = await (window as any).showOpenFilePicker({ multiple: true });
-        return Promise.all(handles.map((h: any) => h.getFile()));
+    const w = window as OpenFilePickerWindow;
+    if (w.showOpenFilePicker) {
+        const handles = await w.showOpenFilePicker({ multiple: true });
+        return Promise.all(handles.map(h => h.getFile()));
     }
     return new Promise(resolve => {
         const input = Object.assign(document.createElement('input'), {
             type: 'file', multiple: true,
-            onchange: () => resolve(Array.from(input.files || []))
+            onchange: () => resolve(Array.from(input.files || [])),
         });
         input.click();
     });
@@ -29,7 +34,7 @@ const ROM_EXT_RANK: Record<string, number> = Object.fromEntries([
     'nes', 'sfc', 'smc', 'gb', 'gbc', 'gba', 'n64', 'z64', 'v64', 'nds',
     'md', 'gen', 'smd', 'sms', 'gg', 'iso', 'bin', 'img', 'cue', 'chd',
     'psx', 'pbp', 'cso', 'a26', 'a52', 'a78', 'lnx', 'j64',
-    'pce', 'pcx', 'fx', 'ws', 'wsc', 'ngp', 'ngc',
+    'pce', 'pcx', 'fx', 'ws', 'wsc', 'ngp', 'ngc', 'int',
     'adf', 'd64', 'prg', 't64', 'tap', 'crt', 'col', 'rom', 'jag',
 ].map((ext, i) => [ext, i]));
 
@@ -53,7 +58,8 @@ async function extractRomBytesFromZip(file: File): Promise<ArrayBuffer | null> {
         pool.sort((a, b) => {
             const rankDiff = (ROM_EXT_RANK[fileExt(a.name)] ?? 999) - (ROM_EXT_RANK[fileExt(b.name)] ?? 999);
             if (rankDiff !== 0) return rankDiff;
-            return ((b as any)._data?.uncompressedSize ?? 0) - ((a as any)._data?.uncompressedSize ?? 0);
+            const sizeOf = (e: typeof a) => (e as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0;
+            return sizeOf(b) - sizeOf(a);
         });
 
         return pool[0].async('arraybuffer');
@@ -148,6 +154,7 @@ const LR_MAP: Record<string, string> = {
     'Panasonic 3DO': 'Panasonic - 3DO',
     'Microsoft DOS': 'DOS',
     'ColecoVision': 'Coleco - ColecoVision',
+    'Intellivision': 'Mattel - Intellivision',
     'SNK Neo Geo Pocket': 'SNK - Neo Geo Pocket',
     'Bandai WonderSwan': 'Bandai - WonderSwan',
 };

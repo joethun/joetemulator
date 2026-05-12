@@ -1,0 +1,1 @@
+{"name":"mupen64plus_next","extensions":["n64","v64","z64","bin","u1","ndd","gb"],"makeoptions":{"buildpath":"./","makescript":"Makefile","arguments":[]},"options":{"defaultWebGL2":true},"save":"srm","license":"LICENSE","repo":"https://github.com/EmulatorJS/mupen64plus-libretro-nx"}

@@ -21,7 +21,8 @@ export const SYSTEM_PICKER: Record<string, Record<string, string>> = {
   "NEC": { "TurboGrafx-16": "pce", "PC-FX": "pcfx" },
   "Other": {
     "Panasonic 3DO": "opera", "Microsoft DOS": "dosbox_pure",
-    "ColecoVision": "coleco", "SNK Neo Geo Pocket": "ngp", "Bandai WonderSwan": "ws"
+    "ColecoVision": "coleco", "Intellivision": "intellivision",
+    "SNK Neo Geo Pocket": "ngp", "Bandai WonderSwan": "ws"
   }
 };
 
@@ -76,6 +77,7 @@ const SYSTEM_ASPECT_RATIOS: Record<string, number> = {
   "TurboGrafx-16": 1.0,
   "Microsoft DOS": 0.556,
   "ColecoVision": 0.75,
+  "Intellivision": 0.725,
   "SNK Neo Geo Pocket": 1.0,
   "Bandai WonderSwan": 1.0
 };

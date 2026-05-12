@@ -1,94 +1,89 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { ViewType, Game } from '@/types';
-
-const CLOSE_ANIMATION_MS = 200;
-
-function useModal() {
-    const [isOpen, setIsOpen] = useState(false);
-    const [isClosing, setIsClosing] = useState(false);
-
-    const open = useCallback(() => { setIsClosing(false); setIsOpen(true); }, []);
-    const close = useCallback((onReset?: () => void) => {
-        setIsClosing(true);
-        setTimeout(() => {
-            setIsOpen(false);
-            setIsClosing(false);
-            onReset?.();
-        }, CLOSE_ANIMATION_MS);
-    }, []);
-
-    return { isOpen, isClosing, open, close };
-}
+import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 
 export function useApp() {
     const [activeView, setActiveViewRaw] = useState<ViewType>('library');
-    const [isMounted, setIsMounted] = useState(false);
     const [gameSearchQuery, setGameSearchQuery] = useState('');
     const [libraryAnimationKey, setLibraryAnimationKey] = useState(0);
 
     const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null);
     const [showDuplicateMessage, setShowDuplicateMessage] = useState(false);
+
     const [editingGame, setEditingGame] = useState<Game | null>(null);
     const [pendingGame, setPendingGame] = useState<Partial<Game> | null>(null);
     const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; index: number }>>([]);
     const [systemSearchQuery, setSystemSearchQuery] = useState('');
     const [pendingBatchCore, setPendingBatchCore] = useState<string | null>(null);
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const picker = useDelayedUnmount(pickerOpen);
+
     const [saveStateGame, setSaveStateGame] = useState<{ title: string; name: string } | null>(null);
+    const [saveStateOpen, setSaveStateOpen] = useState(false);
+    const [saveStateOnBack, setSaveStateOnBack] = useState<(() => void) | null>(null);
+    const saveState = useDelayedUnmount(saveStateOpen);
 
-    const picker = useModal();
-    const saveState = useModal();
-
-    const setActiveView = useCallback((view: ViewType) => {
+    const setActiveView = (view: ViewType) => {
         setActiveViewRaw(prev => {
-            if (view === 'library' && prev !== 'library') setLibraryAnimationKey(k => k + 1);
+            if (view === 'library' && prev !== 'library') {
+                setLibraryAnimationKey(k => k + 1);
+            }
             return view;
         });
-    }, []);
+    };
 
-    const showDuplicateError = useCallback((msg: string) => {
+    const showDuplicateError = (msg: string) => {
         setDuplicateMessage(msg);
         setShowDuplicateMessage(true);
         setTimeout(() => setShowDuplicateMessage(false), 2500);
         setTimeout(() => setDuplicateMessage(null), 3000);
-    }, []);
+    };
 
-    const openSaveStateManager = useCallback((title: string, name: string) => {
-        setSaveStateGame({ title, name });
-        saveState.open();
-    }, [saveState]);
-
-    const closeSaveStateManager = useCallback(() => {
-        saveState.close(() => setSaveStateGame(null));
-    }, [saveState]);
-
-    const closeSystemPicker = useCallback(() => {
-        picker.close(() => {
+    const openSystemPicker = () => setPickerOpen(true);
+    const closeSystemPicker = () => {
+        setPickerOpen(false);
+        setTimeout(() => {
             setPendingFiles([]);
             setPendingGame(null);
             setEditingGame(null);
             setSystemSearchQuery('');
             setPendingBatchCore(null);
-        });
-    }, [picker]);
+        }, 200);
+    };
+
+    const openSaveStateManager = (title: string, name: string, onBack?: () => void) => {
+        setSaveStateGame({ title, name });
+        setSaveStateOnBack(() => onBack ?? null);
+        setSaveStateOpen(true);
+    };
+
+    const closeSaveStateManager = (skipAfter?: boolean) => {
+        const after = skipAfter ? null : saveStateOnBack;
+        setSaveStateOnBack(null);
+        setSaveStateOpen(false);
+        setTimeout(() => setSaveStateGame(null), 200);
+        after?.();
+    };
 
     return {
         activeView, setActiveView,
-        isMounted, setIsMounted,
         gameSearchQuery, setGameSearchQuery,
         libraryAnimationKey,
-        duplicateMessage, showDuplicateMessage,
+        duplicateMessage, showDuplicateMessage, showDuplicateError,
+
         editingGame, setEditingGame,
         pendingGame, setPendingGame,
         pendingFiles, setPendingFiles,
-        systemPickerOpen: picker.isOpen,
-        systemPickerClosing: picker.isClosing,
-        openSystemPicker: picker.open,
         systemSearchQuery, setSystemSearchQuery,
         pendingBatchCore, setPendingBatchCore,
+        systemPickerOpen: picker.shouldRender,
+        systemPickerClosing: picker.isClosing,
+        openSystemPicker, closeSystemPicker,
+
         saveStateGame,
-        saveStateOpen: saveState.isOpen,
+        saveStateOpen: saveState.shouldRender,
         saveStateClosing: saveState.isClosing,
+        saveStateHasBack: !!saveStateOnBack,
         openSaveStateManager, closeSaveStateManager,
-        showDuplicateError, closeSystemPicker,
     };
 }

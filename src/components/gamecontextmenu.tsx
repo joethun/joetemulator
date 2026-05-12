@@ -1,9 +1,10 @@
 'use client';
 
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, Settings, Image as ImageIcon, RefreshCw, Save } from 'lucide-react';
+import { Trash2, Settings, Image as ImageIcon, RefreshCw, Folder } from 'lucide-react';
 import { ThemeColors } from '@/types';
+import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 
 interface GameContextMenuProps {
     isOpen: boolean;
@@ -30,36 +31,29 @@ interface MenuButtonProps {
     style?: React.CSSProperties;
 }
 
-const MenuButton = memo(({ onClick, label, Icon, colors, style }: MenuButtonProps) => (
-    <button
-        onClick={onClick}
-        className="w-full px-3 py-2 rounded-xl flex items-center gap-2 text-sm font-medium text-left transition-all active:scale-95 hover:bg-white/5 cursor-pointer"
-        style={{ backgroundColor: colors.midDark, color: colors.softLight, ...style }}
-    >
-        <Icon className="w-4 h-4 shrink-0" />
-        <span className="truncate">{label}</span>
-    </button>
-));
-MenuButton.displayName = 'MenuButton';
+const MenuButton = memo(function MenuButton({ onClick, label, Icon, colors, style }: MenuButtonProps) {
+    return (
+        <button
+            onClick={onClick}
+            className="w-full px-3 py-2 rounded-xl flex items-center gap-2 text-sm font-medium text-left transition-all active:scale-95 hover:bg-white/5 cursor-pointer"
+            style={{ backgroundColor: colors.midDark, color: colors.softLight, ...style }}
+        >
+            <Icon className="w-4 h-4 shrink-0" />
+            <span className="truncate">{label}</span>
+        </button>
+    );
+});
 
-export const GameContextMenu = memo(({
-    isOpen, position, onClose, onEdit, onDelete, onUploadCover, onResetCover, onSaveStates, gameTitle, colors, hasAutoCover
-}: GameContextMenuProps) => {
+export function GameContextMenu({
+    isOpen, position, onClose, onEdit, onDelete, onUploadCover, onResetCover, onSaveStates,
+    gameTitle, colors, hasAutoCover,
+}: GameContextMenuProps) {
+    const { shouldRender, isClosing } = useDelayedUnmount(isOpen, 300);
     const menuRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [visible, setVisible] = useState(false);
-    const [closing, setClosing] = useState(false);
 
     useEffect(() => {
-        if (isOpen) { setVisible(true); setClosing(false); return; }
-        if (!visible) return;
-        setClosing(true);
-        const t = setTimeout(() => { setVisible(false); setClosing(false); }, 200);
-        return () => clearTimeout(t);
-    }, [isOpen, visible]);
-
-    useEffect(() => {
-        if (!visible || closing) return;
+        if (!shouldRender || isClosing) return;
         const onOutside = (e: MouseEvent | TouchEvent) => {
             if (!menuRef.current?.contains(e.target as Node)) onClose();
         };
@@ -72,9 +66,9 @@ export const GameContextMenu = memo(({
             document.removeEventListener('touchstart', onOutside as EventListener);
             document.removeEventListener('keydown', onKey);
         };
-    }, [visible, closing, onClose]);
+    }, [shouldRender, isClosing, onClose]);
 
-    if (!visible) return null;
+    if (!shouldRender) return null;
 
     const x = Math.min(position.x, window.innerWidth - MENU_W);
     const y = Math.min(position.y, window.innerHeight - MENU_H);
@@ -82,7 +76,7 @@ export const GameContextMenu = memo(({
     return createPortal(
         <div
             ref={menuRef}
-            className={`fixed z-50 rounded-xl border-[0.125rem] overflow-hidden shadow-lg ${closing ? 'animate-fade-out' : 'animate-fade-in'}`}
+            className={`fixed z-50 rounded-xl border-[0.125rem] overflow-hidden shadow-lg ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}
             style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, width: MENU_W, left: x, top: y, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', fontFamily: 'var(--font-lexend, system-ui)' }}
             onPointerDown={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
@@ -106,7 +100,7 @@ export const GameContextMenu = memo(({
                     <MenuButton onClick={() => fileInputRef.current?.click()} label="Upload Cover" Icon={ImageIcon} colors={colors} />
                     {hasAutoCover && <MenuButton onClick={() => { onResetCover(); onClose(); }} label="Auto Cover" Icon={RefreshCw} colors={colors} />}
                     <div className="h-px w-full my-1" style={{ backgroundColor: `${colors.highlight}20` }} />
-                    <MenuButton onClick={() => { onClose(); requestAnimationFrame(onSaveStates); }} label="Save States" Icon={Save} colors={colors} />
+                    <MenuButton onClick={() => { onClose(); requestAnimationFrame(onSaveStates); }} label="Manage States" Icon={Folder} colors={colors} />
                     <MenuButton onClick={() => { onClose(); requestAnimationFrame(onEdit); }} label="System" Icon={Settings} colors={colors} />
                     <MenuButton onClick={() => { onClose(); requestAnimationFrame(onDelete); }} label="Delete" Icon={Trash2} colors={colors} style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: 'rgb(248,113,113)' }} />
                 </div>
@@ -114,6 +108,4 @@ export const GameContextMenu = memo(({
         </div>,
         document.body
     );
-});
-
-GameContextMenu.displayName = 'GameContextMenu';
+}

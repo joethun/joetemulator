@@ -1,0 +1,1 @@
+{"name":"dosbox_pure","extensions":["conf"],"makeoptions":{"buildpath":"./","makescript":"Makefile","arguments":[]},"options":{"requireThreads":true,"supportsMouse":true,"useKeyboard":true},"license":"LICENSE","repo":"https://github.com/EmulatorJS/dosbox-pure"}

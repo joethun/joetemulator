@@ -1,0 +1,1 @@
+{"name":"mednafen_ngp","extensions":["ngp","ngc"],"makeoptions":{"arguments":[],"buildpath":"./","makescript":"Makefile"},"options":{},"save":"srm","license":"COPYING","repo":"https://github.com/EmulatorJS/beetle-ngp-libretro"}

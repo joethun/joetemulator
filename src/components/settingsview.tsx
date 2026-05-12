@@ -1,5 +1,5 @@
-import { memo, useCallback } from 'react';
-import { Clock, Eye, EyeOff, Save, Upload, LucideIcon } from 'lucide-react';
+import { memo } from 'react';
+import { Clock, Eye, EyeOff, Save, Upload, LogOut, LucideIcon } from 'lucide-react';
 import { SettingsCard } from '@/components/settingscard';
 import { Switch } from '@/components/switch';
 import { ThemeColors, GradientStyle } from '@/types';
@@ -37,15 +37,16 @@ interface SettingsViewProps {
     setAutoSaveIcon: (v: boolean) => void;
     autoLoadIcon: boolean;
     setAutoLoadIcon: (v: boolean) => void;
+    saveOnExit: boolean;
+    setSaveOnExit: (v: boolean) => void;
 }
 
 export const SettingsView = memo(({
     colors, gradient, autoLoadState, setAutoLoadState,
     autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval,
-    autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon
+    autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon,
+    saveOnExit, setSaveOnExit
 }: SettingsViewProps) => {
-    const handleIntervalClick = useCallback((v: number) => () => setAutoSaveInterval(v), [setAutoSaveInterval]);
-
     return (
         <div className="animate-fade-in w-full grid gap-4 pb-8">
             <SettingsCard
@@ -65,7 +66,7 @@ export const SettingsView = memo(({
                             {[30, 60, 120, 300, 600].map(v => (
                                 <button
                                     key={v}
-                                    onClick={handleIntervalClick(v)}
+                                    onClick={() => setAutoSaveInterval(v)}
                                     aria-pressed={autoSaveInterval === v}
                                     className="px-3 py-1 rounded-xl h-9 text-sm font-medium flex-1 sm:flex-none flex items-center justify-center transition-all active:scale-95 cursor-pointer"
                                     style={{
@@ -78,6 +79,10 @@ export const SettingsView = memo(({
                             ))}
                         </div>
                     </div>
+                    <SettingItem
+                        colors={colors} gradient={gradient} label="Save on Exit" icon={LogOut}
+                        checked={saveOnExit} onToggle={() => setSaveOnExit(!saveOnExit)}
+                    />
                     <SettingItem
                         colors={colors} gradient={gradient} label="Show Save Icon" icon={autoSaveIcon ? Eye : EyeOff}
                         checked={autoSaveIcon} onToggle={() => setAutoSaveIcon(!autoSaveIcon)}

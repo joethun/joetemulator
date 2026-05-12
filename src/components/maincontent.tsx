@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useMemo } from 'react';
+import { memo } from 'react';
 import { Game, ThemeColors, GradientStyle, ViewType } from '@/types';
 import { GameCard } from '@/components/gamecard';
 import { ThemeGrid } from '@/components/themegrid';
@@ -24,6 +24,7 @@ interface SettingsProps {
     autoSaveInterval: number; setAutoSaveInterval: (v: number) => void;
     autoSaveIcon: boolean; setAutoSaveIcon: (v: boolean) => void;
     autoLoadIcon: boolean; setAutoLoadIcon: (v: boolean) => void;
+    saveOnExit: boolean; setSaveOnExit: (v: boolean) => void;
     currentColors: ThemeColors;
     gradientStyle: GradientStyle;
     selectedTheme: string;
@@ -34,7 +35,7 @@ interface MainContentProps {
     activeView: ViewType;
     games: Game[];
     uploads: Record<number, Game>;
-    sortedGames: Game[];
+    count: number;
     groupedGames: Record<string, Game[]>;
     gameSearchQuery: string;
     libraryAnimationKey: number;
@@ -42,62 +43,11 @@ interface MainContentProps {
     settings: SettingsProps;
 }
 
-export const MainContent = memo(({
-    activeView, games, uploads, sortedGames, groupedGames,
+export const MainContent = memo(function MainContent({
+    activeView, games, uploads, count, groupedGames,
     gameSearchQuery, libraryAnimationKey, handlers, settings,
-}: MainContentProps) => {
+}: MainContentProps) {
     const { currentColors: colors } = settings;
-
-    const renderGameCard = useCallback((g: Game, i: number) => (
-        <div key={g.id} style={{ animation: `fadeIn 0.4s ease-out ${i * 0.03}s both` }}>
-            <GameCard
-                game={g}
-                onPlay={handlers.onPlay}
-                onDelete={handlers.onDelete}
-                onUploadCover={handlers.onUploadCover}
-                onResetCover={handlers.onResetCover}
-                colors={colors}
-                onEdit={handlers.onEdit}
-                onSaveStates={handlers.onSaveStates}
-                priority={i < 6}
-            />
-        </div>
-    ), [handlers, colors]);
-
-    const library = useMemo(() => {
-        if (!games.length && !Object.keys(uploads).length)
-            return (
-                <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
-                    <div className="w-20 h-20 rounded-xl mb-6 flex items-center justify-center shadow-lg" style={{ backgroundColor: colors.midDark, color: colors.highlight }}>
-                        <Gamepad2 className="w-10 h-10" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-2" style={{ color: colors.softLight }}>No games found</h3>
-                    <p className="mb-8 opacity-70" style={{ color: colors.highlight }}>Add your ROMs by clicking the + button in the sidebar</p>
-                </div>
-            );
-
-        if (!sortedGames.length)
-            return (
-                <div className="text-center py-20 opacity-60">
-                    <p style={{ color: colors.softLight }}>No games found matching &quot;{gameSearchQuery}&quot;</p>
-                </div>
-            );
-
-        let globalIndex = 0;
-        return (
-            <div key={libraryAnimationKey}>
-                {Object.entries(groupedGames).map(([cat, catGames]) => (
-                    <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
-                        <div className="flex items-center mb-4">
-                            <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: colors.highlight }}>{cat}</h4>
-                            <div className="flex-1 h-px" style={{ backgroundColor: `${colors.highlight}30` }} />
-                        </div>
-                        <div className={GRID_CLASS}>{catGames.map(g => renderGameCard(g, globalIndex++))}</div>
-                    </div>
-                ))}
-            </div>
-        );
-    }, [colors, games, uploads, sortedGames, groupedGames, gameSearchQuery, libraryAnimationKey, renderGameCard]);
 
     if (activeView === 'themes')
         return <ThemeGrid selectedTheme={settings.selectedTheme} onSelectTheme={settings.setSelectedTheme} />;
@@ -111,10 +61,59 @@ export const MainContent = memo(({
                 autoSaveInterval={settings.autoSaveInterval} setAutoSaveInterval={settings.setAutoSaveInterval}
                 autoSaveIcon={settings.autoSaveIcon} setAutoSaveIcon={settings.setAutoSaveIcon}
                 autoLoadIcon={settings.autoLoadIcon} setAutoLoadIcon={settings.setAutoLoadIcon}
+                saveOnExit={settings.saveOnExit} setSaveOnExit={settings.setSaveOnExit}
             />
         );
 
-    return library;
-});
+    if (!games.length && !Object.keys(uploads).length)
+        return (
+            <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
+                <div className="w-20 h-20 rounded-xl mb-6 flex items-center justify-center shadow-lg" style={{ backgroundColor: colors.midDark, color: colors.highlight }}>
+                    <Gamepad2 className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-bold mb-2" style={{ color: colors.softLight }}>No games found</h3>
+                <p className="mb-8 opacity-70" style={{ color: colors.highlight }}>Add your ROMs by clicking the + button in the sidebar</p>
+            </div>
+        );
 
-MainContent.displayName = 'MainContent';
+    if (!count)
+        return (
+            <div className="text-center py-20 opacity-60">
+                <p style={{ color: colors.softLight }}>No games found matching &quot;{gameSearchQuery}&quot;</p>
+            </div>
+        );
+
+    let i = 0;
+    return (
+        <div key={libraryAnimationKey}>
+            {Object.entries(groupedGames).map(([cat, catGames]) => (
+                <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
+                    <div className="flex items-center mb-4">
+                        <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: colors.highlight }}>{cat}</h4>
+                        <div className="flex-1 h-px" style={{ backgroundColor: `${colors.highlight}30` }} />
+                    </div>
+                    <div className={GRID_CLASS}>
+                        {catGames.map(g => {
+                            const idx = i++;
+                            return (
+                                <div key={g.id} style={{ animation: `fadeIn 0.4s ease-out ${idx * 0.03}s both` }}>
+                                    <GameCard
+                                        game={g}
+                                        onPlay={handlers.onPlay}
+                                        onDelete={handlers.onDelete}
+                                        onUploadCover={handlers.onUploadCover}
+                                        onResetCover={handlers.onResetCover}
+                                        colors={colors}
+                                        onEdit={handlers.onEdit}
+                                        onSaveStates={handlers.onSaveStates}
+                                        priority={idx < 6}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+});

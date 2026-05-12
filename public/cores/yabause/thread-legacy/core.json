@@ -1,0 +1,1 @@
+{"name":"yabause","extensions":["cue","iso","ccd","mds","chd","zip","m3u"],"makeoptions":{"arguments":[],"buildpath":"./yabause/src/libretro","makescript":"Makefile"},"options":{},"save":"srm","license":"","repo":"https://github.com/EmulatorJS/yabause"}

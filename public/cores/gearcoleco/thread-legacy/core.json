@@ -1,0 +1,1 @@
+{"name":"gearcoleco","extensions":["col","cv","bin","rom"],"makeoptions":{"arguments":[],"buildpath":"./platforms/libretro/","makescript":"Makefile"},"options":{},"save":"srm","license":"LICENSE","repo":"https://github.com/EmulatorJS/Gearcoleco"}

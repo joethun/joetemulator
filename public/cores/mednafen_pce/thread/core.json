@@ -1,0 +1,1 @@
+{"name":"mednafen_pce","extensions":["pce","cue","ccd","iso","img","bin","chd"],"makeoptions":{"arguments":[],"buildpath":"./","makescript":"Makefile"},"options":{"file":"Beetle PSX HW/Beetle PSX HW.opt","settings":{"beetle_psx_hw_renderer":"software"}},"save":"srm","license":"COPYING","repo":"https://github.com/EmulatorJS/beetle-pce-libretro"}

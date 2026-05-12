@@ -1,6 +1,5 @@
-export const STATE_TS_PREFIX = 'ejs_state_ts_';
-export const SLOT_PREFIX = 'ejs_slots_';
-export const NEXT_LOAD_KEY = 'ejs_load_on_next_';
+const STATE_TS_PREFIX = 'ejs_state_ts_';
+const SLOT_PREFIX = 'ejs_slots_';
 
 const MAX_SLOTS = 10;
 const DB_NAME = 'EmulatorJS-states';
@@ -14,13 +13,19 @@ export interface SaveState {
 
 interface SlotManifest { slots: string[]; nextIndex: number; }
 
+const EMPTY_MANIFEST: SlotManifest = { slots: [], nextIndex: 0 };
+
 function getManifest(name: string): SlotManifest {
     try { const r = localStorage.getItem(SLOT_PREFIX + name); if (r) return JSON.parse(r); } catch { /* noop */ }
-    return { slots: [], nextIndex: 0 };
+    return EMPTY_MANIFEST;
 }
 
-function saveManifest(name: string, m: SlotManifest) {
+function saveManifest(name: string, m: SlotManifest): void {
     try { localStorage.setItem(SLOT_PREFIX + name, JSON.stringify(m)); } catch { /* noop */ }
+}
+
+function updateManifest(name: string, fn: (m: SlotManifest) => SlotManifest): void {
+    saveManifest(name, fn(getManifest(name)));
 }
 
 export const getSlotKeys = (name: string) => getManifest(name).slots;
@@ -52,29 +57,28 @@ function openDB(): Promise<IDBDatabase | null> {
     });
 }
 
-function idbGet<T>(db: IDBDatabase, key: string): Promise<T | undefined> {
+async function withDB<T>(fn: (db: IDBDatabase) => Promise<T>, fallback: T): Promise<T> {
+    const db = await openDB();
+    if (!db) return fallback;
+    try { return await fn(db); }
+    finally { db.close(); }
+}
+
+function idbReq<T>(req: IDBRequest<T>): Promise<T | undefined> {
     return new Promise(resolve => {
-        const req = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key);
-        req.onsuccess = () => resolve(req.result as T);
+        req.onsuccess = () => resolve(req.result);
         req.onerror = () => resolve(undefined);
     });
 }
 
-function idbPut(db: IDBDatabase, key: string, value: unknown): Promise<void> {
-    return new Promise(resolve => {
-        const req = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(value, key);
-        req.onsuccess = () => resolve();
-        req.onerror = () => resolve();
-    });
-}
+const idbGet = <T>(db: IDBDatabase, key: string) =>
+    idbReq<T>(db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key) as IDBRequest<T>);
 
-function idbDelete(db: IDBDatabase, key: string): Promise<void> {
-    return new Promise(resolve => {
-        const req = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(key);
-        req.onsuccess = () => resolve();
-        req.onerror = () => resolve();
-    });
-}
+const idbPut = (db: IDBDatabase, key: string, value: unknown) =>
+    idbReq(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(value, key));
+
+const idbDelete = (db: IDBDatabase, key: string) =>
+    idbReq(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(key));
 
 function toBytes(data: unknown): Uint8Array | null {
     if (data instanceof Uint8Array) return data;
@@ -86,6 +90,15 @@ function toBytes(data: unknown): Uint8Array | null {
     }
     return null;
 }
+
+export const getStateBytes = (key: string): Promise<Uint8Array | null> =>
+    withDB(async db => {
+        const raw = await idbGet<unknown>(db, key);
+        return raw == null ? null : toBytes(raw);
+    }, null);
+
+export const putStateBytes = (key: string, bytes: Uint8Array): Promise<void> =>
+    withDB(async db => { await idbPut(db, key, bytes); }, undefined);
 
 function getTimestamp(key: string): Date | null {
     try {
@@ -108,70 +121,45 @@ function isDuplicate(incoming: Uint8Array, existing: SaveState[]): boolean {
     return existing.some(s => { const b = toBytes(s.rawData); return b ? hashBytes(b) === hash : false; });
 }
 
-function updateManifest(gameName: string, fn: (m: SlotManifest) => SlotManifest): void {
-    try {
-        const raw = localStorage.getItem(SLOT_PREFIX + gameName);
-        const m: SlotManifest = raw ? JSON.parse(raw) : { slots: [], nextIndex: 0 };
-        localStorage.setItem(SLOT_PREFIX + gameName, JSON.stringify(fn(m)));
-    } catch { /* noop */ }
-}
-
 export async function deleteAllStates(gameName: string): Promise<void> {
     const keys = getSlotKeys(gameName);
-    const db = await openDB();
-    if (db) {
+    await withDB(async db => {
         for (const key of keys) await idbDelete(db, key);
-        const tracker = await idbGet<string[]>(db, '?EJS_KEYS!');
-        if (tracker) await idbPut(db, '?EJS_KEYS!', tracker.filter(k => !keys.includes(k)));
-        db.close();
-    }
+    }, undefined);
     try {
-        for (const key of keys) {
-            localStorage.removeItem(STATE_TS_PREFIX + key);
-            localStorage.removeItem(NEXT_LOAD_KEY + key);
-        }
+        for (const key of keys) localStorage.removeItem(STATE_TS_PREFIX + key);
         localStorage.removeItem(SLOT_PREFIX + gameName);
     } catch { /* noop */ }
 }
 
-export async function fetchStates(gameName: string): Promise<SaveState[]> {
+export const fetchStates = (gameName: string): Promise<SaveState[]> => {
     const keys = getSlotKeys(gameName);
-    if (!keys.length) return [];
-    const db = await openDB();
-    if (!db) return [];
-    const states: SaveState[] = [];
-    for (const key of keys) {
-        const data = await idbGet<unknown>(db, key);
-        if (data !== undefined)
-            states.push({ key, savedAt: getTimestamp(key), rawData: data });
-    }
-    db.close();
-    return states.reverse();
-}
+    if (!keys.length) return Promise.resolve([]);
+    return withDB(async db => {
+        const states: SaveState[] = [];
+        for (const key of keys) {
+            const data = await idbGet<unknown>(db, key);
+            if (data !== undefined) states.push({ key, savedAt: getTimestamp(key), rawData: data });
+        }
+        return states.reverse();
+    }, []);
+};
 
 export async function removeState(key: string, gameName: string): Promise<void> {
-    const db = await openDB();
-    if (!db) return;
-    await idbDelete(db, key);
-    const tracker = await idbGet<string[]>(db, '?EJS_KEYS!');
-    if (tracker) await idbPut(db, '?EJS_KEYS!', tracker.filter(k => k !== key));
-    db.close();
+    await withDB(async db => { await idbDelete(db, key); }, undefined);
     updateManifest(gameName, m => ({ ...m, slots: m.slots.filter(s => s !== key) }));
-    try {
-        localStorage.removeItem(STATE_TS_PREFIX + key);
-        localStorage.removeItem(NEXT_LOAD_KEY + key);
-    } catch { /* noop */ }
+    try { localStorage.removeItem(STATE_TS_PREFIX + key); } catch { /* noop */ }
 }
 
 export async function importState(gameName: string, file: File): Promise<void> {
-    const db = await openDB();
-    if (!db) throw new Error('IndexedDB unavailable');
     const incoming = new Uint8Array(await file.arrayBuffer());
     const existing = await fetchStates(gameName);
     if (isDuplicate(incoming, existing)) throw new Error('duplicate');
+
     const key = `${gameName}.state_imported_${Date.now()}`;
-    await idbPut(db, key, incoming);
-    db.close();
+    const ok = await withDB(async db => { await idbPut(db, key, incoming); return true; }, false);
+    if (!ok) throw new Error('IndexedDB unavailable');
+
     updateManifest(gameName, m => ({
         ...m,
         slots: m.slots.includes(key) ? m.slots : [...m.slots, key].slice(-MAX_SLOTS),
@@ -202,6 +190,8 @@ export function fmtDate(d: Date | null): string {
     return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+const DAY_MS = 86400000;
+
 export function groupByDay(states: SaveState[]): Array<{ label: string; items: SaveState[] }> {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -211,11 +201,11 @@ export function groupByDay(states: SaveState[]): Array<{ label: string; items: S
         if (s.savedAt) {
             const day = new Date(s.savedAt.getFullYear(), s.savedAt.getMonth(), s.savedAt.getDate()).getTime();
             label = day === today ? 'Today'
-                : day === today - 86400000 ? 'Yesterday'
+                : day === today - DAY_MS ? 'Yesterday'
                 : s.savedAt.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
         }
-        if (!map.has(label)) map.set(label, []);
-        map.get(label)!.push(s);
+        const arr = map.get(label) ?? (map.set(label, []).get(label)!);
+        arr.push(s);
     }
-    return Array.from(map.entries()).map(([label, items]) => ({ label, items }));
+    return Array.from(map, ([label, items]) => ({ label, items }));
 }

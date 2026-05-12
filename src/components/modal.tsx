@@ -1,0 +1,87 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import type { ThemeColors } from '@/types';
+
+interface ModalProps {
+    isClosing: boolean;
+    colors: ThemeColors;
+    onClose: () => void;
+    children: React.ReactNode;
+    /** Use 'tall' to fill 90vh; 'auto' lets the content size itself. */
+    height?: 'auto' | 'tall';
+    /** ARIA label for the dialog. Use this OR labelledBy. */
+    ariaLabel?: string;
+    labelledBy?: string;
+    /** z-index. 50 by default; bump to 60 for menus over the emulator overlay. */
+    z?: number;
+}
+
+export function Modal({
+    isClosing, colors, onClose, children,
+    height = 'auto', ariaLabel, labelledBy, z = 50,
+}: ModalProps) {
+    const dialogRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => { dialogRef.current?.focus(); }, []);
+
+    const anim = isClosing ? 'fadeOut 0.2s ease-out forwards' : 'fadeIn 0.2s ease-out forwards';
+
+    return createPortal(
+        <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden"
+            style={{ animation: anim, fontFamily: 'var(--font-lexend, system-ui)', zIndex: z }}
+            onClick={onClose}
+        >
+            <div
+                ref={dialogRef}
+                tabIndex={0}
+                role="dialog"
+                aria-modal="true"
+                aria-label={ariaLabel}
+                aria-labelledby={labelledBy}
+                onClick={e => e.stopPropagation()}
+                onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose(); } }}
+                className="p-8 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col border focus:outline-none"
+                style={{
+                    backgroundColor: colors.darkBg,
+                    borderColor: colors.midDark,
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
+                    animation: anim,
+                    ...(height === 'tall' ? { height: '90vh' } : null),
+                }}
+            >
+                {children}
+            </div>
+        </div>,
+        document.body,
+    );
+}
+
+interface ModalHeaderProps { title: string; subtitle?: string; colors: ThemeColors; id?: string; }
+export function ModalHeader({ title, subtitle, colors, id }: ModalHeaderProps) {
+    return (
+        <div className="mb-6">
+            <h3 id={id} className="text-3xl font-bold mb-2" style={{ color: colors.softLight }}>{title}</h3>
+            {subtitle && <p className="text-sm opacity-80" style={{ color: colors.highlight }}>{subtitle}</p>}
+        </div>
+    );
+}
+
+interface ModalFooterProps {
+    colors: ThemeColors;
+    children: React.ReactNode;
+    /** When false, render only the right side with the left slot collapsed. */
+    align?: 'between' | 'end';
+}
+export function ModalFooter({ colors, children, align = 'between' }: ModalFooterProps) {
+    return (
+        <div
+            className={`flex items-center mt-8 pt-6 border-t ${align === 'end' ? 'justify-end gap-3' : 'justify-between'}`}
+            style={{ borderColor: `${colors.highlight}30` }}
+        >
+            {children}
+        </div>
+    );
+}

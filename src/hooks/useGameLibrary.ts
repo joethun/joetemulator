@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Game } from '@/types';
 import { deleteGameFile, migrateLegacyRoms } from '@/lib/storage';
 import { deleteAllStates } from '@/lib/savestates';
@@ -14,42 +14,42 @@ const persist = (games: Game[]) => {
 
 export function useGameLibrary() {
     const [games, setGames] = useState<Game[]>([]);
-    const migrated = useRef(false);
 
-    const mutate = useCallback((fn: (g: Game[]) => Game[]) => {
+    useEffect(() => {
+        (async () => {
+            try {
+                const raw = localStorage.getItem(GAMES_KEY);
+                if (!raw) return;
+                const parsed: Array<Game & { fileData?: string; filePath?: string }> = JSON.parse(raw);
+                await migrateLegacyRoms(parsed);
+                const cleaned: Game[] = parsed.map(({ fileData: _fd, filePath, ...rest }) => {
+                    void _fd;
+                    return {
+                        ...rest,
+                        fileName: rest.fileName || filePath,
+                        genre: rest.genre === 'ROM' && rest.core ? getSystemNameByCore(rest.core) : rest.genre,
+                        coverArtFit: rest.coverArt && !rest.coverArtFit ? 'cover' as const : rest.coverArtFit,
+                    };
+                });
+                setGames(cleaned);
+                persist(cleaned);
+            } catch (e) { console.error('Failed to load games:', e); }
+        })();
+    }, []);
+
+    const mutate = (fn: (g: Game[]) => Game[]) =>
         setGames(prev => { const next = fn(prev); persist(next); return next; });
-    }, []);
 
-    const loadGamesFromStorage = useCallback(async () => {
-        if (migrated.current) return;
-        migrated.current = true;
-        try {
-            const raw = localStorage.getItem(GAMES_KEY);
-            if (!raw) return;
-            const parsed: Array<Game & { fileData?: string; filePath?: string }> = JSON.parse(raw);
-            await migrateLegacyRoms(parsed);
-            // Strip legacy fields (fileData migrated to OPFS; filePath folded into fileName)
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const cleaned: Game[] = parsed.map(({ fileData, filePath, ...rest }) => ({
-                ...rest,
-                fileName: rest.fileName || filePath,
-                genre: rest.genre === 'ROM' && rest.core ? getSystemNameByCore(rest.core) : rest.genre,
-                coverArtFit: rest.coverArt && !rest.coverArtFit ? 'cover' as const : rest.coverArtFit,
-            }));
-            setGames(cleaned);
-            persist(cleaned);
-        } catch (e) { console.error('Failed to load games:', e); setGames([]); }
-    }, []);
-
-    const addGame = useCallback((game: Game) => mutate(g => [...g, game]), [mutate]);
-    const updateGame = useCallback((id: number, updates: Partial<Game>) =>
-        mutate(g => g.map(x => x.id === id ? { ...x, ...updates } : x)), [mutate]);
-    const deleteGame = useCallback(async (id: number, fileName?: string, title?: string) => {
-        try { await deleteGameFile(id); } catch { }
-        const baseName = fileName || title;
-        if (baseName) { try { await deleteAllStates(stripExt(baseName)); } catch { } }
-        mutate(g => g.filter(x => x.id !== id));
-    }, [mutate]);
-
-    return { games, loadGamesFromStorage, addGame, updateGame, deleteGame };
+    return {
+        games,
+        addGame: (game: Game) => mutate(g => [...g, game]),
+        updateGame: (id: number, updates: Partial<Game>) =>
+            mutate(g => g.map(x => x.id === id ? { ...x, ...updates } : x)),
+        deleteGame: async (id: number, fileName?: string, title?: string) => {
+            try { await deleteGameFile(id); } catch { }
+            const baseName = fileName || title;
+            if (baseName) { try { await deleteAllStates(stripExt(baseName)); } catch { } }
+            mutate(g => g.filter(x => x.id !== id));
+        },
+    };
 }

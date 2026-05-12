@@ -1,19 +1,18 @@
-import { useMemo } from 'react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useLocalStorage, useHydrated } from '@/hooks/useLocalStorage';
 import { THEMES, getGradientStyle } from '@/types';
 
 export function useAppSettings() {
-    const [selectedTheme, setSelectedTheme, themeHydrated] = useLocalStorage('theme', 'blue');
-    const [sortOrder, setSortOrder, sortHydrated] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
-    const [autoLoadState, setAutoLoadState, autoLoadHydrated] = useLocalStorage('autoLoadState', true);
+    const [selectedTheme, setSelectedTheme] = useLocalStorage('theme', 'blue');
+    const [sortOrder, setSortOrder] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
+    const [autoLoadState, setAutoLoadState] = useLocalStorage('autoLoadState', true);
     const [autoLoadIcon, setAutoLoadIcon] = useLocalStorage('autoLoadIcon', true);
-    const [autoSaveState, setAutoSaveState, autoSaveHydrated] = useLocalStorage('autoSaveState', true);
+    const [autoSaveState, setAutoSaveState] = useLocalStorage('autoSaveState', true);
     const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 300);
     const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
+    const [saveOnExit, setSaveOnExit] = useLocalStorage('saveOnExit', true);
 
-    const currentColors = useMemo(() => THEMES[selectedTheme] || THEMES.blue, [selectedTheme]);
-    const gradientStyle = useMemo(() => getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo), [currentColors]);
-    const isHydrated = themeHydrated && sortHydrated && autoLoadHydrated && autoSaveHydrated;
+    const currentColors = THEMES[selectedTheme] || THEMES.blue;
+    const gradientStyle = getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo);
 
     return {
         selectedTheme, setSelectedTheme,
@@ -23,6 +22,8 @@ export function useAppSettings() {
         autoSaveState, setAutoSaveState,
         autoSaveInterval, setAutoSaveInterval,
         autoSaveIcon, setAutoSaveIcon,
-        currentColors, gradientStyle, isHydrated,
+        saveOnExit, setSaveOnExit,
+        currentColors, gradientStyle,
+        isHydrated: useHydrated(),
     };
 }

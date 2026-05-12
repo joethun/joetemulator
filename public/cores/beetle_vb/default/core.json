@@ -1,0 +1,1 @@
+{"name":"beetle_vb","extensions":["vb","vboy","bin"],"makeoptions":{"buildpath":"./","makescript":"Makefile","arguments":[]},"options":{},"save":"srm","license":"COPYING","repo":"https://github.com/EmulatorJS/beetle-vb-libretro"}

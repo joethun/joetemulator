@@ -1,0 +1,1 @@
+{"name":"pcsx_rearmed","extensions":["bin","cue","img","mdf","pbp","toc","cbn","m3u","ccd"],"makeoptions":{"arguments":[],"buildpath":"./","makescript":"Makefile.libretro"},"options":{"defaultWebGL2":true},"save":"srm","license":"COPYING","repo":"https://github.com/EmulatorJS/pcsx_rearmed"}

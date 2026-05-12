@@ -1,0 +1,1 @@
+{"name":"virtualjaguar","extensions":["j64","jag","rom","abs","cof","bin","prg"],"makeoptions":{"arguments":[],"buildpath":"./","makescript":"Makefile"},"options":{},"save":"srm","license":"","repo":"https://github.com/EmulatorJS/virtualjaguar-libretro"}

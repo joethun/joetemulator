@@ -10,50 +10,34 @@ export function useGameList(
     searchQuery: string,
     sortOrder: SortOrder
 ) {
-    const sortedGames = useMemo(() => {
-        const gameIds = new Set(games.map(g => g.id));
-        const allGames = [
+    return useMemo(() => {
+        const ids = new Set(games.map(g => g.id));
+        const all = [
             ...games,
-            ...Object.values(uploads).filter(u => !gameIds.has(u.id))
-        ];
+            ...Object.values(uploads).filter(u => !ids.has(u.id)),
+        ].map(g => ({ g, cat: getSystemCategory(g.core) }));
 
-        const query = searchQuery.trim().toLowerCase();
-        const filtered = query
-            ? allGames.filter(g =>
-                g.title.toLowerCase().includes(query) ||
-                g.genre.toLowerCase().includes(query) ||
-                getSystemCategory(g.core).toLowerCase().includes(query)
-            )
-            : allGames;
+        const q = searchQuery.trim().toLowerCase();
+        const filtered = q
+            ? all.filter(({ g, cat }) =>
+                g.title.toLowerCase().includes(q) ||
+                g.genre.toLowerCase().includes(q) ||
+                cat.toLowerCase().includes(q))
+            : all;
 
         const dir = sortOrder === 'asc' ? 1 : -1;
+        filtered.sort((a, b) => dir * (
+            a.cat.localeCompare(b.cat) ||
+            a.g.genre.localeCompare(b.g.genre) ||
+            a.g.title.localeCompare(b.g.title)
+        ));
 
-        return filtered
-            .map(g => ({ g, cat: getSystemCategory(g.core) }))
-            .sort((a, b) =>
-                dir * (
-                    a.cat.localeCompare(b.cat) ||
-                    a.g.genre.localeCompare(b.g.genre) ||
-                    a.g.title.localeCompare(b.g.title)
-                )
-            )
-            .map(({ g }) => g);
-    }, [games, uploads, sortOrder, searchQuery]);
-
-    const groupedGames = useMemo(() => {
         const groups: Record<string, Game[]> = {};
-        for (const game of sortedGames) {
-            const cat = getSystemCategory(game.core);
-            const key = cat === 'Other' ? game.genre : `${cat} ${game.genre}`;
-            (groups[key] ??= []).push(game);
+        for (const { g, cat } of filtered) {
+            const key = cat === 'Other' ? g.genre : `${cat} ${g.genre}`;
+            (groups[key] ??= []).push(g);
         }
 
-        const sortedKeys = Object.keys(groups).sort((a, b) =>
-            sortOrder === 'asc' ? a.localeCompare(b) : b.localeCompare(a)
-        );
-
-        return Object.fromEntries(sortedKeys.map(k => [k, groups[k]]));
-    }, [sortedGames, sortOrder]);
-
-    return { sortedGames, groupedGames };
+        return { count: filtered.length, groupedGames: groups };
+    }, [games, uploads, sortOrder, searchQuery]);
 }

@@ -26,9 +26,14 @@ export const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }
             if (source === 'auto' && ((type === 'save' && !autoSaveIcon) || (type === 'load' && !autoLoadIcon))) return;
 
             if (timer.current) clearTimeout(timer.current);
-            // Mount at visible:false first, then next frame flip to true so transition fires
+            // Mount at visible:false, then double-rAF to guarantee the opacity:0 paint
+            // has committed before flipping to true so the full transition runs.
             setNotif({ type, visible: false });
-            requestAnimationFrame(() => setNotif({ type, visible: true }));
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    setNotif(s => s ? { ...s, visible: true } : null);
+                });
+            });
             timer.current = setTimeout(() => {
                 setNotif(s => s ? { ...s, visible: false } : null);
                 setTimeout(() => setNotif(null), FADE_MS);
@@ -44,8 +49,8 @@ export const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }
 
     if (!notif) return null;
 
-    const gameEl = document.getElementById('game');
-    const mount = (gameEl && getComputedStyle(gameEl).display !== 'none') ? gameEl : document.body;
+    const emuRoot = document.querySelector<HTMLElement>('[data-emulator-root]');
+    const mount = (emuRoot && getComputedStyle(emuRoot).display !== 'none') ? emuRoot : document.body;
     const Icon = notif.type === 'save' ? Save : Upload;
 
     return createPortal(
