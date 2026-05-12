@@ -2,9 +2,9 @@
 
 import { memo } from 'react';
 import { Game, ThemeColors, GradientStyle, ViewType } from '@/types';
-import { GameCard } from '@/components/gamecard';
-import { ThemeGrid } from '@/components/themegrid';
-import { SettingsView } from '@/components/settingsview';
+import { GameCard } from '@/components/GameCard';
+import { ThemeGrid } from '@/components/ThemeGrid';
+import { SettingsView } from '@/components/SettingsView';
 import { Gamepad2 } from 'lucide-react';
 
 const GRID_CLASS = "grid gap-4 md:gap-6 w-full grid-cols-[repeat(auto-fill,minmax(min(150px,100%),1fr))] md:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]";

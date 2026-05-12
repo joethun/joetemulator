@@ -1,6 +1,6 @@
 import type { CoreInfo, LibretroModule } from '@/lib/ra/types';
 
-export const SAVES_DIR = '/data/saves';
+const SAVES_DIR = '/data/saves';
 export const RA_CFG_PATH = '/home/web_user/.config/retroarch/retroarch.cfg';
 const CORE_OPTS_DIR = '/home/web_user/retroarch/userdata/config';
 

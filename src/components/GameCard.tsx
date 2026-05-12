@@ -3,7 +3,7 @@
 import { memo, useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Game, ThemeColors, getGradientStyle } from '@/types';
-import { GameContextMenu } from './gamecontextmenu';
+import { GameContextMenu } from './GameContextMenu';
 import { getSystemAspectRatio } from '@/lib/constants';
 import { stripExt } from '@/lib/utils';
 
@@ -112,13 +112,13 @@ export const GameCard = memo(({
             {isUploading && <UploadOverlay progress={game.progress} isComplete={game.isComplete} colors={colors} />}
 
             <div className="h-full w-full relative flex items-center justify-center transition-transform duration-500 overflow-hidden"
-                style={!game.coverArt || imgError ? getGradientStyle(colors.gradientFrom, colors.gradientTo) : undefined}>
-                {game.coverArt && !imgError ? (
+                style={!game.coverLoading && (!game.coverArt || imgError) ? getGradientStyle(colors.gradientFrom, colors.gradientTo) : undefined}>
+                {game.coverLoading ? null : game.coverArt && !imgError ? (
                     <Image
                         src={game.coverArt}
                         alt={game.title}
                         fill
-                        sizes="(max-width: 640px) calc(50vw - 2rem), (max-width: 768px) 150px, (max-width: 1280px) calc(25vw - 2rem), 20vw"
+                        sizes="320px"
                         loading="eager"
                         priority={priority}
                         draggable={false}

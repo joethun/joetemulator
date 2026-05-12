@@ -21,21 +21,13 @@ const GROUPS: { key: ShaderCategory; title: string }[] = [
 ];
 
 export const ShaderPanel = memo(({ colors, libretroCore, onShaderChange }: ShaderPanelProps) => {
-    const [options, setOptions] = useState<ShaderOption[]>([]);
-    const [selected, setSelected] = useState<string>(SHADER_DISABLED);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const options = useMemo(() => getShaderOptions(), []);
+    const [selected, setSelected] = useState<string>(
+        () => libretroCore ? getStoredShader(libretroCore) : SHADER_DISABLED,
+    );
 
     useEffect(() => {
-        setLoading(true);
-        setError(null);
-        getShaderOptions()
-            .then(opts => {
-                setOptions(opts);
-                setSelected(libretroCore ? getStoredShader(libretroCore) : SHADER_DISABLED);
-            })
-            .catch(err => setError(err instanceof Error ? err.message : 'Failed to load shaders'))
-            .finally(() => setLoading(false));
+        setSelected(libretroCore ? getStoredShader(libretroCore) : SHADER_DISABLED);
     }, [libretroCore]);
 
     const handleSelect = useCallback((key: string) => {
@@ -55,29 +47,6 @@ export const ShaderPanel = memo(({ colors, libretroCore, onShaderChange }: Shade
         }
         return { off, byGroup };
     }, [options]);
-
-    if (loading) {
-        return (
-            <div className="flex-1 flex items-center justify-center">
-                <p className="text-sm font-medium opacity-60" style={{ color: colors.softLight }}>
-                    Loading shaders…
-                </p>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div
-                className="py-3 px-4 rounded-xl border-[0.125rem] flex items-center"
-                style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark }}
-            >
-                <span className="text-sm font-medium" style={{ color: 'rgb(248,113,113)' }}>
-                    {error}
-                </span>
-            </div>
-        );
-    }
 
     return (
         <div className="flex flex-col gap-6 min-w-0">

@@ -1,6 +1,6 @@
 import { memo, ReactNode } from 'react';
 import { ThemeColors, GradientStyle } from '@/types';
-import { Switch } from '@/components/switch';
+import { Switch } from '@/components/Switch';
 import { LucideIcon } from 'lucide-react';
 
 interface SettingsCardProps {

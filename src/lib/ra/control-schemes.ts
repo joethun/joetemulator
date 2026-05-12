@@ -1,4 +1,4 @@
-export interface ButtonDef {
+interface ButtonDef {
     id: number;
     label: string;
 }

@@ -20,7 +20,7 @@ interface GameContextMenuProps {
     hasAutoCover: boolean;
 }
 
-const MENU_W = 180;
+const MENU_W = 190;
 const MENU_H = 250;
 
 interface MenuButtonProps {
@@ -54,16 +54,16 @@ export function GameContextMenu({
 
     useEffect(() => {
         if (!shouldRender || isClosing) return;
-        const onOutside = (e: MouseEvent | TouchEvent) => {
+        const onOutside = (e: Event) => {
             if (!menuRef.current?.contains(e.target as Node)) onClose();
         };
         const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        document.addEventListener('mousedown', onOutside as EventListener);
-        document.addEventListener('touchstart', onOutside as EventListener);
+        document.addEventListener('mousedown', onOutside);
+        document.addEventListener('touchstart', onOutside);
         document.addEventListener('keydown', onKey);
         return () => {
-            document.removeEventListener('mousedown', onOutside as EventListener);
-            document.removeEventListener('touchstart', onOutside as EventListener);
+            document.removeEventListener('mousedown', onOutside);
+            document.removeEventListener('touchstart', onOutside);
             document.removeEventListener('keydown', onKey);
         };
     }, [shouldRender, isClosing, onClose]);

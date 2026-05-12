@@ -9,7 +9,7 @@ import {
 } from '@/lib/savestates';
 import { SectionHeader } from '@/components/emulator/shared';
 
-const BTN_BASE = 'w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer border-[0.125rem]';
+const BTN_BASE = 'w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer border-[0.125rem]';
 const DELETE_ANIM_MS = 350;
 
 interface SaveStatesPanelProps {
@@ -134,6 +134,7 @@ const StateRow = memo(({ s, idx, isDeleting, colors, gameName, onDelete, onLoad 
         style={{
             backgroundColor: colors.darkBg,
             borderColor: colors.midDark,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
             animation: isDeleting ? undefined : `fadeIn 0.4s ease-out ${idx * 0.03}s both`,
         }}
     >

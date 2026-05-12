@@ -63,11 +63,9 @@ export function parseCoreOptions(raw: string, libretroName?: string): CoreOption
     return out;
 }
 
-export type StoredCoreOptions = Record<string, string>;
-
 const k = (libretroName: string) => `${STORAGE_PREFIX}${libretroName}`;
 
-export const loadStoredCoreOptions = (libretroName: string): StoredCoreOptions =>
+export const loadStoredCoreOptions = (libretroName: string): Record<string, string> =>
     loadStringRecord(k(libretroName));
 
 export function saveStoredCoreOption(libretroName: string, key: string, value: string): void {

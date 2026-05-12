@@ -35,8 +35,10 @@ export function useApp() {
     const showDuplicateError = (msg: string) => {
         setDuplicateMessage(msg);
         setShowDuplicateMessage(true);
-        setTimeout(() => setShowDuplicateMessage(false), 2500);
-        setTimeout(() => setDuplicateMessage(null), 3000);
+        setTimeout(() => {
+            setShowDuplicateMessage(false);
+            setTimeout(() => setDuplicateMessage(null), 500);
+        }, 2500);
     };
 
     const openSystemPicker = () => setPickerOpen(true);

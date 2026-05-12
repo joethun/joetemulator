@@ -21,7 +21,7 @@ const notify = (type: 'save' | 'load', source: 'manual' | 'auto'): void => {
     window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type, source } }));
 };
 
-export interface UseEmulatorOpts {
+interface UseEmulatorOpts {
     autoSave?: boolean;
     autoLoad?: boolean;
     autoSaveInterval?: number;     // ms
@@ -48,7 +48,7 @@ const IDLE_STATUS: SessionStatus = {
     game: null, system: null, libretroCore: null,
 };
 
-export interface EmulatorActions {
+interface EmulatorActions {
     pause: () => void;
     resume: () => void;
     saveState: (source?: 'manual' | 'auto') => Promise<void>;

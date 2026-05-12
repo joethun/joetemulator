@@ -3,7 +3,7 @@
 import { useRef } from 'react';
 import { ThemeColors, GradientStyle } from '@/types';
 import { SaveStatesPanel } from '@/components/emulator/SaveStatesPanel';
-import { Modal, ModalHeader, ModalFooter } from '@/components/modal';
+import { Modal, ModalHeader, ModalFooter } from '@/components/Modal';
 
 interface SaveStateManagerProps {
     isOpen: boolean;

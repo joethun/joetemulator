@@ -2,7 +2,7 @@
 
 import { memo, useSyncExternalStore } from 'react';
 import {
-    Folder, LogOut, Pause, Play,
+    Folder, LogOut, Maximize, Minimize, Pause, Play,
     Save, Settings, Upload,
     Volume2, VolumeX,
 } from 'lucide-react';
@@ -53,6 +53,7 @@ export const EmulatorControlsBar = memo(({
             <BarBtn icon={Folder}   label="Manage States" onClick={() => onOpenPanel('saves')}    colors={colors} />
             <BarBtn icon={Settings} label="Game Settings" onClick={() => onOpenPanel('settings')} colors={colors} />
             <VolumeButton colors={colors} />
+            <FullscreenButton colors={colors} />
             <div className="w-px h-10 mx-1" style={{ backgroundColor: `${colors.highlight}30` }} />
             <BarBtn icon={LogOut} label="Exit Game" onClick={onExit} colors={colors} variant="danger" />
         </div>
@@ -77,9 +78,10 @@ interface BarBtnProps {
     onClick: () => void;
     colors: ThemeColors;
     variant?: 'default' | 'danger';
+    pressed?: boolean;
 }
 
-function BarBtn({ icon: Icon, label, onClick, colors, variant = 'default' }: BarBtnProps) {
+function BarBtn({ icon: Icon, label, onClick, colors, variant = 'default', pressed }: BarBtnProps) {
     const style = variant === 'danger'
         ? { backgroundColor: 'rgba(239,68,68,0.15)', color: 'rgb(248,113,113)' }
         : { backgroundColor: colors.midDark, color: colors.highlight };
@@ -89,6 +91,7 @@ function BarBtn({ icon: Icon, label, onClick, colors, variant = 'default' }: Bar
                 type="button"
                 onClick={onClick}
                 aria-label={label}
+                aria-pressed={pressed}
                 className="w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer"
                 style={style}
             >
@@ -99,6 +102,36 @@ function BarBtn({ icon: Icon, label, onClick, colors, variant = 'default' }: Bar
     );
 }
 
+const subscribeFullscreen = (cb: () => void) => {
+    document.addEventListener('fullscreenchange', cb);
+    return () => document.removeEventListener('fullscreenchange', cb);
+};
+
+function FullscreenButton({ colors }: { colors: ThemeColors }) {
+    const isFs = useSyncExternalStore(
+        subscribeFullscreen,
+        () => document.fullscreenElement !== null,
+        () => false,
+    );
+    const toggle = () => {
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+            return;
+        }
+        const target = document.querySelector<HTMLElement>('[data-emulator-root="1"]') ?? document.documentElement;
+        Promise.resolve(target.requestFullscreen()).catch(() => {});
+    };
+    return (
+        <BarBtn
+            icon={isFs ? Minimize : Maximize}
+            label={isFs ? 'Exit Fullscreen' : 'Fullscreen'}
+            onClick={toggle}
+            colors={colors}
+            pressed={isFs}
+        />
+    );
+}
+
 function VolumeButton({ colors }: { colors: ThemeColors }) {
     const effective = useSyncExternalStore(
         subscribeVolume,
@@ -106,24 +139,17 @@ function VolumeButton({ colors }: { colors: ThemeColors }) {
         () => 0.5,
     );
     const on = effective > 0;
-    const Icon = on ? Volume2 : VolumeX;
-
+    const toggle = () => {
+        if (on) setMuted(true);
+        else { setMuted(false); if (getVolume() === 0) setVolume(0.5); }
+    };
     return (
-        <div className="relative group">
-            <button
-                type="button"
-                onClick={() => {
-                    if (on) setMuted(true);
-                    else { setMuted(false); if (getVolume() === 0) setVolume(0.5); }
-                }}
-                aria-label={on ? 'Mute' : 'Unmute'}
-                aria-pressed={on}
-                className="w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                style={{ backgroundColor: colors.midDark, color: colors.highlight }}
-            >
-                <Icon className="w-6 h-6" />
-            </button>
-            <Tooltip text={on ? 'Mute' : 'Unmute'} colors={colors} />
-        </div>
+        <BarBtn
+            icon={on ? Volume2 : VolumeX}
+            label={on ? 'Mute' : 'Unmute'}
+            onClick={toggle}
+            colors={colors}
+            pressed={on}
+        />
     );
 }

@@ -3,26 +3,14 @@ import type { LibretroModule } from '@/lib/ra/types';
 import { loadStringRecord, saveJSON } from '@/lib/ra/storage';
 
 const STORAGE_KEY = 'ra_shader_pref_v1';
-const SCRIPT_MARK = 'data-ra-shaders';
-const SHADERS_URL = '/emulatorjs/src/shaders.js';
 const SHADER_PATH = '/shader/shader.glslp';
 
 export const SHADER_DISABLED = 'disabled';
 
-interface ShaderResource { name: string; type: 'text' | 'base64'; value: string }
-interface ShaderEntry {
-    shader: { type: 'text' | 'base64'; value: string };
-    resources?: ShaderResource[];
-}
-type ShaderConfig = string | ShaderEntry;
-type ShaderMap = Record<string, ShaderConfig>;
-
-declare global {
-    interface Window { EJS_SHADERS?: ShaderMap }
-}
+interface ShaderResource { name: string; value: string }
+interface ShaderEntry { glslp: string; resources: ShaderResource[] }
 
 // ─── Inline extras ──────────────────────────────────────────────────────────
-// Lightweight shaders bundled in addition to EmulatorJS's stock set.
 
 const HEADER = `
 #if defined(VERTEX)
@@ -67,13 +55,10 @@ COMPAT_VARYING vec4 TEX0;
 function buildExtra(name: string, body: string, linear = true): ShaderEntry {
     const glsl = `${HEADER}\nvoid main() {\n${body}\n}\n#endif\n`;
     const glslp = `shaders = 1\nshader0 = ${name}.glsl\nfilter_linear0 = ${linear}\n`;
-    return {
-        shader: { type: 'text', value: glslp },
-        resources: [{ name: `${name}.glsl`, type: 'text', value: glsl }],
-    };
+    return { glslp, resources: [{ name: `${name}.glsl`, value: glsl }] };
 }
 
-const EXTRA_SHADERS: Record<string, ShaderEntry> = {
+const SHADERS: Record<string, ShaderEntry> = {
     'scanlines': buildExtra('scanlines', `
         vec3 c = COMPAT_TEXTURE(Texture, TEX0.xy).rgb;
         float s = mod(floor(TEX0.y * TextureSize.y), 2.0);
@@ -145,50 +130,6 @@ const EXTRA_SHADERS: Record<string, ShaderEntry> = {
 
 export type ShaderCategory = 'crt' | 'scaling' | 'effects';
 
-interface ShaderMeta { label: string; category: ShaderCategory; description: string }
-
-const META: Record<string, ShaderMeta> = {
-    // Stock EmulatorJS bundle
-    '4xScaleHQ.glslp':    { label: '4x Scale HQ', category: 'scaling', description: 'Pixel-art-aware 4× upscale' },
-    'sabr':               { label: 'SABR',        category: 'scaling', description: 'Smooth anti-aliased upscale' },
-    'bicubic':            { label: 'Bicubic',     category: 'scaling', description: 'Soft cubic interpolation' },
-    'crt-geom.glslp':     { label: 'CRT Geom',    category: 'crt',     description: 'Curved CRT geometry' },
-    'crt-lottes':         { label: 'CRT Lottes',  category: 'crt',     description: 'Timothy Lottes CRT' },
-    'crt-mattias.glslp':  { label: 'CRT Mattias', category: 'crt',     description: 'Subtle scanlines, mild glow' },
-    // Inline extras
-    'scanlines':          { label: 'Scanlines',   category: 'crt',     description: 'Plain horizontal scanlines' },
-};
-
-// ─── Stock-shader script loader ─────────────────────────────────────────────
-
-let loadPromise: Promise<ShaderMap> | null = null;
-
-export function loadShaderMap(): Promise<ShaderMap> {
-    if (typeof window === 'undefined') return Promise.resolve({});
-    if (window.EJS_SHADERS) return Promise.resolve(window.EJS_SHADERS);
-    if (loadPromise) return loadPromise;
-
-    loadPromise = new Promise<ShaderMap>((resolve, reject) => {
-        const onLoad  = () => resolve(window.EJS_SHADERS ?? {});
-        const onError = () => { loadPromise = null; reject(new Error('Failed to load shaders.js')); };
-
-        const existing = document.querySelector(`script[${SCRIPT_MARK}]`);
-        if (existing) {
-            existing.addEventListener('load', onLoad);
-            existing.addEventListener('error', onError);
-            return;
-        }
-        const script = document.createElement('script');
-        script.src = SHADERS_URL;
-        script.setAttribute(SCRIPT_MARK, '1');
-        script.onload = onLoad;
-        script.onerror = onError;
-        document.head.appendChild(script);
-    });
-
-    return loadPromise;
-}
-
 export interface ShaderOption {
     key: string;
     label: string;
@@ -197,38 +138,27 @@ export interface ShaderOption {
     category: ShaderCategory | null;
 }
 
-export async function getShaderOptions(): Promise<ShaderOption[]> {
-    const map = await loadShaderMap();
-    const known = new Set<string>([...Object.keys(map), ...Object.keys(EXTRA_SHADERS)]);
+const CATALOGUE: ShaderOption[] = [
+    { key: SHADER_DISABLED, label: 'Disabled',  description: 'Display the raw output',                      category: null      },
+    { key: 'scanlines',     label: 'Scanlines', description: 'Plain horizontal scanlines',                  category: 'crt'     },
+    { key: 'dot-mask',      label: 'Dot Mask',  description: 'CRT aperture-grille dot mask with scanlines', category: 'crt'     },
+    { key: 'sharpen',       label: 'Sharpen',   description: '5-tap unsharp mask',                          category: 'scaling' },
+    { key: 'grayscale',     label: 'Grayscale', description: 'Luminance-weighted grayscale',                category: 'effects' },
+    { key: 'gameboy',       label: 'Game Boy',  description: 'Four-tone DMG green palette',                 category: 'effects' },
+    { key: 'sepia',         label: 'Sepia',     description: 'Warm sepia tone',                             category: 'effects' },
+    { key: 'vignette',      label: 'Vignette',  description: 'Soft edge darkening',                         category: 'effects' },
+    { key: 'invert',        label: 'Invert',    description: 'Inverted colors',                             category: 'effects' },
+];
 
-    const out: ShaderOption[] = [
-        { key: SHADER_DISABLED, label: 'Disabled', description: 'Display the raw output', category: null },
-    ];
-    for (const [k, meta] of Object.entries(META)) {
-        if (known.has(k)) out.push({ key: k, ...meta });
-    }
-    return out;
-}
+export const getShaderOptions = (): ShaderOption[] => CATALOGUE;
 
 /** Write the shader files into the core's FS. Returns true if a shader was written. */
 export function writeShaderFiles(mod: LibretroModule, name: string): boolean {
     try { mod.FS.unlink(SHADER_PATH); } catch { /* not present */ }
-    if (name === SHADER_DISABLED) return false;
-
-    const cfg: ShaderConfig | undefined = EXTRA_SHADERS[name] ?? window.EJS_SHADERS?.[name];
-    if (!cfg) return false;
-
-    if (typeof cfg === 'string') {
-        writeFile(mod, SHADER_PATH, cfg);
-        return true;
-    }
-
-    const decode = (r: { type: 'text' | 'base64'; value: string }) =>
-        r.type === 'base64' ? atob(r.value) : r.value;
-    writeFile(mod, SHADER_PATH, decode(cfg.shader));
-    for (const res of cfg.resources ?? []) {
-        writeFile(mod, `/shader/${res.name}`, decode(res));
-    }
+    const entry = SHADERS[name];
+    if (!entry) return false;
+    writeFile(mod, SHADER_PATH, entry.glslp);
+    for (const r of entry.resources) writeFile(mod, `/shader/${r.name}`, r.value);
     return true;
 }
 

@@ -10,16 +10,15 @@ interface EmulatorViewProps {
     session: EmulatorSession;
     colors: ThemeColors;
     gradient: GradientStyle;
-    onDuplicateError?: (msg: string) => void;
+    onDuplicateError: (msg: string) => void;
     /** When true, keep the game paused regardless of menu state (e.g. an external modal is open). */
     keepPaused?: boolean;
 }
 
 const BAR_VISIBLE_MS = 2000;
-const noop = () => {};
 
 export const EmulatorView = memo(({
-    session, colors, gradient, onDuplicateError = noop, keepPaused,
+    session, colors, gradient, onDuplicateError, keepPaused,
 }: EmulatorViewProps) => {
     const isVisible = session.phase !== 'idle';
     const isLoading = session.phase === 'loading-core' || session.phase === 'booting';
@@ -57,9 +56,10 @@ export const EmulatorView = memo(({
     }, []);
 
     // Show the bottom bar on mouse movement, hide after idle. Suppressed while a
-    // panel modal covers the screen or the cursor is pointer-locked.
+    // panel modal covers the screen, the cursor is pointer-locked, or the core
+    // is still loading (otherwise the bar flashes in during the boot sequence).
     useEffect(() => {
-        if (!isVisible || panel || pointerLocked) {
+        if (!isVisible || panel || pointerLocked || isLoading) {
             setShowBar(false);
             if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
             return;
@@ -75,7 +75,7 @@ export const EmulatorView = memo(({
             window.removeEventListener('mousemove', onMove);
             if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
         };
-    }, [isVisible, panel, pointerLocked]);
+    }, [isVisible, panel, pointerLocked, isLoading]);
 
     // Pause when a panel is open, the user pressed pause on the bar, or an
     // external modal demands it. Excludes session.paused from deps so the user's

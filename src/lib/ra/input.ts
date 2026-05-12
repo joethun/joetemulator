@@ -1,6 +1,6 @@
 import type { GameController } from '@/lib/ra/game';
 
-export const RetroPad = {
+const RetroPad = {
     B: 0, Y: 1, SELECT: 2, START: 3,
     UP: 4, DOWN: 5, LEFT: 6, RIGHT: 7,
     A: 8, X: 9, L: 10, R: 11, L2: 12, R2: 13, L3: 14, R3: 15,
@@ -8,10 +8,13 @@ export const RetroPad = {
 
 export const NUM_PLAYERS = 4;
 const NUM_BUTTONS = 16;
+const AXIS_DEADZONE = 0.5;
 
 export type KeyMap = Record<string, { player: number; button: number }>;
+/** retropad button id → list of physical gamepad button indices that trigger it. */
+export type GamepadRetroMap = Record<number, number[]>;
 
-export const DEFAULT_KEYMAP: KeyMap = {
+const DEFAULT_KEYMAP: KeyMap = {
     ArrowUp:    { player: 0, button: RetroPad.UP },
     ArrowDown:  { player: 0, button: RetroPad.DOWN },
     ArrowLeft:  { player: 0, button: RetroPad.LEFT },
@@ -28,11 +31,8 @@ export const DEFAULT_KEYMAP: KeyMap = {
     KeyV:       { player: 0, button: RetroPad.SELECT },
 };
 
-/** retropad button id → list of physical gamepad button indices that trigger it. */
-export type GamepadRetroMap = Record<number, number[]>;
-
 /** Default mapping: each physical button drives one retropad button. */
-export const DEFAULT_GAMEPAD_MAP: GamepadRetroMap = {
+const DEFAULT_GAMEPAD_MAP: GamepadRetroMap = {
     [RetroPad.B]:      [0],
     [RetroPad.A]:      [1],
     [RetroPad.Y]:      [2],
@@ -89,11 +89,15 @@ export interface InputHandlers {
     onPause?: () => void;
 }
 
-const AXIS_DEADZONE = 0.5;
-
 const isPressed = (pad: Gamepad, idx: number): boolean => {
     const b = pad.buttons[idx];
     return !!b && (b.pressed || b.value > 0.5);
+};
+
+const anyPressed = (pads: (Gamepad | null)[], idx: number): boolean => {
+    if (idx < 0) return false;
+    for (const pad of pads) if (pad && isPressed(pad, idx)) return true;
+    return false;
 };
 
 export class InputController {
@@ -112,9 +116,7 @@ export class InputController {
         private handlers: InputHandlers = {},
     ) {}
 
-    setBindings(bindings: InputBindings): void {
-        this.bindings = bindings;
-    }
+    setBindings(bindings: InputBindings): void { this.bindings = bindings; }
 
     attach(): void {
         if (this.attached) return;
@@ -136,19 +138,21 @@ export class InputController {
         this.releaseAll();
     }
 
+    private setFastForward(active: boolean): void {
+        if (this.ffActive === active) return;
+        this.ffActive = active;
+        this.gc.toggleFastForward(active);
+    }
+
     private onKeyDown = (e: KeyboardEvent): void => {
         if (e.repeat) return;
         const code = e.code;
         const b = this.bindings;
 
-        if (code === b.fastForwardKey) {
-            e.preventDefault();
-            if (!this.ffActive) { this.ffActive = true; this.gc.toggleFastForward(true); }
-            return;
-        }
-        if (code === b.saveStateKey) { e.preventDefault(); this.handlers.onSaveState?.(); return; }
-        if (code === b.loadStateKey) { e.preventDefault(); this.handlers.onLoadState?.(); return; }
-        if (code === b.pauseKey)     { e.preventDefault(); this.handlers.onPause?.();     return; }
+        if (code === b.fastForwardKey) { e.preventDefault(); this.setFastForward(true);  return; }
+        if (code === b.saveStateKey)   { e.preventDefault(); this.handlers.onSaveState?.(); return; }
+        if (code === b.loadStateKey)   { e.preventDefault(); this.handlers.onLoadState?.(); return; }
+        if (code === b.pauseKey)       { e.preventDefault(); this.handlers.onPause?.();     return; }
 
         const bind = b.keyMap[code];
         if (!bind || this.pressed.has(code)) return;
@@ -159,10 +163,7 @@ export class InputController {
 
     private onKeyUp = (e: KeyboardEvent): void => {
         const code = e.code;
-        if (code === this.bindings.fastForwardKey) {
-            if (this.ffActive) { this.ffActive = false; this.gc.toggleFastForward(false); }
-            return;
-        }
+        if (code === this.bindings.fastForwardKey) { this.setFastForward(false); return; }
         const bind = this.bindings.keyMap[code];
         if (!bind || !this.pressed.has(code)) return;
         this.pressed.delete(code);
@@ -185,7 +186,7 @@ export class InputController {
         }
         this.gpDesired.fill(0);
 
-        if (this.ffActive) { this.ffActive = false; this.gc.toggleFastForward(false); }
+        this.setFastForward(false);
         this.hkPrev = { fast: false, save: false, load: false, pause: false };
     };
 
@@ -193,21 +194,20 @@ export class InputController {
         const pads = navigator.getGamepads();
         const b = this.bindings;
         const assignment = b.gamepadAssignment;
+        const gamepadMap = b.gamepadMap;
         const desired = this.gpDesired;
         const current = this.gpCurrent;
         desired.fill(0);
 
         for (let player = 0; player < NUM_PLAYERS; player++) {
-            const gpIndex = assignment?.[player] ?? player;
-            const pad = pads[gpIndex];
+            const pad = pads[assignment?.[player] ?? player];
             if (!pad) continue;
-            const map = b.gamepadMap?.[player] ?? DEFAULT_GAMEPAD_MAP;
+            const map = gamepadMap?.[player] ?? DEFAULT_GAMEPAD_MAP;
             const base = player * NUM_BUTTONS;
 
             for (const retroStr in map) {
                 const retro = +retroStr;
                 const physList = map[retro];
-                if (!physList) continue;
                 for (let i = 0; i < physList.length; i++) {
                     if (isPressed(pad, physList[i])) { desired[base + retro] = 1; break; }
                 }
@@ -232,31 +232,16 @@ export class InputController {
         }
 
         // System hotkey buttons — fire on any pad.
-        const ff = b.fastForwardGamepad ?? -1;
-        const ss = b.saveStateGamepad ?? -1;
-        const ls = b.loadStateGamepad ?? -1;
-        const ps = b.pauseGamepad ?? -1;
-        let fastDown = false, saveDown = false, loadDown = false, pauseDown = false;
-        for (let i = 0; i < pads.length; i++) {
-            const pad = pads[i];
-            if (!pad) continue;
-            if (ff >= 0 && isPressed(pad, ff)) fastDown = true;
-            if (ss >= 0 && isPressed(pad, ss)) saveDown = true;
-            if (ls >= 0 && isPressed(pad, ls)) loadDown = true;
-            if (ps >= 0 && isPressed(pad, ps)) pauseDown = true;
-        }
+        const fast  = anyPressed(pads, b.fastForwardGamepad ?? -1);
+        const save  = anyPressed(pads, b.saveStateGamepad   ?? -1);
+        const load  = anyPressed(pads, b.loadStateGamepad   ?? -1);
+        const pause = anyPressed(pads, b.pauseGamepad       ?? -1);
         const hk = this.hkPrev;
-        if (fastDown !== hk.fast) {
-            hk.fast = fastDown;
-            this.ffActive = fastDown;
-            this.gc.toggleFastForward(fastDown);
-        }
-        if (saveDown && !hk.save)   this.handlers.onSaveState?.();
-        if (loadDown && !hk.load)   this.handlers.onLoadState?.();
-        if (pauseDown && !hk.pause) this.handlers.onPause?.();
-        hk.save = saveDown;
-        hk.load = loadDown;
-        hk.pause = pauseDown;
+        if (fast !== hk.fast)            this.setFastForward(fast);
+        if (save  && !hk.save)           this.handlers.onSaveState?.();
+        if (load  && !hk.load)           this.handlers.onLoadState?.();
+        if (pause && !hk.pause)          this.handlers.onPause?.();
+        hk.fast = fast; hk.save = save; hk.load = load; hk.pause = pause;
 
         this.rafId = requestAnimationFrame(this.gamepadTick);
     };

@@ -22,15 +22,15 @@ export function useGameLibrary() {
                 if (!raw) return;
                 const parsed: Array<Game & { fileData?: string; filePath?: string }> = JSON.parse(raw);
                 await migrateLegacyRoms(parsed);
-                const cleaned: Game[] = parsed.map(({ fileData: _fd, filePath, ...rest }) => {
-                    void _fd;
-                    return {
-                        ...rest,
-                        fileName: rest.fileName || filePath,
-                        genre: rest.genre === 'ROM' && rest.core ? getSystemNameByCore(rest.core) : rest.genre,
-                        coverArtFit: rest.coverArt && !rest.coverArtFit ? 'cover' as const : rest.coverArtFit,
-                    };
-                });
+                const cleaned: Game[] = parsed.map(g => ({
+                    ...g,
+                    fileData: undefined,
+                    filePath: undefined,
+                    fileName: g.fileName || g.filePath,
+                    genre: g.genre === 'ROM' && g.core ? getSystemNameByCore(g.core) : g.genre,
+                    coverArtFit: g.coverArt && !g.coverArtFit ? 'cover' as const : g.coverArtFit,
+                    coverLoading: undefined,
+                }));
                 setGames(cleaned);
                 persist(cleaned);
             } catch (e) { console.error('Failed to load games:', e); }

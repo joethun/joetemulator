@@ -2,11 +2,11 @@ import { useState, useCallback, useRef } from 'react';
 import { Game } from '@/types';
 import { saveGameFile, getGameFile } from '@/lib/storage';
 import { getSystemNameByCore } from '@/lib/constants';
+import { calculateAutoCoverArt } from '@/lib/files';
 import { stripExt } from '@/lib/utils';
 
 const PROGRESS_THROTTLE_MS = 100;
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
-import { calculateAutoCoverArt } from '@/lib/files';
 
 interface FileHandlerOps {
     showDuplicateError: (msg: string) => void;

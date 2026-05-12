@@ -1,6 +1,6 @@
 export type CwrapPrimitive = 'string' | 'number' | 'null';
 
-export interface EmscriptenFS {
+interface EmscriptenFS {
     writeFile(path: string, data: string | Uint8Array): void;
     readFile(path: string, opts?: { encoding?: 'utf8' | 'binary' }): Uint8Array | string;
     mkdir(path: string): void;

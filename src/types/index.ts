@@ -9,6 +9,7 @@ export interface Game {
   coverArtFit?: 'cover' | 'contain';
   progress?: number;
   isComplete?: boolean;
+  coverLoading?: boolean;
 }
 
 export type ViewType = 'library' | 'themes' | 'settings';

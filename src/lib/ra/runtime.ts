@@ -12,8 +12,7 @@ import { GameController } from '@/lib/ra/game';
 import { InputController, DEFAULT_BINDINGS, type InputBindings, type InputHandlers } from '@/lib/ra/input';
 import { disposeCoreScripts, loadCore } from '@/lib/ra/loader';
 import {
-    loadShaderMap, writeShaderFiles, getStoredShader, setStoredShader,
-    SHADER_DISABLED,
+    writeShaderFiles, getStoredShader, setStoredShader, SHADER_DISABLED,
 } from '@/lib/ra/shaders';
 import type { EmulatorPhase, LibretroModule, ResolvedCore } from '@/lib/ra/types';
 
@@ -46,12 +45,15 @@ export class Runtime {
         ensureAudioPatch();
 
         onPhase?.('loading-core');
-        const libretroName = resolveLibretroCore(system, coreOverride);
-        this.resolved = await loadCore(libretroName, msg => onPhase?.('loading-core', msg));
+        const resolved = await loadCore(
+            resolveLibretroCore(system, coreOverride),
+            msg => onPhase?.('loading-core', msg),
+        );
+        this.resolved = resolved;
+        const { libretroName, coreInfo, wasmUrl, moduleFactory } = resolved;
 
         onPhase?.('booting');
-        const { coreInfo, wasmUrl, moduleFactory } = this.resolved;
-        this.mod = await moduleFactory({
+        const mod = await moduleFactory({
             canvas,
             // Emscripten registers `specialHTMLTargets["!parent"] = Module.parent` and looks
             // it up via findEventTarget. Without this, the core eventually calls
@@ -67,39 +69,35 @@ export class Runtime {
             getSavExt: () => coreInfo.save ? `.${coreInfo.save}` : '.srm',
             noInitialRun: true,
         });
+        this.mod = mod;
 
-        await mountSaveFS(this.mod);
-        writeFile(this.mod, RA_CFG_PATH, RETROARCH_CFG);
-        writeCoreOptionsFile(this.mod, coreInfo);
-        writeFile(this.mod, '/' + rom.name, rom.bytes);
+        await mountSaveFS(mod);
+        writeFile(mod, RA_CFG_PATH, RETROARCH_CFG);
+        writeCoreOptionsFile(mod, coreInfo);
+        const romPath = '/' + rom.name;
+        writeFile(mod, romPath, rom.bytes);
 
-        this.gc = new GameController(this.mod);
-        this.input = new InputController(
-            this.gc,
-            { ...DEFAULT_BINDINGS, ...bindings },
-            handlers ?? {},
-        );
+        const gc = new GameController(mod);
+        this.gc = gc;
+        this.input = new InputController(gc, { ...DEFAULT_BINDINGS, ...bindings }, handlers ?? {});
 
         onPhase?.('running');
-        this.mod.callMain(['/' + rom.name]);
-        this.mod.resumeMainLoop();
+        mod.callMain([romPath]);
+        mod.resumeMainLoop();
         canvas.focus();
         this.input.attach();
 
         // Replay any persisted core option overrides now that the core is live.
         for (const [key, value] of Object.entries(loadStoredCoreOptions(libretroName))) {
-            this.gc.setVariable(key, value);
+            gc.setVariable(key, value);
         }
 
-        this.srmTimer = setInterval(() => {
-            this.gc?.saveSRAM();
-            this.gc?.syncSRAM();
-        }, SRM_SYNC_INTERVAL_MS);
+        this.srmTimer = setInterval(() => { gc.saveSRAM(); gc.syncSRAM(); }, SRM_SYNC_INTERVAL_MS);
 
         // Re-apply the user's last shader for this core, if any.
         const storedShader = getStoredShader(libretroName);
         if (storedShader !== SHADER_DISABLED) {
-            loadShaderMap().then(() => this.setShader(storedShader)).catch(() => {});
+            try { this.setShader(storedShader); } catch { /* ignore */ }
         }
     }
 
@@ -109,12 +107,12 @@ export class Runtime {
 
     getCoreOptions(): CoreOption[] {
         if (!this.gc || !this.resolved) return [];
-        const raw = this.gc.getCoreOptionsRaw();
-        const parsed = parseCoreOptions(raw, this.resolved.libretroName);
-        const stored = loadStoredCoreOptions(this.resolved.libretroName);
+        const { libretroName } = this.resolved;
+        const stored = loadStoredCoreOptions(libretroName);
         // Surface the user's saved value (set live via setVariable, but the core
         // still reports its own internal current value in get_core_options).
-        return parsed.map(opt => stored[opt.key] ? { ...opt, current: stored[opt.key] } : opt);
+        return parseCoreOptions(this.gc.getCoreOptionsRaw(), libretroName)
+            .map(opt => stored[opt.key] ? { ...opt, current: stored[opt.key] } : opt);
     }
 
     setShader(name: string): void {
@@ -131,10 +129,11 @@ export class Runtime {
 
     resetCoreOptions(): void {
         if (!this.gc || !this.resolved) return;
-        for (const opt of parseCoreOptions(this.gc.getCoreOptionsRaw(), this.resolved.libretroName)) {
+        const { libretroName } = this.resolved;
+        for (const opt of parseCoreOptions(this.gc.getCoreOptionsRaw(), libretroName)) {
             this.gc.setVariable(opt.key, opt.defaultValue);
         }
-        clearStoredCoreOptions(this.resolved.libretroName);
+        clearStoredCoreOptions(libretroName);
     }
 
     destroy(): void {

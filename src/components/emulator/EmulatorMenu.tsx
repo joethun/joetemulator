@@ -6,7 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { ThemeColors, GradientStyle } from '@/types';
 import type { EmulatorSession } from '@/hooks/useEmulator';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
-import { Modal, ModalHeader, ModalFooter } from '@/components/modal';
+import { Modal, ModalHeader, ModalFooter } from '@/components/Modal';
 import { ControlsPanel } from '@/components/emulator/ControlsPanel';
 import { CoreOptionsPanel } from '@/components/emulator/CoreOptionsPanel';
 import { ShaderPanel } from '@/components/emulator/ShaderPanel';

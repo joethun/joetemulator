@@ -6,16 +6,16 @@ import { useFileHandler } from '@/hooks/useFileHandler';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { useGameList } from '@/hooks/useGameList';
 import { useEmulator } from '@/hooks/useEmulator';
-import { Sidebar } from '@/components/sidebar';
-import { SearchBar } from '@/components/searchbar';
-import { SortControls } from '@/components/sortcontrols';
-import { Alert } from '@/components/alert';
-import { EmulatorNotification } from '@/components/emulatornotification';
-import { SystemPickerModal } from '@/components/systempicker';
-import { SaveStateManager } from '@/components/savestatemanager';
-import { MainContent } from '@/components/maincontent';
+import { Sidebar } from '@/components/Sidebar';
+import { SearchBar } from '@/components/SearchBar';
+import { SortControls } from '@/components/SortControls';
+import { Alert } from '@/components/Alert';
+import { EmulatorNotification } from '@/components/EmulatorNotification';
+import { SystemPickerModal } from '@/components/SystemPickerModal';
+import { SaveStateManager } from '@/components/SaveStateManager';
+import { MainContent } from '@/components/MainContent';
 import { EmulatorView } from '@/components/emulator/EmulatorView';
-import { selectFiles, prewarmDat } from '@/lib/files';
+import { selectFiles, prewarmDat, calculateAutoCoverArt } from '@/lib/files';
 import { getSystemNameByCore } from '@/lib/constants';
 import { getCorePref } from '@/lib/ra/cores';
 import { getGameFile } from '@/lib/storage';
@@ -106,8 +106,35 @@ export default function Home() {
 
     const handlePickerDone = async () => {
         if (app.editingGame) {
-            lib.updateGame(app.editingGame.id, app.editingGame);
+            const edited = app.editingGame;
+            const original = lib.games.find(g => g.id === edited.id);
+            const coreChanged = !!edited.core && original?.core !== edited.core;
+            lib.updateGame(edited.id, edited);
             app.closeSystemPicker();
+
+            if (coreChanged && edited.core) {
+                const current = { ...original, ...edited };
+                const userHasCustomCover = !!current.coverArt && current.coverArt !== current.autoCoverArt;
+                if (!userHasCustomCover) {
+                    lib.updateGame(edited.id, { coverArt: undefined, autoCoverArt: undefined, coverArtFit: undefined, coverLoading: true });
+                }
+                const opfs = await getGameFile(edited.id).catch(() => null);
+                const cover = opfs
+                    ? await calculateAutoCoverArt(edited.fileName ? new File([opfs], edited.fileName) : opfs, edited.core, opfs).catch(() => null)
+                    : null;
+                if (userHasCustomCover) {
+                    if (opfs) lib.updateGame(edited.id, { autoCoverArt: cover ?? undefined });
+                } else if (cover) {
+                    lib.updateGame(edited.id, {
+                        coverArt: cover,
+                        autoCoverArt: cover,
+                        coverArtFit: current.coverArtFit || 'cover',
+                        coverLoading: false,
+                    });
+                } else {
+                    lib.updateGame(edited.id, { coverLoading: false });
+                }
+            }
             return;
         }
         const core = app.pendingFiles.length > 1 ? app.pendingBatchCore : app.pendingGame?.core;

@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Clock, Eye, EyeOff, Save, Upload, LogOut, LucideIcon } from 'lucide-react';
-import { SettingsCard } from '@/components/settingscard';
-import { Switch } from '@/components/switch';
+import { SettingsCard } from '@/components/SettingsCard';
+import { Switch } from '@/components/Switch';
 import { ThemeColors, GradientStyle } from '@/types';
 
 interface SettingItemProps {
@@ -23,6 +23,8 @@ const SettingItem = memo(({ colors, gradient, icon: Icon, label, checked, onTogg
     </div>
 ));
 SettingItem.displayName = 'SettingItem';
+
+const SAVE_INTERVALS = [30, 60, 120, 300, 600] as const;
 
 interface SettingsViewProps {
     colors: ThemeColors;
@@ -63,7 +65,7 @@ export const SettingsView = memo(({
                             <span className="text-sm font-medium" style={{ color: colors.softLight }}>Save Interval</span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            {[30, 60, 120, 300, 600].map(v => (
+                            {SAVE_INTERVALS.map(v => (
                                 <button
                                     key={v}
                                     onClick={() => setAutoSaveInterval(v)}
@@ -79,10 +81,6 @@ export const SettingsView = memo(({
                             ))}
                         </div>
                     </div>
-                    <SettingItem
-                        colors={colors} gradient={gradient} label="Save on Exit" icon={LogOut}
-                        checked={saveOnExit} onToggle={() => setSaveOnExit(!saveOnExit)}
-                    />
                     <SettingItem
                         colors={colors} gradient={gradient} label="Show Save Icon" icon={autoSaveIcon ? Eye : EyeOff}
                         checked={autoSaveIcon} onToggle={() => setAutoSaveIcon(!autoSaveIcon)}
@@ -102,6 +100,13 @@ export const SettingsView = memo(({
                     checked={autoLoadIcon} onToggle={() => setAutoLoadIcon(!autoLoadIcon)}
                 />
             </SettingsCard>
+
+            <SettingsCard
+                colors={colors} gradient={gradient} icon={LogOut}
+                title="Save on Exit" description="Save your game state when you close or switch games."
+                animationDelay="0.09s"
+                checked={saveOnExit} onToggle={() => setSaveOnExit(!saveOnExit)}
+            />
         </div>
     );
 });

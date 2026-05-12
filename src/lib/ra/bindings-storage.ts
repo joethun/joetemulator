@@ -5,10 +5,12 @@ import {
 import { loadJSON, saveJSON, removeKey } from '@/lib/ra/storage';
 
 const STORAGE_KEY = 'ra_bindings_v1';
+
 const isObj = (v: unknown): v is Record<string, unknown> =>
     !!v && typeof v === 'object';
 const isPosInt = (v: unknown): v is number =>
     typeof v === 'number' && Number.isInteger(v) && v >= 0;
+const asBtn = (v: unknown): number => isPosInt(v) ? v : -1;
 
 function parseKeyMap(value: unknown): KeyMap {
     if (!isObj(value)) return {};
@@ -23,26 +25,20 @@ function parseKeyMap(value: unknown): KeyMap {
     return out;
 }
 
-function parseInnerGamepadMap(value: unknown): GamepadRetroMap {
-    if (!isObj(value)) return {};
-    const out: GamepadRetroMap = {};
-    for (const [k, v] of Object.entries(value)) {
-        const retro = Number(k);
-        if (!Number.isInteger(retro) || !Array.isArray(v)) continue;
-        const phys = (v as unknown[]).filter(isPosInt);
-        if (phys.length) out[retro] = Array.from(new Set(phys)).sort((a, b) => a - b);
-    }
-    return out;
-}
-
 function parseGamepadMap(value: unknown): Record<number, GamepadRetroMap> {
     if (!isObj(value)) return {};
     const out: Record<number, GamepadRetroMap> = {};
     for (const [pStr, sub] of Object.entries(value)) {
-        const p = Number(pStr);
-        if (!Number.isInteger(p)) continue;
-        const inner = parseInnerGamepadMap(sub);
-        if (Object.keys(inner).length) out[p] = inner;
+        const player = Number(pStr);
+        if (!Number.isInteger(player) || !isObj(sub)) continue;
+        const inner: GamepadRetroMap = {};
+        for (const [retroStr, phys] of Object.entries(sub)) {
+            const retro = Number(retroStr);
+            if (!Number.isInteger(retro) || !Array.isArray(phys)) continue;
+            const filtered = phys.filter(isPosInt);
+            if (filtered.length) inner[retro] = Array.from(new Set(filtered)).sort((a, b) => a - b);
+        }
+        if (Object.keys(inner).length) out[player] = inner;
     }
     return out;
 }
@@ -57,8 +53,6 @@ function parseAssignment(value: unknown): Record<number, number> {
     return out;
 }
 
-const parseBtn = (v: unknown): number => (isPosInt(v) ? v : -1);
-
 export function loadStoredBindings(): Required<InputBindings> {
     const parsed = loadJSON<Partial<InputBindings> | null>(STORAGE_KEY, null);
     if (!parsed) return DEFAULT_BINDINGS;
@@ -72,10 +66,10 @@ export function loadStoredBindings(): Required<InputBindings> {
         saveStateKey:       parsed.saveStateKey   ?? DEFAULT_BINDINGS.saveStateKey,
         loadStateKey:       parsed.loadStateKey   ?? DEFAULT_BINDINGS.loadStateKey,
         pauseKey:           parsed.pauseKey       ?? DEFAULT_BINDINGS.pauseKey,
-        fastForwardGamepad: parseBtn(parsed.fastForwardGamepad),
-        saveStateGamepad:   parseBtn(parsed.saveStateGamepad),
-        loadStateGamepad:   parseBtn(parsed.loadStateGamepad),
-        pauseGamepad:       parseBtn(parsed.pauseGamepad),
+        fastForwardGamepad: asBtn(parsed.fastForwardGamepad),
+        saveStateGamepad:   asBtn(parsed.saveStateGamepad),
+        loadStateGamepad:   asBtn(parsed.loadStateGamepad),
+        pauseGamepad:       asBtn(parsed.pauseGamepad),
     };
 }
 

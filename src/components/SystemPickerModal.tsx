@@ -3,8 +3,8 @@
 import { memo, useMemo, useState } from 'react';
 import { CircleCheck, Edit2 } from 'lucide-react';
 import { SYSTEM_PICKER } from '@/lib/constants';
-import { SearchBar } from '@/components/searchbar';
-import { Modal, ModalFooter } from '@/components/modal';
+import { SearchBar } from '@/components/SearchBar';
+import { Modal, ModalFooter } from '@/components/Modal';
 import { Game, ThemeColors, GradientStyle } from '@/types';
 
 interface SystemPickerProps {
