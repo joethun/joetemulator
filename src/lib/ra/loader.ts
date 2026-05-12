@@ -7,6 +7,11 @@ declare global {
 
 const SCRIPT_MARK = 'data-ra-core-script';
 
+// Blob URLs handed out for the core's JS + wasm. Revoked together on dispose so
+// pthread workers (which capture `_scriptName` = the JS blob URL) keep working
+// for the lifetime of the session.
+const liveBlobUrls = new Set<string>();
+
 const supportsWebGL2 = (): boolean => {
     if (typeof document === 'undefined') return false;
     try { return !!document.createElement('canvas').getContext('webgl2'); }
@@ -36,10 +41,25 @@ function pickVariant(libretroName: string): CoreVariant {
     return 'legacy';
 }
 
+async function fetchAsBlobUrl(url: string, type: string): Promise<string> {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+    const blob = new Blob([await res.arrayBuffer()], { type });
+    const blobUrl = URL.createObjectURL(blob);
+    liveBlobUrls.add(blobUrl);
+    return blobUrl;
+}
+
+// Load the core script via a blob URL (matching EmulatorJS). Threaded cores
+// capture `document.currentScript.src` as `_scriptName` and reuse it to spawn
+// pthread workers — pointing the tag at a same-origin /cores/… URL works on
+// most browsers, but on ChromeOS the subsequent Worker fetch can hang under
+// COEP/service-worker mediation. A blob URL sidesteps both.
 async function loadFactory(jsUrl: string): Promise<ModuleFactory> {
+    const blobUrl = await fetchAsBlobUrl(jsUrl, 'application/javascript');
     await new Promise<void>((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = jsUrl;
+        script.src = blobUrl;
         script.setAttribute(SCRIPT_MARK, '1');
         script.onload = () => resolve();
         script.onerror = () => reject(new Error(`Failed to load ${jsUrl}`));
@@ -53,6 +73,8 @@ async function loadFactory(jsUrl: string): Promise<ModuleFactory> {
 
 export function disposeCoreScripts(): void {
     document.querySelectorAll(`script[${SCRIPT_MARK}]`).forEach(s => s.remove());
+    for (const url of liveBlobUrls) URL.revokeObjectURL(url);
+    liveBlobUrls.clear();
 }
 
 export async function loadCore(
@@ -68,7 +90,8 @@ export async function loadCore(
     const coreInfo = await res.json() as CoreInfo;
 
     const fileBase = `${coreInfo.name}_libretro`;
+    const wasmUrl = await fetchAsBlobUrl(`${base}/${fileBase}.wasm`, 'application/wasm');
     const moduleFactory = await loadFactory(`${base}/${fileBase}.js`);
 
-    return { libretroName, coreInfo, moduleFactory, wasmUrl: `${base}/${fileBase}.wasm` };
+    return { libretroName, coreInfo, moduleFactory, wasmUrl };
 }
