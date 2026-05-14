@@ -60,10 +60,12 @@ export interface InputBindings {
     gamepadMap?: Record<number, GamepadRetroMap>;
     gamepadAssignment?: Record<number, number>;
     fastForwardKey?: string;
+    rewindKey?: string;
     saveStateKey?: string;
     loadStateKey?: string;
     pauseKey?: string;
     fastForwardGamepad?: number;
+    rewindGamepad?: number;
     saveStateGamepad?: number;
     loadStateGamepad?: number;
     pauseGamepad?: number;
@@ -74,10 +76,12 @@ export const DEFAULT_BINDINGS: Required<InputBindings> = {
     gamepadMap: DEFAULT_GAMEPAD_BY_PLAYER,
     gamepadAssignment: {},
     fastForwardKey: '',
+    rewindKey: '',
     saveStateKey: 'F1',
     loadStateKey: 'F2',
     pauseKey: 'Escape',
     fastForwardGamepad: -1,
+    rewindGamepad: -1,
     saveStateGamepad: -1,
     loadStateGamepad: -1,
     pauseGamepad: -1,
@@ -108,7 +112,8 @@ export class InputController {
     private rafId: number | null = null;
     private attached = false;
     private ffActive = false;
-    private hkPrev = { fast: false, save: false, load: false, pause: false };
+    private rwActive = false;
+    private hkPrev = { fast: false, rewind: false, save: false, load: false, pause: false };
 
     constructor(
         private readonly gc: GameController,
@@ -144,12 +149,19 @@ export class InputController {
         this.gc.toggleFastForward(active);
     }
 
+    private setRewind(active: boolean): void {
+        if (this.rwActive === active) return;
+        this.rwActive = active;
+        this.gc.toggleRewind(active);
+    }
+
     private onKeyDown = (e: KeyboardEvent): void => {
         if (e.repeat) return;
         const code = e.code;
         const b = this.bindings;
 
         if (code === b.fastForwardKey) { e.preventDefault(); this.setFastForward(true);  return; }
+        if (code === b.rewindKey)      { e.preventDefault(); this.setRewind(true);       return; }
         if (code === b.saveStateKey)   { e.preventDefault(); this.handlers.onSaveState?.(); return; }
         if (code === b.loadStateKey)   { e.preventDefault(); this.handlers.onLoadState?.(); return; }
         if (code === b.pauseKey)       { e.preventDefault(); this.handlers.onPause?.();     return; }
@@ -164,6 +176,7 @@ export class InputController {
     private onKeyUp = (e: KeyboardEvent): void => {
         const code = e.code;
         if (code === this.bindings.fastForwardKey) { this.setFastForward(false); return; }
+        if (code === this.bindings.rewindKey)      { this.setRewind(false);      return; }
         const bind = this.bindings.keyMap[code];
         if (!bind || !this.pressed.has(code)) return;
         this.pressed.delete(code);
@@ -187,7 +200,8 @@ export class InputController {
         this.gpDesired.fill(0);
 
         this.setFastForward(false);
-        this.hkPrev = { fast: false, save: false, load: false, pause: false };
+        this.setRewind(false);
+        this.hkPrev = { fast: false, rewind: false, save: false, load: false, pause: false };
     };
 
     private gamepadTick = (): void => {
@@ -232,16 +246,18 @@ export class InputController {
         }
 
         // System hotkey buttons — fire on any pad.
-        const fast  = anyPressed(pads, b.fastForwardGamepad ?? -1);
-        const save  = anyPressed(pads, b.saveStateGamepad   ?? -1);
-        const load  = anyPressed(pads, b.loadStateGamepad   ?? -1);
-        const pause = anyPressed(pads, b.pauseGamepad       ?? -1);
+        const fast   = anyPressed(pads, b.fastForwardGamepad ?? -1);
+        const rewind = anyPressed(pads, b.rewindGamepad      ?? -1);
+        const save   = anyPressed(pads, b.saveStateGamepad   ?? -1);
+        const load   = anyPressed(pads, b.loadStateGamepad   ?? -1);
+        const pause  = anyPressed(pads, b.pauseGamepad       ?? -1);
         const hk = this.hkPrev;
-        if (fast !== hk.fast)            this.setFastForward(fast);
-        if (save  && !hk.save)           this.handlers.onSaveState?.();
-        if (load  && !hk.load)           this.handlers.onLoadState?.();
-        if (pause && !hk.pause)          this.handlers.onPause?.();
-        hk.fast = fast; hk.save = save; hk.load = load; hk.pause = pause;
+        if (fast   !== hk.fast)          this.setFastForward(fast);
+        if (rewind !== hk.rewind)        this.setRewind(rewind);
+        if (save   && !hk.save)          this.handlers.onSaveState?.();
+        if (load   && !hk.load)          this.handlers.onLoadState?.();
+        if (pause  && !hk.pause)         this.handlers.onPause?.();
+        hk.fast = fast; hk.rewind = rewind; hk.save = save; hk.load = load; hk.pause = pause;
 
         this.rafId = requestAnimationFrame(this.gamepadTick);
     };

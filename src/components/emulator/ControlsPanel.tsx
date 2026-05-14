@@ -1,11 +1,12 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ThemeColors } from '@/types';
 import { NUM_PLAYERS, type InputBindings, type KeyMap } from '@/lib/ra/input';
 import { getButtonsForCore } from '@/lib/ra/control-schemes';
 import { getMaxPlayers } from '@/lib/ra/cores';
 import { SectionHeader } from '@/components/emulator/shared';
+import { BindingRow, BindingChip } from '@/components/emulator/BindingRow';
 
 interface ControlsPanelProps {
     bindings: InputBindings;
@@ -14,8 +15,8 @@ interface ControlsPanelProps {
     core: string;
 }
 
-type HotkeyKey = 'fastForwardKey' | 'pauseKey' | 'saveStateKey' | 'loadStateKey';
-type HotkeyGamepadKey = 'fastForwardGamepad' | 'pauseGamepad' | 'saveStateGamepad' | 'loadStateGamepad';
+type HotkeyKey = 'fastForwardKey' | 'rewindKey' | 'pauseKey' | 'saveStateKey' | 'loadStateKey';
+type HotkeyGamepadKey = 'fastForwardGamepad' | 'rewindGamepad' | 'pauseGamepad' | 'saveStateGamepad' | 'loadStateGamepad';
 
 interface SystemHotkey {
     keyboard: HotkeyKey;
@@ -25,6 +26,7 @@ interface SystemHotkey {
 
 const SYSTEM_HOTKEYS: SystemHotkey[] = [
     { keyboard: 'fastForwardKey', gamepad: 'fastForwardGamepad', label: 'Fast-Forward' },
+    { keyboard: 'rewindKey',      gamepad: 'rewindGamepad',      label: 'Rewind' },
     { keyboard: 'pauseKey',       gamepad: 'pauseGamepad',       label: 'Pause / Menu' },
     { keyboard: 'saveStateKey',   gamepad: 'saveStateGamepad',   label: 'Save State' },
     { keyboard: 'loadStateKey',   gamepad: 'loadStateGamepad',   label: 'Load State' },
@@ -112,8 +114,6 @@ export const ControlsPanel = memo(({ bindings, onChange, colors, core }: Control
         | { kind: 'assign'; player: number }
         | null
     >(null);
-    const listeningRef = useRef(listening);
-    listeningRef.current = listening;
 
     useEffect(() => { setListening(null); }, [selectedPlayer]);
 
@@ -148,8 +148,7 @@ export const ControlsPanel = memo(({ bindings, onChange, colors, core }: Control
         if (!listening) return;
 
         const onKey = (e: KeyboardEvent) => {
-            const target = listeningRef.current;
-            if (!target) return;
+            const target = listening;
             const code = e.code;
 
             if (code === 'Escape') {
@@ -202,8 +201,7 @@ export const ControlsPanel = memo(({ bindings, onChange, colors, core }: Control
                 );
             }
 
-            const target = listeningRef.current;
-            if (!target) return;
+            const target = listening;
 
             for (let p = 0; p < pads.length; p++) {
                 const pad = pads[p];
@@ -423,55 +421,3 @@ export const ControlsPanel = memo(({ bindings, onChange, colors, core }: Control
 });
 
 ControlsPanel.displayName = 'ControlsPanel';
-
-interface BindingRowProps {
-    label: string;
-    active: boolean;
-    colors: ThemeColors;
-    idx?: number;
-    children: React.ReactNode;
-}
-
-function BindingRow({ label, active, colors, idx, children }: BindingRowProps) {
-    return (
-        <div
-            className="h-12 px-4 rounded-xl border-[0.125rem] flex items-center justify-between gap-3"
-            style={{
-                backgroundColor: colors.darkBg,
-                borderColor: active ? colors.highlight : colors.midDark,
-                boxShadow: active ? `0 0 0 2px ${colors.highlight}30` : 'none',
-                animation: idx !== undefined ? `fadeIn 0.4s ease-out ${idx * 0.03}s both` : undefined,
-            }}
-        >
-            <span className="text-sm font-medium truncate pr-2 flex-1" style={{ color: colors.softLight }}>
-                {label}
-            </span>
-            <div className="flex items-center gap-1.5 shrink-0 text-sm font-medium">{children}</div>
-        </div>
-    );
-}
-
-interface BindingChipProps {
-    label: string;
-    active: boolean;
-    colors: ThemeColors;
-    onClick: () => void;
-    onContextMenu: (e: React.MouseEvent) => void;
-}
-
-function BindingChip({ label, active, colors, onClick, onContextMenu }: BindingChipProps) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            onContextMenu={onContextMenu}
-            className="px-2.5 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-            style={{
-                backgroundColor: active ? colors.highlight : colors.midDark,
-                color: active ? colors.darkBg : colors.softLight,
-            }}
-        >
-            {label}
-        </button>
-    );
-}

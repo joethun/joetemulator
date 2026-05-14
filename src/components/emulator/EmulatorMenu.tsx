@@ -7,6 +7,7 @@ import type { ThemeColors, GradientStyle } from '@/types';
 import type { EmulatorSession } from '@/hooks/useEmulator';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 import { Modal, ModalHeader, ModalFooter } from '@/components/Modal';
+import { SHADOW_CARD } from '@/lib/constants';
 import { ControlsPanel } from '@/components/emulator/ControlsPanel';
 import { CoreOptionsPanel } from '@/components/emulator/CoreOptionsPanel';
 import { ShaderPanel } from '@/components/emulator/ShaderPanel';
@@ -156,7 +157,7 @@ function SettingsHub({ colors, onPick }: { colors: ThemeColors; onPick: (tab: Se
                         style={{
                             backgroundColor: colors.darkBg,
                             borderColor: colors.midDark,
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                            boxShadow: SHADOW_CARD,
                             animation: `fadeIn 0.4s ease-out ${idx * 0.04}s both`,
                         }}
                     >

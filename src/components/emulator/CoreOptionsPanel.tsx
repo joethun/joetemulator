@@ -42,27 +42,34 @@ export const CoreOptionsPanel = memo((props: CoreOptionsPanelProps) => {
         setOptions(getOptions());
     }, [refreshKey, getOptions]);
 
-    const entries = useMemo<Entry[]>(() => {
+    const coreEntry = useMemo<Entry | null>(() => {
         const availableCores = system ? getCoresForSystem(system) : [];
-        const coreEntry: Entry | null = libretroCore && availableCores.length > 0 ? {
+        if (!libretroCore || availableCores.length === 0) return null;
+        return {
             key: CORE_KEY,
             label: 'Core',
             value: libretroCore,
             choices: availableCores as string[],
             disabled: availableCores.length < 2,
-        } : null;
-        const optionEntries = options.map<Entry>(opt => ({
+        };
+    }, [system, libretroCore]);
+
+    const optionEntries = useMemo<Entry[]>(() =>
+        options.map(opt => ({
             key: opt.key, label: opt.label, title: opt.key,
             value: opt.current, choices: opt.choices,
-        }));
-        return coreEntry ? [coreEntry, ...optionEntries] : optionEntries;
-    }, [options, system, libretroCore]);
+        })),
+    [options]);
 
-    const active = activeKey ? entries.find(e => e.key === activeKey) ?? null : null;
+    const active = activeKey
+        ? (coreEntry?.key === activeKey ? coreEntry : optionEntries.find(e => e.key === activeKey) ?? null)
+        : null;
 
     useEffect(() => {
-        if (activeKey && !entries.some(e => e.key === activeKey)) onActiveKeyChange(null);
-    }, [entries, activeKey, onActiveKeyChange]);
+        if (!activeKey) return;
+        const exists = coreEntry?.key === activeKey || optionEntries.some(e => e.key === activeKey);
+        if (!exists) onActiveKeyChange(null);
+    }, [coreEntry, optionEntries, activeKey, onActiveKeyChange]);
 
     const handleSelect = useCallback((entryKey: string, value: string) => {
         if (entryKey === CORE_KEY) {
@@ -73,7 +80,7 @@ export const CoreOptionsPanel = memo((props: CoreOptionsPanelProps) => {
         }
     }, [onChange, onSwitchCore]);
 
-    if (entries.length === 0) {
+    if (!coreEntry && optionEntries.length === 0) {
         return (
             <div
                 className="px-4 py-6 rounded-xl border-[0.125rem] text-sm text-center"
@@ -116,17 +123,28 @@ export const CoreOptionsPanel = memo((props: CoreOptionsPanelProps) => {
 
     return (
         <div className="flex flex-col gap-6 min-w-0" style={{ animation: 'fadeIn 0.2s ease-out both' }}>
-            <div className="flex flex-col gap-2.5">
-                {entries.map((entry, idx) => (
-                    <OptionRow
-                        key={entry.key}
-                        entry={entry}
-                        idx={idx}
-                        colors={colors}
-                        onOpen={onActiveKeyChange}
-                    />
-                ))}
-            </div>
+            {coreEntry && (
+                <div>
+                    <SectionHeader title="Emulation Core" colors={colors} />
+                    <OptionRow entry={coreEntry} colors={colors} onOpen={onActiveKeyChange} />
+                </div>
+            )}
+            {optionEntries.length > 0 && (
+                <div>
+                    <SectionHeader title="Options" colors={colors} />
+                    <div className="flex flex-col gap-2.5">
+                        {optionEntries.map((entry, idx) => (
+                            <OptionRow
+                                key={entry.key}
+                                entry={entry}
+                                idx={idx}
+                                colors={colors}
+                                onOpen={onActiveKeyChange}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 });
@@ -135,7 +153,7 @@ CoreOptionsPanel.displayName = 'CoreOptionsPanel';
 
 interface OptionRowProps {
     entry: Entry;
-    idx: number;
+    idx?: number;
     colors: ThemeColors;
     onOpen: (key: string) => void;
 }
@@ -149,7 +167,7 @@ function OptionRow({ entry, idx, colors, onOpen }: OptionRowProps) {
                 borderColor: colors.midDark,
                 color: colors.softLight,
                 opacity: entry.disabled ? 0.5 : 1,
-                animation: `fadeIn 0.4s ease-out ${idx * 0.02}s both`,
+                animation: idx !== undefined ? `fadeIn 0.4s ease-out ${idx * 0.02}s both` : undefined,
             }}
         >
             <span
@@ -162,7 +180,7 @@ function OptionRow({ entry, idx, colors, onOpen }: OptionRowProps) {
                 type="button"
                 disabled={entry.disabled}
                 onClick={() => onOpen(entry.key)}
-                className="px-2.5 h-8 rounded-lg flex items-center justify-center text-sm font-medium shrink-0 max-w-[14rem] transition-all disabled:cursor-not-allowed enabled:cursor-pointer enabled:active:scale-95 focus:outline-none"
+                className="px-2.5 h-8 rounded-lg flex items-center justify-center text-sm font-medium shrink-0 max-w-[14rem] transition-all disabled:cursor-not-allowed enabled:cursor-pointer focus:outline-none"
                 style={{ backgroundColor: colors.midDark, color: colors.softLight }}
                 title={entry.value}
             >

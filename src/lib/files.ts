@@ -94,7 +94,9 @@ async function getRawFileData(file: File): Promise<RawFileData> {
         let fileSha1: string | null = null;
         try {
             fileSha1 = toHex(await crypto.subtle.digest('SHA-1', buffer));
-        } catch { }
+        } catch (e) {
+            console.warn('SHA-1 hash failed (proceeding without it):', e);
+        }
 
         const scanLen = Math.min(buffer.byteLength, 512 * 1024);
         const headStr = new TextDecoder('ascii').decode(new Uint8Array(buffer, 0, scanLen)).replace(/\0/g, ' ');

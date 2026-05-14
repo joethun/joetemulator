@@ -39,6 +39,20 @@ const SYSTEM_TO_CORES: Record<string, readonly string[]> = {
     vic20:     ['vice_xvic'],
     ws:        ['mednafen_wswan'],
     '3do':     ['opera'],
+
+    // Legacy system ids — SYSTEM_PICKER persisted these libretro core names
+    // directly as `game.core`, so older library entries look them up by core
+    // name instead of canonical system id.
+    melonds:         ['melonds', 'desmume', 'desmume2015'],
+    mame2003_plus:   ['mame2003_plus', 'mame2003'],
+    genesis_plus_gx: ['genesis_plus_gx'],
+    vice_x64:        ['vice_x64'],
+    vice_x128:       ['vice_x128'],
+    vice_xpet:       ['vice_xpet'],
+    vice_xvic:       ['vice_xvic'],
+    vice_xplus4:     ['vice_xplus4'],
+    opera:           ['opera'],
+    dosbox_pure:     ['dosbox_pure'],
 };
 
 export const CORES_REQUIRING_THREADS = new Set(['ppsspp', 'dosbox_pure']);

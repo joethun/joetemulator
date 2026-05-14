@@ -2,6 +2,7 @@ import { memo, ReactNode } from 'react';
 import { ThemeColors, GradientStyle } from '@/types';
 import { Switch } from '@/components/Switch';
 import { LucideIcon } from 'lucide-react';
+import { SHADOW_CARD } from '@/lib/constants';
 
 interface SettingsCardProps {
     colors: ThemeColors;
@@ -25,7 +26,7 @@ export const SettingsCard = memo(({
         style={{
             backgroundColor: colors.darkBg,
             borderColor: colors.midDark,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            boxShadow: SHADOW_CARD,
             animation: `fadeIn 0.4s ease-out ${animationDelay} both`
         }}
     >

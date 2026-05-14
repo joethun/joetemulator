@@ -46,9 +46,13 @@ export function useGameLibrary() {
         updateGame: (id: number, updates: Partial<Game>) =>
             mutate(g => g.map(x => x.id === id ? { ...x, ...updates } : x)),
         deleteGame: async (id: number, fileName?: string, title?: string) => {
-            try { await deleteGameFile(id); } catch { }
+            try { await deleteGameFile(id); }
+            catch (e) { console.error('Failed to delete game file:', e); }
             const baseName = fileName || title;
-            if (baseName) { try { await deleteAllStates(stripExt(baseName)); } catch { } }
+            if (baseName) {
+                try { await deleteAllStates(stripExt(baseName)); }
+                catch (e) { console.error('Failed to delete save states:', e); }
+            }
             mutate(g => g.filter(x => x.id !== id));
         },
     };

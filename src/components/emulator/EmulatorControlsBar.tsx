@@ -11,6 +11,7 @@ import type { ThemeColors } from '@/types';
 import {
     getVolume, isMuted, setVolume, setMuted, subscribe as subscribeVolume,
 } from '@/lib/ra/audio';
+import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
 
 export type EmulatorPanel = 'settings' | 'saves';
 
@@ -65,7 +66,7 @@ function Tooltip({ text, colors }: { text: string; colors: ThemeColors }) {
     return (
         <div
             className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6 px-3 py-2 rounded-xl whitespace-nowrap z-[60] opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200"
-            style={{ backgroundColor: colors.midDark, color: colors.softLight, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+            style={{ backgroundColor: colors.midDark, color: colors.softLight, boxShadow: SHADOW_CARD }}
         >
             {text}
         </div>
@@ -83,7 +84,7 @@ interface BarBtnProps {
 
 function BarBtn({ icon: Icon, label, onClick, colors, variant = 'default', pressed }: BarBtnProps) {
     const style = variant === 'danger'
-        ? { backgroundColor: 'rgba(239,68,68,0.15)', color: 'rgb(248,113,113)' }
+        ? { backgroundColor: DANGER_BG, color: DANGER_FG }
         : { backgroundColor: colors.midDark, color: colors.highlight };
     return (
         <div className="relative group">

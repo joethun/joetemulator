@@ -12,6 +12,7 @@ export class GameController {
         toggleLoop:    CFn<void>;
         cmdSavefiles:  CFn<void>;
         fastForward:   CFn<void>;
+        rewind:        CFn<void>;
         getCoreOpts:   CFn<string>;
         setVariable:   CFn<void>;
         toggleShader:  CFn<void>;
@@ -27,6 +28,7 @@ export class GameController {
             toggleLoop:    w<void>  ('toggleMainLoop',     'null',   ['number']),
             cmdSavefiles:  w<void>  ('cmd_savefiles',      'null',   []),
             fastForward:   w<void>  ('toggle_fastforward', 'null',   ['number']),
+            rewind:        w<void>  ('toggle_rewind',      'null',   ['number']),
             getCoreOpts:   w<string>('get_core_options',   'string', []),
             setVariable:   w<void>  ('ejs_set_variable',   'null',   ['string', 'string']),
             toggleShader:  w<void>  ('shader_enable',      'null',   ['number']),
@@ -58,6 +60,7 @@ export class GameController {
     }
 
     toggleFastForward(enabled: boolean): void { this.fn.fastForward(enabled ? 1 : 0); }
+    toggleRewind(enabled: boolean):      void { this.fn.rewind(enabled ? 1 : 0); }
     toggleShader(enabled: boolean):      void { this.fn.toggleShader(enabled ? 1 : 0); }
     setVariable(option: string, value: string): void { this.fn.setVariable(option, value); }
 

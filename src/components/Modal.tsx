@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { ThemeColors } from '@/types';
+import { SHADOW_MODAL } from '@/lib/constants';
 
 interface ModalProps {
     isClosing: boolean;
@@ -47,7 +48,7 @@ export function Modal({
                 style={{
                     backgroundColor: colors.darkBg,
                     borderColor: colors.midDark,
-                    boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
+                    boxShadow: SHADOW_MODAL,
                     animation: anim,
                     ...(height === 'tall' ? { height: '90vh' } : null),
                 }}

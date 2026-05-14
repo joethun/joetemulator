@@ -1,10 +1,11 @@
 'use client';
 
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo } from 'react';
 import { CircleCheck, Edit2 } from 'lucide-react';
 import { SYSTEM_PICKER } from '@/lib/constants';
 import { SearchBar } from '@/components/SearchBar';
-import { Modal, ModalFooter } from '@/components/Modal';
+import { TextInput } from '@/components/TextInput';
+import { Modal, ModalHeader, ModalFooter } from '@/components/Modal';
 import { Game, ThemeColors, GradientStyle } from '@/types';
 
 interface SystemPickerProps {
@@ -28,13 +29,17 @@ export const SystemPickerModal = memo(function SystemPickerModal({
     searchQuery, onSearchChange, onClose, onDone, onSelectSystem, onRename,
     pendingBatchCore,
 }: SystemPickerProps) {
-    const [isRenameFocused, setIsRenameFocused] = useState(false);
-
     const currentCore = editingGame?.core || (pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core);
     const canRename = !!editingGame || pendingFiles.length === 1;
     const currentTitle = editingGame ? editingGame.title : (pendingGame?.title || '');
     const query = searchQuery.toLowerCase();
     const systemSelected = !!currentCore;
+    const headerSubtitle = editingGame
+        ? 'Change game system'
+        : pendingFiles.length > 1
+            ? `Choose system for ${pendingFiles.length} files`
+            : 'Select a system for your game';
+    const headerTitle = pendingFiles.length > 1 ? `Add ${pendingFiles.length} Games` : 'Select System';
 
     const categories = useMemo(() => {
         const result: Record<string, Array<[string, string]>> = {};
@@ -47,42 +52,27 @@ export const SystemPickerModal = memo(function SystemPickerModal({
 
     return (
         <Modal isClosing={isClosing} colors={colors} onClose={onClose} labelledBy="system-picker-title">
-            <div className="mb-6">
-                {canRename ? (
-                    <div
-                        className="flex items-center rounded-xl border-[0.125rem] w-full h-16 mb-2 transition-all"
-                        style={{
-                            backgroundColor: colors.darkBg,
-                            borderColor: isRenameFocused ? colors.highlight : colors.midDark,
-                            boxShadow: isRenameFocused ? `0 0 0 2px ${colors.highlight}30` : 'none',
-                        }}
-                    >
-                        <div className="w-16 h-full flex items-center justify-center shrink-0" style={{ color: colors.softLight }}>
-                            <Edit2 className="w-6 h-6" />
-                        </div>
-                        <input
-                            id="system-picker-title"
-                            type="text"
+            {canRename ? (
+                <div className="mb-6">
+                    <div className="mb-2">
+                        <TextInput
+                            colors={colors}
                             value={currentTitle}
-                            onChange={e => onRename(e.target.value)}
-                            onFocus={() => setIsRenameFocused(true)}
-                            onBlur={() => setIsRenameFocused(false)}
+                            onChange={onRename}
                             onKeyDown={e => { if (e.key === 'Enter') onDone(); }}
-                            className="bg-transparent h-full flex-1 focus:outline-none text-2xl font-bold pr-6"
-                            style={{ color: colors.softLight }}
+                            leftIcon={<Edit2 className="w-6 h-6" />}
+                            size="lg"
                             placeholder="Game Title"
-                            aria-label="Game title"
+                            ariaLabel="Game title"
+                            id="system-picker-title"
+                            inputClassName="text-2xl font-bold pr-6"
                         />
                     </div>
-                ) : (
-                    <h3 id="system-picker-title" className="text-3xl font-bold mb-2" style={{ color: colors.softLight }}>
-                        {pendingFiles.length > 1 ? `Add ${pendingFiles.length} Games` : 'Select System'}
-                    </h3>
-                )}
-                <p className="text-sm opacity-80" style={{ color: colors.highlight }}>
-                    {editingGame ? 'Change game system' : pendingFiles.length > 1 ? `Choose system for ${pendingFiles.length} files` : 'Select a system for your game'}
-                </p>
-            </div>
+                    <p className="text-sm opacity-80" style={{ color: colors.highlight }}>{headerSubtitle}</p>
+                </div>
+            ) : (
+                <ModalHeader title={headerTitle} subtitle={headerSubtitle} colors={colors} id="system-picker-title" />
+            )}
 
             <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
                 <SearchBar colors={colors} value={searchQuery} onChange={onSearchChange} />

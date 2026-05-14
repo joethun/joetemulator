@@ -7,6 +7,7 @@ import {
     fetchStates, removeState, importState, downloadState,
     fmtDate, groupByDay, type SaveState,
 } from '@/lib/savestates';
+import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
 import { SectionHeader } from '@/components/emulator/shared';
 
 const BTN_BASE = 'w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer border-[0.125rem]';
@@ -134,7 +135,7 @@ const StateRow = memo(({ s, idx, isDeleting, colors, gameName, onDelete, onLoad 
         style={{
             backgroundColor: colors.darkBg,
             borderColor: colors.midDark,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            boxShadow: SHADOW_CARD,
             animation: isDeleting ? undefined : `fadeIn 0.4s ease-out ${idx * 0.03}s both`,
         }}
     >
@@ -158,7 +159,7 @@ const StateRow = memo(({ s, idx, isDeleting, colors, gameName, onDelete, onLoad 
             </button>
             <button onClick={() => onDelete(s.key)} aria-label="Delete" disabled={isDeleting}
                 className={`${BTN_BASE} disabled:opacity-40`}
-                style={{ backgroundColor: 'rgba(239,68,68,0.15)', borderColor: 'transparent', color: 'rgb(248,113,113)' }}>
+                style={{ backgroundColor: DANGER_BG, borderColor: 'transparent', color: DANGER_FG }}>
                 <Trash2 className="w-4 h-4" />
             </button>
         </div>

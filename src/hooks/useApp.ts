@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ViewType, Game } from '@/types';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
+
+const DUPLICATE_VISIBLE_MS = 2500;
+const DUPLICATE_FADE_MS = 500;
+const MODAL_EXIT_MS = 200;
 
 export function useApp() {
     const [activeView, setActiveViewRaw] = useState<ViewType>('library');
@@ -23,6 +27,18 @@ export function useApp() {
     const [saveStateOnBack, setSaveStateOnBack] = useState<(() => void) | null>(null);
     const saveState = useDelayedUnmount(saveStateOpen);
 
+    const dupHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const dupClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pickerResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const saveStateResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => () => {
+        if (dupHideRef.current) clearTimeout(dupHideRef.current);
+        if (dupClearRef.current) clearTimeout(dupClearRef.current);
+        if (pickerResetRef.current) clearTimeout(pickerResetRef.current);
+        if (saveStateResetRef.current) clearTimeout(saveStateResetRef.current);
+    }, []);
+
     const setActiveView = (view: ViewType) => {
         setActiveViewRaw(prev => {
             if (view === 'library' && prev !== 'library') {
@@ -33,27 +49,34 @@ export function useApp() {
     };
 
     const showDuplicateError = (msg: string) => {
+        if (dupHideRef.current) clearTimeout(dupHideRef.current);
+        if (dupClearRef.current) clearTimeout(dupClearRef.current);
         setDuplicateMessage(msg);
         setShowDuplicateMessage(true);
-        setTimeout(() => {
+        dupHideRef.current = setTimeout(() => {
             setShowDuplicateMessage(false);
-            setTimeout(() => setDuplicateMessage(null), 500);
-        }, 2500);
+            dupClearRef.current = setTimeout(() => setDuplicateMessage(null), DUPLICATE_FADE_MS);
+        }, DUPLICATE_VISIBLE_MS);
     };
 
-    const openSystemPicker = () => setPickerOpen(true);
+    const openSystemPicker = () => {
+        if (pickerResetRef.current) { clearTimeout(pickerResetRef.current); pickerResetRef.current = null; }
+        setPickerOpen(true);
+    };
     const closeSystemPicker = () => {
         setPickerOpen(false);
-        setTimeout(() => {
+        if (pickerResetRef.current) clearTimeout(pickerResetRef.current);
+        pickerResetRef.current = setTimeout(() => {
             setPendingFiles([]);
             setPendingGame(null);
             setEditingGame(null);
             setSystemSearchQuery('');
             setPendingBatchCore(null);
-        }, 200);
+        }, MODAL_EXIT_MS);
     };
 
     const openSaveStateManager = (title: string, name: string, onBack?: () => void) => {
+        if (saveStateResetRef.current) { clearTimeout(saveStateResetRef.current); saveStateResetRef.current = null; }
         setSaveStateGame({ title, name });
         setSaveStateOnBack(() => onBack ?? null);
         setSaveStateOpen(true);
@@ -63,7 +86,8 @@ export function useApp() {
         const after = skipAfter ? null : saveStateOnBack;
         setSaveStateOnBack(null);
         setSaveStateOpen(false);
-        setTimeout(() => setSaveStateGame(null), 200);
+        if (saveStateResetRef.current) clearTimeout(saveStateResetRef.current);
+        saveStateResetRef.current = setTimeout(() => setSaveStateGame(null), MODAL_EXIT_MS);
         after?.();
     };
 

@@ -77,9 +77,8 @@ export const EmulatorView = memo(({
         };
     }, [isVisible, panel, pointerLocked, isLoading]);
 
-    // Pause when a panel is open, the user pressed pause on the bar, or an
-    // external modal demands it. Excludes session.paused from deps so the user's
-    // manual in-game pause doesn't loop.
+    // why: session.paused is intentionally excluded from deps — including it would loop the
+    // pause/resume cycle when the user manually toggles pause from the in-game bar.
     useEffect(() => {
         if (!isVisible) return;
         const needsPause = panel !== null || userPaused || !!keepPaused;
@@ -107,10 +106,9 @@ export const EmulatorView = memo(({
         const canvas = session.canvasRef.current;
         if (!canvas || isLoading || panel) return;
         if (document.pointerLockElement === canvas) return;
-        try {
-            const result = canvas.requestPointerLock();
-            if (result instanceof Promise) result.catch(() => {});
-        } catch { /* browser refused or already locked elsewhere */ }
+        // why: rejection (browser refusal, sandbox restriction) is non-fatal — keep gameplay going.
+        const result = canvas.requestPointerLock();
+        if (result instanceof Promise) result.catch(() => {});
     };
 
     return (

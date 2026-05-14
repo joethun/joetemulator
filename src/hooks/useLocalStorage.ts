@@ -20,7 +20,7 @@ export function useHydrated(): boolean {
 export function useLocalStorage<T>(key: string, initialValue: T) {
     const [value, setValue] = useState<T>(initialValue);
 
-    // SSR-safe: render initialValue on server + first client paint, then read storage.
+    // why: SSR-safe — render initialValue on server + first client paint, then read storage in an effect.
     /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         try {

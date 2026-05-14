@@ -84,3 +84,14 @@ const SYSTEM_ASPECT_RATIOS: Record<string, number> = {
 
 export const getSystemAspectRatio = (systemName?: string): number =>
   (systemName && SYSTEM_ASPECT_RATIOS[systemName]) || 0.8;
+
+// Shared red used for destructive actions (delete/exit). Not themed by design.
+export const DANGER_BG = 'rgba(239,68,68,0.15)';
+export const DANGER_FG = 'rgb(248,113,113)';
+
+// Standard panel/card drop shadow vs. the heavier modal shadow.
+export const SHADOW_CARD = '0 4px 12px rgba(0,0,0,0.3)';
+export const SHADOW_MODAL = '0 20px 60px rgba(0,0,0,0.7)';
+
+// Border-radius rule: h-8 small chips/value buttons use rounded-lg;
+// h-12+ controls use rounded-xl; modals use rounded-2xl.

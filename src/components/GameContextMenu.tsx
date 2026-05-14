@@ -4,6 +4,7 @@ import { memo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, Settings, Image as ImageIcon, RefreshCw, Folder } from 'lucide-react';
 import { ThemeColors } from '@/types';
+import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 
 interface GameContextMenuProps {
@@ -77,7 +78,7 @@ export function GameContextMenu({
         <div
             ref={menuRef}
             className={`fixed z-50 rounded-xl border-[0.125rem] overflow-hidden shadow-lg ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}
-            style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, width: MENU_W, left: x, top: y, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', fontFamily: 'var(--font-lexend, system-ui)' }}
+            style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, width: MENU_W, left: x, top: y, boxShadow: SHADOW_CARD, fontFamily: 'var(--font-lexend, system-ui)' }}
             onPointerDown={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
         >
@@ -102,7 +103,7 @@ export function GameContextMenu({
                     <div className="h-px w-full my-1" style={{ backgroundColor: `${colors.highlight}20` }} />
                     <MenuButton onClick={() => { onClose(); requestAnimationFrame(onSaveStates); }} label="Manage States" Icon={Folder} colors={colors} />
                     <MenuButton onClick={() => { onClose(); requestAnimationFrame(onEdit); }} label="System" Icon={Settings} colors={colors} />
-                    <MenuButton onClick={() => { onClose(); requestAnimationFrame(onDelete); }} label="Delete" Icon={Trash2} colors={colors} style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: 'rgb(248,113,113)' }} />
+                    <MenuButton onClick={() => { onClose(); requestAnimationFrame(onDelete); }} label="Delete" Icon={Trash2} colors={colors} style={{ backgroundColor: DANGER_BG, color: DANGER_FG }} />
                 </div>
             </div>
         </div>,

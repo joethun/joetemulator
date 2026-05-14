@@ -83,18 +83,25 @@ export const MainContent = memo(function MainContent({
             </div>
         );
 
-    let i = 0;
+    const groupEntries = Object.entries(groupedGames);
+    let offset = 0;
+    const groupOffsets = groupEntries.map(([, catGames]) => {
+        const start = offset;
+        offset += catGames.length;
+        return start;
+    });
+
     return (
         <div key={libraryAnimationKey}>
-            {Object.entries(groupedGames).map(([cat, catGames]) => (
+            {groupEntries.map(([cat, catGames], gi) => (
                 <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
                     <div className="flex items-center mb-4">
                         <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: colors.highlight }}>{cat}</h4>
                         <div className="flex-1 h-px" style={{ backgroundColor: `${colors.highlight}30` }} />
                     </div>
                     <div className={GRID_CLASS}>
-                        {catGames.map(g => {
-                            const idx = i++;
+                        {catGames.map((g, localIdx) => {
+                            const idx = groupOffsets[gi] + localIdx;
                             return (
                                 <div key={g.id} style={{ animation: `fadeIn 0.4s ease-out ${idx * 0.03}s both` }}>
                                     <GameCard

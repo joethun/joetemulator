@@ -12,12 +12,6 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "public/emulatorjs/**",
   ]),
-  {
-    rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "react/no-unescaped-entities": "off",
-    },
-  },
 ]);
 
 export default eslintConfig;
