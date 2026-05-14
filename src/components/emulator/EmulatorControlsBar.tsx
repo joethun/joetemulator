@@ -118,8 +118,9 @@ function FullscreenButton({ colors }: { colors: ThemeColors }) {
             document.exitFullscreen().catch(() => {});
             return;
         }
-        const target = document.querySelector<HTMLElement>('[data-emulator-root="1"]') ?? document.documentElement;
-        Promise.resolve(target.requestFullscreen()).catch(() => {});
+        // Always fullscreen the entire document (like F11) instead of just the emulator container
+        // to avoid issues with popups and UI interactions in fullscreen mode
+        document.documentElement.requestFullscreen().catch(() => {});
     };
     return (
         <BarBtn

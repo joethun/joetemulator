@@ -103,7 +103,7 @@ export const SettingsView = memo(({
 
             <SettingsCard
                 colors={colors} gradient={gradient} icon={LogOut}
-                title="Save on Exit" description="Save your game state when you close or switch games."
+                title="Save on Exit" description="Save your game state when you close a game."
                 animationDelay="0.09s"
                 checked={saveOnExit} onToggle={() => setSaveOnExit(!saveOnExit)}
             />
