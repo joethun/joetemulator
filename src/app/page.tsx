@@ -9,7 +9,6 @@ import { useEmulator } from '@/hooks/useEmulator';
 import { usePageHandlers } from '@/hooks/usePageHandlers';
 import { Sidebar } from '@/components/Sidebar';
 import { SearchBar } from '@/components/SearchBar';
-import { SortControls } from '@/components/SortControls';
 import { Alert } from '@/components/Alert';
 import { EmulatorNotification } from '@/components/EmulatorNotification';
 import { SystemPickerModal } from '@/components/SystemPickerModal';
@@ -60,7 +59,6 @@ export default function Home() {
                                         onChange={app.setGameSearchQuery}
                                     />
                                 </div>
-                                <SortControls colors={settings.currentColors} sortOrder={settings.sortOrder} setSortOrder={settings.setSortOrder} />
                             </div>
                         )}
                     </header>
