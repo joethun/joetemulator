@@ -102,7 +102,7 @@ export const CoreOptionsPanel = memo((props: CoreOptionsPanelProps) => {
         return (
             <div className="flex flex-col gap-6 min-w-0" style={{ animation: 'fadeIn 0.2s ease-out both' }}>
                 <div>
-                    <SectionHeader title={active.label} titleAttr={active.title ?? active.label} colors={colors} />
+                    <SectionHeader title={active.label} colors={colors} />
                     <div role="listbox" className="grid grid-cols-2 gap-2.5">
                         {items.map((item, idx) => (
                             <OptionButton
@@ -111,7 +111,6 @@ export const CoreOptionsPanel = memo((props: CoreOptionsPanelProps) => {
                                 active={item === active.value}
                                 colors={colors}
                                 idx={idx}
-                                titleAttr={item}
                                 onClick={() => handleSelect(active.key, item)}
                             />
                         ))}
@@ -172,7 +171,6 @@ function OptionRow({ entry, idx, colors, onOpen }: OptionRowProps) {
         >
             <span
                 className="text-sm font-medium truncate pr-2 flex-1 text-left"
-                title={entry.title ?? entry.label}
             >
                 {entry.label}
             </span>
@@ -182,7 +180,6 @@ function OptionRow({ entry, idx, colors, onOpen }: OptionRowProps) {
                 onClick={() => onOpen(entry.key)}
                 className="px-2.5 h-8 rounded-lg flex items-center justify-center text-sm font-medium shrink-0 max-w-[14rem] transition-all disabled:cursor-not-allowed enabled:cursor-pointer focus:outline-none"
                 style={{ backgroundColor: colors.midDark, color: colors.softLight }}
-                title={entry.value}
             >
                 <span className="truncate">{entry.value}</span>
             </button>

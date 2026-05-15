@@ -6,16 +6,14 @@ import type { ThemeColors } from '@/types';
 interface SectionHeaderProps {
     title: string;
     colors: ThemeColors;
-    titleAttr?: string;
 }
 
-export function SectionHeader({ title, colors, titleAttr }: SectionHeaderProps) {
+export function SectionHeader({ title, colors }: SectionHeaderProps) {
     return (
         <div className="flex items-center mb-3">
             <h4
                 className="text-xs font-bold uppercase tracking-wider pr-3 truncate"
                 style={{ color: colors.highlight }}
-                title={titleAttr}
             >
                 {title}
             </h4>
@@ -29,12 +27,11 @@ interface OptionButtonProps {
     active: boolean;
     colors: ThemeColors;
     idx?: number;
-    titleAttr?: string;
     onClick: () => void;
 }
 
 /** Selectable button used in both ShaderPanel grid and CoreOptionsPanel detail view. */
-export function OptionButton({ label, active, colors, idx, titleAttr, onClick }: OptionButtonProps) {
+export function OptionButton({ label, active, colors, idx, onClick }: OptionButtonProps) {
     return (
         <button
             type="button"
@@ -46,7 +43,6 @@ export function OptionButton({ label, active, colors, idx, titleAttr, onClick }:
                 color: active ? colors.darkBg : colors.softLight,
                 animation: idx !== undefined ? `fadeIn 0.4s ease-out ${idx * 0.03}s both` : undefined,
             }}
-            title={titleAttr}
         >
             <span className="text-sm font-medium truncate pr-2 flex-1">{label}</span>
             {active && <CircleCheck className="w-5 h-5 shrink-0" style={{ color: colors.darkBg }} />}
