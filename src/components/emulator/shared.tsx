@@ -36,7 +36,7 @@ export function OptionButton({ label, active, colors, idx, onClick }: OptionButt
         <button
             type="button"
             onClick={onClick}
-            className="h-12 px-4 rounded-xl text-left border-[0.125rem] flex items-center justify-between transition-all cursor-pointer focus:outline-none"
+            className="h-12 px-4 rounded-xl text-left border-[0.125rem] flex items-center justify-between transition-all active:scale-95 cursor-pointer focus:outline-none"
             style={{
                 backgroundColor: active ? colors.highlight : colors.midDark,
                 borderColor: active ? colors.highlight : colors.midDark,

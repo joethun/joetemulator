@@ -592,71 +592,6 @@
         "repo": "https://github.com/EmulatorJS/smsplus-gx"
     },
     {
-        "name": "81",
-        "extensions": [ "p", "tzx", "t81" ],
-        "makeoptions": {
-            "buildpath": "./",
-            "makescript": "Makefile.libretro",
-            "arguments": []
-        },
-        "options": {},
-        "save": false,
-        "license": "LICENSE",
-        "repo": "https://github.com/EmulatorJS/81-libretro"
-    },
-    {
-        "name": "fuse",
-        "extensions": [ "tzx", "tap", "z80", "rzx", "scl", "trd" ],
-        "makeoptions": {
-            "buildpath": "./",
-            "makescript": "Makefile.libretro",
-            "arguments": []
-        },
-        "options": {},
-        "save": false,
-        "license": "LICENSE",
-        "repo": "https://github.com/EmulatorJS/fuse-libretro"
-    },
-    {
-        "name": "cap32",
-        "extensions": [ "dsk", "sna", "tap", "cdt", "voc", "m3u", "cpr", "zip" ],
-        "makeoptions": {
-            "buildpath": "./",
-            "makescript": "Makefile",
-            "arguments": []
-        },
-        "options": {},
-        "save": "SNA",
-        "license": "",
-        "repo": "https://github.com/EmulatorJS/libretro-cap32"
-    },
-    {
-        "name": "crocods",
-        "extensions": [ "dsk", "sna", "kcr" ],
-        "makeoptions": {
-            "buildpath": "./",
-            "makescript": "Makefile",
-            "arguments": []
-        },
-        "options": {},
-        "save": false,
-        "license": "LICENSE",
-        "repo": "https://github.com/EmulatorJS/libretro-crocods"
-    },
-    {
-        "name": "prboom",
-        "extensions": [ "wad", "iwad", "pwad" ],
-        "makeoptions": {
-            "buildpath": "./",
-            "makescript": "Makefile",
-            "arguments": []
-        },
-        "options": {},
-        "save": "dsg",
-        "license": "COPYING",
-        "repo": "https://github.com/EmulatorJS/libretro-prboom"
-    },
-    {
         "name": "ppsspp",
         "extensions": [ "elf", "iso", "cso", "prx", "pbp" ],
         "makeoptions": {
@@ -674,18 +609,6 @@
         "save": false,
         "license": "LICENSE.TXT",
         "repo": "https://github.com/EmulatorJS/ppsspp"
-    },
-    {
-        "name": "same_cdi",
-        "extensions": [ "chd", "iso", "cue" ],
-        "makeoptions": {
-            "buildpath": "./",
-            "makescript": "Makefile.libretro",
-            "arguments": []
-        },
-        "options": {},
-        "license": "COPYING",
-        "repo": "https://github.com/EmulatorJS/same_cdi"
     },
     {
         "name": "dosbox_pure",

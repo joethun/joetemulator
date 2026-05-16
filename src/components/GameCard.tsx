@@ -60,12 +60,9 @@ export const GameCard = memo(({
         const dismiss = (e: Event) => {
             if (!cardRef.current?.contains(e.target as Node)) setMobileHovered(false);
         };
-        document.addEventListener('touchstart', dismiss, { passive: true });
-        document.addEventListener('mousedown', dismiss);
-        return () => {
-            document.removeEventListener('touchstart', dismiss);
-            document.removeEventListener('mousedown', dismiss);
-        };
+        const events = ['touchstart', 'mousedown'] as const;
+        events.forEach(ev => document.addEventListener(ev, dismiss));
+        return () => events.forEach(ev => document.removeEventListener(ev, dismiss));
     }, [mobileHovered]);
 
     const openMenu = (x: number, y: number) => {

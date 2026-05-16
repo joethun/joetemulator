@@ -7,10 +7,10 @@ import {
     fetchStates, removeState, importState, downloadState,
     fmtDate, groupByDay, type SaveState,
 } from '@/lib/savestates';
-import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
+import { DANGER_BG, DANGER_FG } from '@/lib/constants';
 import { SectionHeader } from '@/components/emulator/shared';
 
-const BTN_BASE = 'w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer border-[0.125rem]';
+const BTN_BASE = 'w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 cursor-pointer';
 const DELETE_ANIM_MS = 350;
 
 interface SaveStatesPanelProps {
@@ -131,35 +131,32 @@ interface StateRowProps {
 
 const StateRow = memo(({ s, idx, isDeleting, colors, gameName, onDelete, onLoad }: StateRowProps) => (
     <div
-        className={`py-3 px-4 rounded-xl border-[0.125rem] flex items-center gap-4 ${isDeleting ? 'animate-card-exit' : ''}`}
+        className={`h-12 px-4 rounded-xl border-[0.125rem] flex items-center gap-3 ${isDeleting ? 'animate-card-exit' : ''}`}
         style={{
             backgroundColor: colors.darkBg,
             borderColor: colors.midDark,
-            boxShadow: SHADOW_CARD,
             animation: isDeleting ? undefined : `fadeIn 0.4s ease-out ${idx * 0.03}s both`,
         }}
     >
-        <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold leading-tight" style={{ color: colors.softLight }}>
-                {fmtDate(s.savedAt)}
-            </p>
-        </div>
+        <span className="text-sm font-medium truncate pr-2 flex-1" style={{ color: colors.softLight }}>
+            {fmtDate(s.savedAt)}
+        </span>
         <div className="flex items-center gap-1.5 shrink-0">
             {onLoad && (
                 <button onClick={() => onLoad(s.key)} aria-label="Load"
                     className={BTN_BASE}
-                    style={{ backgroundColor: colors.midDark, borderColor: colors.midDark, color: colors.softLight }}>
+                    style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
                     <Upload className="w-4 h-4" />
                 </button>
             )}
             <button onClick={() => downloadState(gameName, s.savedAt, s.rawData)} aria-label="Download"
                 className={BTN_BASE}
-                style={{ backgroundColor: colors.midDark, borderColor: colors.midDark, color: colors.softLight }}>
+                style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
                 <Download className="w-4 h-4" />
             </button>
             <button onClick={() => onDelete(s.key)} aria-label="Delete" disabled={isDeleting}
                 className={`${BTN_BASE} disabled:opacity-40`}
-                style={{ backgroundColor: DANGER_BG, borderColor: 'transparent', color: DANGER_FG }}>
+                style={{ backgroundColor: DANGER_BG, color: DANGER_FG }}>
                 <Trash2 className="w-4 h-4" />
             </button>
         </div>

@@ -86,6 +86,7 @@ export function useEmulator(): EmulatorSession {
     const saveOnExitRef = useRef(false);
     const startArgsRef = useRef<StartArgs | null>(null);
     const bindingsRef = useRef<InputBindings>(loadStoredBindings());
+    const pausedRef = useRef(false);
 
     const [status, setStatus] = useState<SessionStatus>(IDLE_STATUS);
     const [bindings, setBindingsState] = useState<InputBindings>(bindingsRef.current);
@@ -98,6 +99,10 @@ export function useEmulator(): EmulatorSession {
         const rt = runtimeRef.current;
         const game = startArgsRef.current?.gameBaseName;
         if (!rt?.controller || !game) return;
+        // Skip autosave while paused — the core hasn't advanced, so any save would
+        // duplicate the previous slot. Manual saves are still honoured (the user
+        // intentionally clicked save while paused).
+        if (source === 'auto' && pausedRef.current) return;
         try {
             const bytes = rt.controller.saveState();
             if (source === 'auto' && await isStateDuplicate(game, bytes)) return;
@@ -136,6 +141,7 @@ export function useEmulator(): EmulatorSession {
         runtimeRef.current = null;
         saveOnExitRef.current = false;
         startArgsRef.current = null;
+        pausedRef.current = false;
         setStatus(IDLE_STATUS);
     }, [saveState]);
 
@@ -203,8 +209,8 @@ export function useEmulator(): EmulatorSession {
 
     const actions = useMemo<EmulatorActions>(() => ({
         saveState, loadState, stop, switchCore,
-        pause:  () => { runtimeRef.current?.pause();  patchStatus({ paused: true  }); },
-        resume: () => { runtimeRef.current?.resume(); patchStatus({ paused: false }); },
+        pause:  () => { runtimeRef.current?.pause();  pausedRef.current = true;  patchStatus({ paused: true  }); },
+        resume: () => { runtimeRef.current?.resume(); pausedRef.current = false; patchStatus({ paused: false }); },
         setBindings: (b) => {
             bindingsRef.current = b;
             setBindingsState(b);

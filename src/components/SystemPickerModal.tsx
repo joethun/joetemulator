@@ -1,11 +1,12 @@
 'use client';
 
 import { memo, useMemo } from 'react';
-import { CircleCheck, Edit2 } from 'lucide-react';
+import { Edit2 } from 'lucide-react';
 import { SYSTEM_PICKER } from '@/lib/constants';
 import { SearchBar } from '@/components/SearchBar';
 import { TextInput } from '@/components/TextInput';
 import { Modal, ModalHeader, ModalFooter } from '@/components/Modal';
+import { OptionButton, SectionHeader } from '@/components/emulator/shared';
 import { Game, ThemeColors, GradientStyle } from '@/types';
 
 interface SystemPickerProps {
@@ -79,30 +80,18 @@ export const SystemPickerModal = memo(function SystemPickerModal({
                 <div className="flex-1 overflow-y-auto pr-2 mt-4">
                     {Object.entries(categories).map(([cat, systems]) => (
                         <div key={cat} className="mb-8 last:mb-0">
-                            <div className="flex items-center mb-4">
-                                <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: colors.highlight }}>{cat}</h4>
-                                <div className="flex-1 h-px" style={{ backgroundColor: `${colors.highlight}30` }} />
-                            </div>
+                            <SectionHeader title={cat} colors={colors} />
                             <div className="grid grid-cols-2 gap-2.5">
-                                {systems.map(([name, core], idx) => {
-                                    const isSel = currentCore === core;
-                                    return (
-                                        <button
-                                            key={core}
-                                            onClick={() => onSelectSystem(core)}
-                                            className="h-12 px-4 rounded-xl text-left border-[0.125rem] flex items-center justify-between transition-all active:scale-95 cursor-pointer"
-                                            style={{
-                                                backgroundColor: isSel ? colors.highlight : colors.midDark,
-                                                borderColor: isSel ? colors.highlight : colors.midDark,
-                                                color: isSel ? colors.darkBg : colors.softLight,
-                                                animation: `fadeIn 0.4s ease-out ${idx * 0.03}s both`,
-                                            }}
-                                        >
-                                            <span className="text-sm font-medium truncate pr-2 flex-1">{name}</span>
-                                            {isSel && <CircleCheck className="w-5 h-5 shrink-0" style={{ color: colors.darkBg }} />}
-                                        </button>
-                                    );
-                                })}
+                                {systems.map(([name, core], idx) => (
+                                    <OptionButton
+                                        key={core}
+                                        label={name}
+                                        active={currentCore === core}
+                                        idx={idx}
+                                        colors={colors}
+                                        onClick={() => onSelectSystem(core)}
+                                    />
+                                ))}
                             </div>
                         </div>
                     ))}

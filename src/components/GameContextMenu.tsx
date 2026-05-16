@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, Settings, Image as ImageIcon, RefreshCw, Folder } from 'lucide-react';
 import { ThemeColors } from '@/types';
@@ -32,7 +32,7 @@ interface MenuButtonProps {
     style?: React.CSSProperties;
 }
 
-const MenuButton = memo(function MenuButton({ onClick, label, Icon, colors, style }: MenuButtonProps) {
+function MenuButton({ onClick, label, Icon, colors, style }: MenuButtonProps) {
     return (
         <button
             onClick={onClick}
@@ -43,7 +43,7 @@ const MenuButton = memo(function MenuButton({ onClick, label, Icon, colors, styl
             <span className="truncate">{label}</span>
         </button>
     );
-});
+}
 
 export function GameContextMenu({
     isOpen, position, onClose, onEdit, onDelete, onUploadCover, onResetCover, onSaveStates,
@@ -59,12 +59,11 @@ export function GameContextMenu({
             if (!menuRef.current?.contains(e.target as Node)) onClose();
         };
         const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        document.addEventListener('mousedown', onOutside);
-        document.addEventListener('touchstart', onOutside);
+        const pointerEvents = ['mousedown', 'touchstart'] as const;
+        pointerEvents.forEach(ev => document.addEventListener(ev, onOutside));
         document.addEventListener('keydown', onKey);
         return () => {
-            document.removeEventListener('mousedown', onOutside);
-            document.removeEventListener('touchstart', onOutside);
+            pointerEvents.forEach(ev => document.removeEventListener(ev, onOutside));
             document.removeEventListener('keydown', onKey);
         };
     }, [shouldRender, isClosing, onClose]);

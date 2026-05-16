@@ -5,6 +5,7 @@ import { Game, ThemeColors, GradientStyle, ViewType } from '@/types';
 import { GameCard } from '@/components/GameCard';
 import { ThemeGrid } from '@/components/ThemeGrid';
 import { SettingsView } from '@/components/SettingsView';
+import { SectionHeader } from '@/components/emulator/shared';
 import { Gamepad2 } from 'lucide-react';
 
 const GRID_CLASS = "grid gap-4 md:gap-6 w-full grid-cols-[repeat(auto-fill,minmax(min(150px,100%),1fr))] md:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]";
@@ -95,10 +96,7 @@ export const MainContent = memo(function MainContent({
         <div key={libraryAnimationKey}>
             {groupEntries.map(([cat, catGames], gi) => (
                 <div key={cat} className="mb-8 last:mb-0 animate-fade-in">
-                    <div className="flex items-center mb-4">
-                        <h4 className="text-xs font-bold uppercase tracking-wider pr-3" style={{ color: colors.highlight }}>{cat}</h4>
-                        <div className="flex-1 h-px" style={{ backgroundColor: `${colors.highlight}30` }} />
-                    </div>
+                    <SectionHeader title={cat} colors={colors} />
                     <div className={GRID_CLASS}>
                         {catGames.map((g, localIdx) => {
                             const idx = groupOffsets[gi] + localIdx;

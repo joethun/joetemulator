@@ -37,7 +37,7 @@ export class GameController {
 
     saveState(): Uint8Array {
         const [sizeStr, ptrStr, ok] = this.fn.saveStateInfo().split('|');
-        if (ok !== '1') throw new Error(sizeStr || 'save_state_info failed');
+        if (ok !== '1') throw new Error('save_state_info failed');
         const size = parseInt(sizeStr, 10);
         const ptr = parseInt(ptrStr, 10);
         return new Uint8Array(this.mod.HEAPU8.subarray(ptr, ptr + size));

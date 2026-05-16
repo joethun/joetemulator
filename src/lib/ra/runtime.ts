@@ -94,10 +94,11 @@ export class Runtime {
 
         this.srmTimer = setInterval(() => { gc.saveSRAM(); gc.syncSRAM(); }, SRM_SYNC_INTERVAL_MS);
 
-        // Re-apply the user's last shader for this core, if any.
+        // Re-apply the user's last shader. Swallow errors so a missing/renamed
+        // shader doesn't break the boot — the core just runs without one.
         const storedShader = getStoredShader(libretroName);
         if (storedShader !== SHADER_DISABLED) {
-            try { this.setShader(storedShader); } catch { /* ignore */ }
+            try { this.setShader(storedShader); } catch { /* shader unavailable */ }
         }
     }
 

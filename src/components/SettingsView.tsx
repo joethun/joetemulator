@@ -13,16 +13,17 @@ interface SettingItemProps {
     onToggle: () => void;
 }
 
-const SettingItem = memo(({ colors, gradient, icon: Icon, label, checked, onToggle }: SettingItemProps) => (
-    <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-            <Icon className="w-4 h-4" style={{ color: colors.highlight }} />
-            <span className="text-sm font-medium" style={{ color: colors.softLight }}>{label}</span>
+function SettingItem({ colors, gradient, icon: Icon, label, checked, onToggle }: SettingItemProps) {
+    return (
+        <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+                <Icon className="w-4 h-4" style={{ color: colors.highlight }} />
+                <span className="text-sm font-medium" style={{ color: colors.softLight }}>{label}</span>
+            </div>
+            <Switch checked={checked} onChange={onToggle} colors={colors} gradient={gradient} />
         </div>
-        <Switch checked={checked} onChange={onToggle} colors={colors} gradient={gradient} />
-    </div>
-));
-SettingItem.displayName = 'SettingItem';
+    );
+}
 
 const SAVE_INTERVALS = [30, 60, 120, 300, 600] as const;
 
