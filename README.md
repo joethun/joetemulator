@@ -28,7 +28,7 @@
 | Commodore | Amiga, 64, 128, VIC-20, Plus/4, PET |
 | NEC | TurboGrafx-16, PC-FX |
 | Arcade | FBNeo, M.A.M.E. |
-| Other | 3DO, DOS, ColecoVision, Neo Geo Pocket, WonderSwan |
+| Other | 3DO, DOS, ColecoVision, Neo Geo Pocket, WonderSwan, Intellivision |
 
 ## Adding Games
 
