@@ -15,7 +15,6 @@ export const RETROARCH_CFG = [
     'video_smooth = false',
     'fastforward_ratio = 0',
     'slowmotion_ratio = 0',
-    'rewind_enable = true',
     `savefile_directory = "${SAVES_DIR}"`,
     '',
 ].join('\n');

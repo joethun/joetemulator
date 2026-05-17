@@ -128,7 +128,8 @@ export const EmulatorView = memo(({
                 style={{ backgroundColor: '#000000' }}
             >
                 <canvas
-                    ref={session.canvasRef}
+                    ref={session.setCanvas}
+                    key={session.canvasEpoch}
                     id="ra-canvas"
                     tabIndex={-1}
                     onClick={handleCanvasClick}

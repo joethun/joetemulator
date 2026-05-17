@@ -66,8 +66,12 @@ interface EmulatorActions {
 export interface EmulatorSession {
     /** Start a new game. Stops any running session first. */
     start: (args: StartArgs) => Promise<void>;
-    /** Attach this ref to the <canvas> element that will host the emulator. */
+    /** Read-only ref to the currently mounted <canvas> (or null between sessions). */
     canvasRef: RefObject<HTMLCanvasElement | null>;
+    /** Ref callback for the <canvas>. Pass to React `ref={...}`. */
+    setCanvas: (el: HTMLCanvasElement | null) => void;
+    /** Bumps each session. Pass as the canvas `key` so React remounts it and we get a fresh GL context. */
+    canvasEpoch: number;
     actions: EmulatorActions;
     phase: EmulatorPhase;
     message: string;
@@ -82,6 +86,7 @@ export interface EmulatorSession {
 export function useEmulator(): EmulatorSession {
     const runtimeRef = useRef<Runtime | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const canvasReadyResolvers = useRef<Array<(c: HTMLCanvasElement) => void>>([]);
     const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const saveOnExitRef = useRef(false);
     const startArgsRef = useRef<StartArgs | null>(null);
@@ -89,11 +94,22 @@ export function useEmulator(): EmulatorSession {
     const pausedRef = useRef(false);
 
     const [status, setStatus] = useState<SessionStatus>(IDLE_STATUS);
+    const [canvasEpoch, setCanvasEpoch] = useState(0);
     const [bindings, setBindingsState] = useState<InputBindings>(bindingsRef.current);
     const patchStatus = useCallback(
         (p: Partial<SessionStatus>) => setStatus(s => ({ ...s, ...p })),
         [],
     );
+
+    // Cores leak GL state into the shared WebGL context; each session needs a fresh one.
+    const setCanvas = useCallback((el: HTMLCanvasElement | null) => {
+        canvasRef.current = el;
+        if (el) {
+            const pending = canvasReadyResolvers.current;
+            canvasReadyResolvers.current = [];
+            pending.forEach(resolve => resolve(el));
+        }
+    }, []);
 
     const saveState = useCallback(async (source: 'manual' | 'auto' | 'exit' = 'manual') => {
         const rt = runtimeRef.current;
@@ -105,10 +121,11 @@ export function useEmulator(): EmulatorSession {
         if (source !== 'exit' && pausedRef.current) return;
         try {
             const bytes = gc.saveState();
+            if (!bytes) return;
+            if (source === 'auto' && await isStateDuplicate(game, bytes)) return;
             // Capture now — save-on-exit tears the canvas down before any async work.
             const snapshot = snapshotCover(gc.videoCanvas, gc.getDisplayAspect());
 
-            if (source === 'auto' && await isStateDuplicate(game, bytes)) return;
             const slotKey = getNextSlotKey(game);
             stampSlot(slotKey);
             await putStateBytes(slotKey, bytes);
@@ -139,6 +156,7 @@ export function useEmulator(): EmulatorSession {
         if (saveOnExitRef.current && runtimeRef.current && startArgsRef.current) {
             saveState('exit').catch(e => console.error('save on exit failed:', e));
         }
+        canvasReadyResolvers.current = [];
         if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
         autoSaveTimerRef.current = null;
         runtimeRef.current?.destroy();
@@ -150,11 +168,15 @@ export function useEmulator(): EmulatorSession {
     }, [saveState]);
 
     const start: EmulatorSession['start'] = useCallback(async (args) => {
-        const canvas = canvasRef.current;
-        if (!canvas) {
+        if (!canvasRef.current) {
             throw new Error('useEmulator: canvasRef has no current canvas. Render <EmulatorView session={...}/> before calling start().');
         }
         if (runtimeRef.current) stop();
+
+        const canvas = await new Promise<HTMLCanvasElement>(resolve => {
+            canvasReadyResolvers.current.push(resolve);
+            setCanvasEpoch(e => e + 1);
+        });
 
         startArgsRef.current = args;
         const { gameBaseName, opts: userOpts = {}, ...runtimeOpts } = args;
@@ -234,7 +256,7 @@ export function useEmulator(): EmulatorSession {
     }), [saveState, loadState, stop, switchCore, patchStatus]);
 
     return useMemo<EmulatorSession>(() => ({
-        start, canvasRef, actions,
+        start, canvasRef, setCanvas, canvasEpoch, actions,
         phase: status.phase,
         message: status.message,
         paused: status.paused,
@@ -243,5 +265,5 @@ export function useEmulator(): EmulatorSession {
         currentCore: status.system,
         currentLibretroCore: status.libretroCore,
         bindings,
-    }), [start, actions, status, bindings]);
+    }), [start, setCanvas, canvasEpoch, actions, status, bindings]);
 }

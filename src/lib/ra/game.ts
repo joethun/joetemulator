@@ -1,7 +1,7 @@
 import { DEFAULT_COVER_ASPECT } from '@/lib/savestates';
 import type { CwrapPrimitive, LibretroModule } from '@/lib/ra/types';
 
-const STATE_FILE = 'game.state';
+const STATE_FILE = '/game.state';
 
 type CFn<R> = (...args: unknown[]) => R;
 
@@ -41,9 +41,9 @@ export class GameController {
         };
     }
 
-    saveState(): Uint8Array {
+    saveState(): Uint8Array | null {
         const [sizeStr, ptrStr, ok] = this.fn.saveStateInfo().split('|');
-        if (ok !== '1') throw new Error('save_state_info failed');
+        if (ok !== '1') return null;
         const size = parseInt(sizeStr, 10);
         const ptr = parseInt(ptrStr, 10);
         return new Uint8Array(this.mod.HEAPU8.subarray(ptr, ptr + size));

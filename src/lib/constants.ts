@@ -45,41 +45,41 @@ export const getSystemCategory = (core?: string): string =>
 const SYSTEM_ASPECT_RATIOS: Record<string, number> = {
   // Nintendo
   "NES": 0.700,
-  "Game Boy": 1.118,
+  "Game Boy": 1.0,
   "Game Boy Color": 1.0,
   "Game Boy Advance": 1.0,
-  "SNES": 1.406,
-  "Virtual Boy": 1.036,
-  "N64": 1.369,
-  "DS": 1.096,
-  
+  "SNES": 1.434,
+  "Virtual Boy": 1.008,
+  "N64": 1.434,
+  "DS": 1.114,
+
   // Sega
   "Master System": 0.706,
-  "Genesis": 0.712,
-  "Game Gear": 0.868,
-  "CD": 0.707,
+  "Genesis": 0.700,
+  "Game Gear": 0.711,
+  "CD": 0.592,
   "32X": 0.725,
-  "Saturn": 0.600,
-  
+  "Saturn": 0.623,
+
   // Sony
   "PS1": 1.0,
-  "PSP": 0.576,
-  
+  "PSP": 0.579,
+
   // Atari & PC & Arcade
-  "2600": 0.755,
-  "5200": 0.662,
+  "2600": 0.735,
+  "5200": 0.732,
   "7800": 0.714,
   "Lynx": 1.118,
-  "Jaguar": 0.710,
+  "Jaguar": 0.717,
   "Amiga": 0.833,
-  "FBNeo": 0.770,
+  "FBNeo": 0.753,
   "M.A.M.E": 0.770,
   "TurboGrafx-16": 1.0,
-  "Microsoft DOS": 0.556,
-  "ColecoVision": 0.75,
-  "Intellivision": 0.725,
-  "SNK Neo Geo Pocket": 1.0,
-  "Bandai WonderSwan": 1.0
+  "Microsoft DOS": 0.800,
+  "ColecoVision": 0.743,
+  "Intellivision": 0.722,
+  "SNK Neo Geo Pocket": 0.871,
+  "Bandai WonderSwan": 0.804
 };
 
 export const getSystemAspectRatio = (systemName?: string): number =>
