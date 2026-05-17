@@ -5,7 +5,7 @@ import { Runtime, type RuntimeOptions } from '@/lib/ra/runtime';
 import type { EmulatorPhase } from '@/lib/ra/types';
 import {
     isStateDuplicate, getNextSlotKey, getSlotKeys, stampSlot,
-    getStateBytes, putStateBytes,
+    getStateBytes, putStateBytes, scheduleStateThumbnail, snapshotCover,
 } from '@/lib/savestates';
 import {
     loadStoredBindings, saveStoredBindings, resetStoredBindings,
@@ -51,7 +51,7 @@ const IDLE_STATUS: SessionStatus = {
 interface EmulatorActions {
     pause: () => void;
     resume: () => void;
-    saveState: (source?: 'manual' | 'auto') => Promise<void>;
+    saveState: (source?: 'manual' | 'auto' | 'exit') => Promise<void>;
     loadState: (key?: string, source?: 'manual' | 'auto') => Promise<void>;
     stop: () => void;
     setBindings: (b: InputBindings) => void;
@@ -95,21 +95,25 @@ export function useEmulator(): EmulatorSession {
         [],
     );
 
-    const saveState = useCallback(async (source: 'manual' | 'auto' = 'manual') => {
+    const saveState = useCallback(async (source: 'manual' | 'auto' | 'exit' = 'manual') => {
         const rt = runtimeRef.current;
+        const gc = rt?.controller;
         const game = startArgsRef.current?.gameBaseName;
-        if (!rt?.controller || !game) return;
-        // Skip autosave while paused — the core hasn't advanced, so any save would
-        // duplicate the previous slot. Manual saves are still honoured (the user
-        // intentionally clicked save while paused).
-        if (source === 'auto' && pausedRef.current) return;
+        if (!gc || !game) return;
+        // Skip timed/manual saves while paused — the core hasn't advanced. Exit saves
+        // still run so "save on exit" works when leaving a paused game.
+        if (source !== 'exit' && pausedRef.current) return;
         try {
-            const bytes = rt.controller.saveState();
+            const bytes = gc.saveState();
+            // Capture now — save-on-exit tears the canvas down before any async work.
+            const snapshot = snapshotCover(gc.videoCanvas, gc.getDisplayAspect());
+
             if (source === 'auto' && await isStateDuplicate(game, bytes)) return;
             const slotKey = getNextSlotKey(game);
             stampSlot(slotKey);
             await putStateBytes(slotKey, bytes);
-            notify('save', source);
+            if (source !== 'exit') notify('save', source);
+            if (snapshot) scheduleStateThumbnail(slotKey, game, snapshot);
         } catch (e) {
             console.error('save state failed:', e);
         }
@@ -133,7 +137,7 @@ export function useEmulator(): EmulatorSession {
 
     const stop = useCallback(() => {
         if (saveOnExitRef.current && runtimeRef.current && startArgsRef.current) {
-            saveState('auto').catch(e => console.error('save on exit failed:', e));
+            saveState('exit').catch(e => console.error('save on exit failed:', e));
         }
         if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
         autoSaveTimerRef.current = null;

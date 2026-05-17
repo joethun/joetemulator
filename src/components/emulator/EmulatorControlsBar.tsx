@@ -35,11 +35,11 @@ export const EmulatorControlsBar = memo(({
         style={{ opacity: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none' }}
     >
         <div
-            className="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border-[0.125rem]"
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl border-[0.125rem]"
             style={{
                 backgroundColor: colors.darkBg,
                 borderColor: colors.midDark,
-                boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+                boxShadow: SHADOW_CARD,
             }}
         >
             <BarBtn

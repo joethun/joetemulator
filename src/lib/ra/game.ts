@@ -1,3 +1,4 @@
+import { DEFAULT_COVER_ASPECT } from '@/lib/savestates';
 import type { CwrapPrimitive, LibretroModule } from '@/lib/ra/types';
 
 const STATE_FILE = 'game.state';
@@ -16,9 +17,13 @@ export class GameController {
         getCoreOpts:   CFn<string>;
         setVariable:   CFn<void>;
         toggleShader:  CFn<void>;
+        getVideoDimensions: CFn<number>;
     };
 
-    constructor(public readonly mod: LibretroModule) {
+    constructor(
+        public readonly mod: LibretroModule,
+        private readonly canvas: HTMLCanvasElement,
+    ) {
         const w = <R>(name: string, ret: CwrapPrimitive, args: CwrapPrimitive[]) =>
             mod.cwrap<R>(name, ret, args) as CFn<R>;
         this.fn = {
@@ -32,6 +37,7 @@ export class GameController {
             getCoreOpts:   w<string>('get_core_options',   'string', []),
             setVariable:   w<void>  ('ejs_set_variable',   'null',   ['string', 'string']),
             toggleShader:  w<void>  ('shader_enable',      'null',   ['number']),
+            getVideoDimensions: w<number>('get_video_dimensions', 'number', ['string']),
         };
     }
 
@@ -66,4 +72,19 @@ export class GameController {
 
     /** Raw EmulatorJS core-options dump. Returns '' if the core hasn't exported the function. */
     getCoreOptionsRaw(): string { return this.fn.getCoreOpts() ?? ''; }
+
+    /**
+     * Core-reported DAR for the running game (e.g. ~4/3 for SNES, despite the 256×224
+     * framebuffer). Returns 4/3 if the core doesn't export the function.
+     */
+    getDisplayAspect(): number {
+        try {
+            const v = this.fn.getVideoDimensions('aspect');
+            if (Number.isFinite(v) && v > 0) return v;
+        } catch { /* core may not export this */ }
+        return DEFAULT_COVER_ASPECT;
+    }
+
+    /** The GL canvas the core renders into. Read directly to grab cover snapshots. */
+    get videoCanvas(): HTMLCanvasElement { return this.canvas; }
 }

@@ -40,14 +40,28 @@ const ROM_EXT_RANK: Record<string, number> = Object.fromEntries([
 
 const fileExt = (name: string) => name.split('.').pop()?.toLowerCase() ?? '';
 
+/** PK\x03\x04 / PK\x05\x06 / PK\x07\x08 — the three valid ZIP local-file headers. */
+export const looksLikeZip = (header: Uint8Array): boolean =>
+    header.length >= 4
+    && header[0] === 0x50 && header[1] === 0x4B
+    && (header[2] === 0x03 || header[2] === 0x05 || header[2] === 0x07);
+
+import type JSZip from 'jszip';
+
+let jsZipPromise: Promise<typeof JSZip> | null = null;
+
+export const loadJSZip = (): Promise<typeof JSZip> =>
+    jsZipPromise ??= import('jszip').then(m => {
+        const mod = m as typeof import('jszip') & { default?: typeof JSZip };
+        return mod.default ?? mod;
+    });
+
 async function extractRomBytesFromZip(file: File): Promise<ArrayBuffer | null> {
     const header = new Uint8Array(await file.slice(0, 4).arrayBuffer());
-    const isZip = header[0] === 0x50 && header[1] === 0x4B &&
-        (header[2] === 0x03 || header[2] === 0x05 || header[2] === 0x07);
-    if (!isZip) return null;
+    if (!looksLikeZip(header)) return null;
 
     try {
-        const JSZip = (await import('jszip')).default;
+        const JSZip = await loadJSZip();
         const zip = await JSZip.loadAsync(await file.arrayBuffer());
         const entries = Object.values(zip.files).filter(f => !f.dir);
         if (!entries.length) return null;

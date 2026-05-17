@@ -5,13 +5,15 @@ import { Trash2, Download, Upload, Save } from 'lucide-react';
 import type { ThemeColors } from '@/types';
 import {
     fetchStates, removeState, importState, downloadState,
-    fmtDate, groupByDay, type SaveState,
+    fmtTime, groupByDay, stampCoverAspect, DEFAULT_COVER_ASPECT,
+    SAVE_STATE_THUMBNAIL_EVENT, parseSaveStateThumbnailEvent,
+    type SaveState,
 } from '@/lib/savestates';
-import { DANGER_BG, DANGER_FG } from '@/lib/constants';
+import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
 import { SectionHeader } from '@/components/emulator/shared';
+import { SaveStateCover } from '@/components/emulator/SaveStateCover';
 
 const BTN_BASE = 'w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 cursor-pointer';
-const DELETE_ANIM_MS = 350;
 
 interface SaveStatesPanelProps {
     colors: ThemeColors;
@@ -28,24 +30,63 @@ export const SaveStatesPanel = memo(({
 }: SaveStatesPanelProps) => {
     const [states, setStates] = useState<SaveState[]>([]);
     const [loading, setLoading] = useState(true);
-    const [deletingKey, setDeletingKey] = useState<string | null>(null);
+    const [pendingCovers, setPendingCovers] = useState<Set<string>>(() => new Set());
 
     const refresh = useCallback(async () => {
         setLoading(true);
-        try { setStates(await fetchStates(gameName)); }
-        catch { setStates([]); }
-        finally { setLoading(false); }
+        try {
+            setStates(await fetchStates(gameName));
+        } catch {
+            setStates([]);
+        } finally {
+            setLoading(false);
+        }
     }, [gameName]);
 
     useEffect(() => { refresh(); }, [refresh]);
 
-    const handleDelete = useCallback(async (key: string) => {
-        if (!confirm(`Delete this save state for ${gameTitle}?`)) return;
-        setDeletingKey(key);
-        await new Promise(r => setTimeout(r, DELETE_ANIM_MS));
+    useEffect(() => {
+        const onThumbnail = (e: Event) => {
+            const detail = parseSaveStateThumbnailEvent(e, gameName);
+            if (!detail) return;
+            const { key, phase } = detail;
+            if (phase === 'pending') {
+                setPendingCovers(prev => {
+                    if (prev.has(key)) return prev;
+                    const next = new Set(prev);
+                    next.add(key);
+                    return next;
+                });
+                return;
+            }
+            setPendingCovers(prev => {
+                if (!prev.has(key)) return prev;
+                const next = new Set(prev);
+                next.delete(key);
+                return next;
+            });
+            if (detail.thumbnail !== undefined) {
+                setStates(prev => prev.map(s => s.key === key
+                    ? {
+                        ...s,
+                        thumbnail: detail.thumbnail ?? null,
+                        coverAspect: detail.coverAspect ?? s.coverAspect,
+                    }
+                    : s,
+                ));
+            }
+        };
+        window.addEventListener(SAVE_STATE_THUMBNAIL_EVENT, onThumbnail);
+        return () => window.removeEventListener(SAVE_STATE_THUMBNAIL_EVENT, onThumbnail);
+    }, [gameName]);
+
+    const gameCoverAspect = states.find(s => s.coverAspect && s.coverAspect > 0)?.coverAspect
+        ?? DEFAULT_COVER_ASPECT;
+
+    const handleDelete = useCallback(async (key: string, savedAt: Date | null) => {
+        if (!confirm(`Delete save state from ${fmtTime(savedAt)} for ${gameTitle}?`)) return;
         await removeState(key, gameName);
         setStates(prev => prev.filter(s => s.key !== key));
-        setDeletingKey(null);
     }, [gameName, gameTitle]);
 
     const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,15 +116,16 @@ export const SaveStatesPanel = memo(({
                         {groupByDay(states).map(({ label, items }) => (
                             <div key={label}>
                                 <SectionHeader title={label} colors={colors} />
-                                <div className="flex flex-col gap-2.5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-start">
                                     {items.map((s, idx) => (
-                                        <StateRow
+                                        <StateCard
                                             key={s.key}
                                             s={s}
                                             idx={idx}
-                                            isDeleting={deletingKey === s.key}
                                             colors={colors}
                                             gameName={gameName}
+                                            fallbackAspect={s.coverAspect ?? gameCoverAspect}
+                                            coverPending={pendingCovers.has(s.key)}
                                             onDelete={handleDelete}
                                             onLoad={onLoad}
                                         />
@@ -104,8 +146,8 @@ function EmptyState({ colors }: { colors: ThemeColors }) {
     return (
         <div className="flex flex-col items-center justify-center text-center animate-fade-in">
             <div
-                className="w-20 h-20 rounded-xl mb-6 flex items-center justify-center shadow-lg"
-                style={{ backgroundColor: colors.midDark, color: colors.highlight }}
+                className="w-20 h-20 rounded-xl mb-6 flex items-center justify-center"
+                style={{ backgroundColor: colors.midDark, color: colors.highlight, boxShadow: SHADOW_CARD }}
             >
                 <Save className="w-10 h-10" />
             </div>
@@ -119,47 +161,65 @@ function EmptyState({ colors }: { colors: ThemeColors }) {
     );
 }
 
-interface StateRowProps {
+interface StateCardProps {
     s: SaveState;
     idx: number;
-    isDeleting: boolean;
     colors: ThemeColors;
     gameName: string;
-    onDelete: (key: string) => void;
+    fallbackAspect: number;
+    coverPending: boolean;
+    onDelete: (key: string, savedAt: Date | null) => void;
     onLoad?: (key: string) => void;
 }
 
-const StateRow = memo(({ s, idx, isDeleting, colors, gameName, onDelete, onLoad }: StateRowProps) => (
-    <div
-        className={`h-12 px-4 rounded-xl border-[0.125rem] flex items-center gap-3 ${isDeleting ? 'animate-card-exit' : ''}`}
+const StateCard = memo(({
+    s, idx, colors, gameName, fallbackAspect, coverPending, onDelete, onLoad,
+}: StateCardProps) => (
+    <article
+        className="rounded-xl border-[0.125rem] overflow-hidden flex flex-col w-full min-w-0"
         style={{
             backgroundColor: colors.darkBg,
             borderColor: colors.midDark,
-            animation: isDeleting ? undefined : `fadeIn 0.4s ease-out ${idx * 0.03}s both`,
+            boxShadow: SHADOW_CARD,
+            animation: `fadeIn 0.4s ease-out ${idx * 0.03}s both`,
         }}
     >
-        <span className="text-sm font-medium truncate pr-2 flex-1" style={{ color: colors.softLight }}>
-            {fmtDate(s.savedAt)}
-        </span>
-        <div className="flex items-center gap-1.5 shrink-0">
-            {onLoad && (
-                <button onClick={() => onLoad(s.key)} aria-label="Load"
+        <SaveStateCover
+            src={s.thumbnail}
+            fallbackAspect={fallbackAspect}
+            colors={colors}
+            showNoImage={!s.thumbnail && !coverPending}
+            onAspectKnown={aspect => {
+                if (!s.coverAspect) stampCoverAspect(s.key, aspect);
+            }}
+        />
+        <div
+            className="h-12 px-3 flex items-center gap-2 border-t-[0.125rem] shrink-0"
+            style={{ borderColor: colors.midDark }}
+        >
+            <span className="text-sm font-medium truncate flex-1 min-w-0" style={{ color: colors.softLight }}>
+                {fmtTime(s.savedAt)}
+            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+                {onLoad && (
+                    <button onClick={() => onLoad(s.key)} aria-label="Load"
+                        className={BTN_BASE}
+                        style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
+                        <Upload className="w-4 h-4" />
+                    </button>
+                )}
+                <button onClick={() => downloadState(gameName, s.savedAt, s.rawData, s.thumbnail)} aria-label="Download"
                     className={BTN_BASE}
                     style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
-                    <Upload className="w-4 h-4" />
+                    <Download className="w-4 h-4" />
                 </button>
-            )}
-            <button onClick={() => downloadState(gameName, s.savedAt, s.rawData)} aria-label="Download"
-                className={BTN_BASE}
-                style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
-                <Download className="w-4 h-4" />
-            </button>
-            <button onClick={() => onDelete(s.key)} aria-label="Delete" disabled={isDeleting}
-                className={`${BTN_BASE} disabled:opacity-40`}
-                style={{ backgroundColor: DANGER_BG, color: DANGER_FG }}>
-                <Trash2 className="w-4 h-4" />
-            </button>
+                <button onClick={() => onDelete(s.key, s.savedAt)} aria-label="Delete"
+                    className={BTN_BASE}
+                    style={{ backgroundColor: DANGER_BG, color: DANGER_FG }}>
+                    <Trash2 className="w-4 h-4" />
+                </button>
+            </div>
         </div>
-    </div>
+    </article>
 ));
-StateRow.displayName = 'StateRow';
+StateCard.displayName = 'StateCard';

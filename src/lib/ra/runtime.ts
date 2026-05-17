@@ -18,6 +18,16 @@ import type { EmulatorPhase, LibretroModule, ResolvedCore } from '@/lib/ra/types
 
 const SRM_SYNC_INTERVAL_MS = 10_000;
 
+const patchedCanvases = new WeakSet<HTMLCanvasElement>();
+
+function forcePreserveDrawingBuffer(canvas: HTMLCanvasElement): void {
+    if (patchedCanvases.has(canvas)) return;
+    const orig = canvas.getContext.bind(canvas) as (id: string, opts?: object) => RenderingContext | null;
+    (canvas as unknown as { getContext: (id: string, opts?: object) => RenderingContext | null }).getContext =
+        (id, opts) => orig(id, { ...(opts ?? {}), preserveDrawingBuffer: true });
+    patchedCanvases.add(canvas);
+}
+
 export interface RuntimeOptions {
     canvas: HTMLCanvasElement;
     system: string;
@@ -43,6 +53,9 @@ export class Runtime {
 
         // Patch AudioContext before the core's module factory creates one.
         ensureAudioPatch();
+
+        // Cover snapshots use toBlob; without this flag the readback is blank.
+        forcePreserveDrawingBuffer(canvas);
 
         onPhase?.('loading-core');
         const resolved = await loadCore(
@@ -77,7 +90,7 @@ export class Runtime {
         const romPath = '/' + rom.name;
         writeFile(mod, romPath, rom.bytes);
 
-        const gc = new GameController(mod);
+        const gc = new GameController(mod, canvas);
         this.gc = gc;
         this.input = new InputController(gc, { ...DEFAULT_BINDINGS, ...bindings }, handlers ?? {});
 

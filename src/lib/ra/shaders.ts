@@ -2,6 +2,7 @@ import { writeFile } from '@/lib/ra/fs';
 import type { LibretroModule } from '@/lib/ra/types';
 import { loadStringRecord, saveJSON } from '@/lib/ra/storage';
 import { SHADER_DATA } from '@/lib/ra/shaders-data';
+import { base64ToBytes } from '@/lib/utils';
 
 const STORAGE_KEY = 'ra_shader_pref_v1';
 const SHADER_PATH = '/shader/shader.glslp';
@@ -40,13 +41,6 @@ const CATALOGUE: ShaderOption[] = [
 ];
 
 export const getShaderOptions = (): ShaderOption[] => CATALOGUE;
-
-function base64ToBytes(b64: string): Uint8Array {
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return bytes;
-}
 
 /** Write the shader files into the core's FS. Returns true if a shader was written. */
 export function writeShaderFiles(mod: LibretroModule, name: string): boolean {
