@@ -22,8 +22,7 @@ input::placeholder {
   opacity: 0.6;
 }
 
-button:focus,
-button:focus-visible {
+button:focus:not(:focus-visible) {
   outline: none;
 }
 

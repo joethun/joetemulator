@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Lexend } from "next/font/google";
+import { ButtonMouseFocusGuard } from "@/components/ButtonMouseFocusGuard";
 import "./globals.css";
 
 const lexend = Lexend({ variable: "--font-lexend", subsets: ["latin"] });
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body className={`${lexend.variable} antialiased`}>
+        <ButtonMouseFocusGuard />
         {children}
       </body>
     </html>
