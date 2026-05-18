@@ -1,0 +1,1 @@
+{"name":"desmume","extensions":["nds","bin"],"makeoptions":{"arguments":[],"buildpath":"./desmume/src/frontend/libretro","makescript":"Makefile.libretro"},"options":{"defaultWebGL2":true,"supportsMouse":true},"save":"dsv","license":"","repo":"https://github.com/EmulatorJS/desmume"}

@@ -1,0 +1,1 @@
+{"name":"mgba","extensions":["gb","gbc","gba"],"makeoptions":{"buildpath":"./","makescript":"Makefile.libretro","arguments":[]},"options":{},"save":"srm","license":"LICENSE","repo":"https://github.com/EmulatorJS/mgba"}

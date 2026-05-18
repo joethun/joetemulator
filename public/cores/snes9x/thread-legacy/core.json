@@ -1,0 +1,1 @@
+{"name":"snes9x","extensions":["smc","sfc","swc","fig","bs","st"],"makeoptions":{"buildpath":"./libretro","makescript":"Makefile","arguments":[]},"options":{},"save":"srm","license":"LICENSE","repo":"https://github.com/EmulatorJS/snes9x"}

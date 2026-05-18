@@ -1,0 +1,1 @@
+{"name":"parallel_n64","extensions":["n64","v64","z64","bin","u1","ndd","gb"],"makeoptions":{"arguments":[],"buildpath":"./","makescript":"Makefile"},"options":{},"save":"srm","license":"","repo":"https://github.com/EmulatorJS/parallel-n64"}

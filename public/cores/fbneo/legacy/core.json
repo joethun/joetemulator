@@ -1,0 +1,1 @@
+{"name":"fbneo","extensions":["zip","7z"],"makeoptions":{"arguments":[],"buildpath":"./src/burner/libretro","makescript":"Makefile"},"options":{},"save":false,"license":"src/license.txt","repo":"https://github.com/EmulatorJS/FBNeo"}

@@ -1,0 +1,1 @@
+{"name":"nestopia","extensions":["fds","nes","unif","unf"],"makeoptions":{"buildpath":"./libretro","makescript":"Makefile","arguments":[]},"options":{},"save":"srm","license":"COPYING","repo":"https://github.com/EmulatorJS/nestopia"}

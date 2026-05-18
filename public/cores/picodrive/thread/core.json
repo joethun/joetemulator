@@ -1,0 +1,1 @@
+{"name":"picodrive","extensions":["bin","gen","smd","md","32x","cue","iso","sms","68k","chd"],"makeoptions":{"arguments":[],"buildpath":"./","makescript":"Makefile.libretro"},"options":{},"save":"srm","license":"COPYING","repo":"https://github.com/EmulatorJS/picodrive"}

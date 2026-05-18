@@ -1,0 +1,1 @@
+{"name":"mednafen_psx_hw","extensions":["cue","toc","m3u","ccd","exe","pbp","chd"],"makeoptions":{"arguments":[],"buildpath":"./","makescript":"Makefile"},"options":{"defaultWebGL2":true},"save":"srm","license":"COPYING","repo":"https://github.com/EmulatorJS/beetle-psx-libretro"}
