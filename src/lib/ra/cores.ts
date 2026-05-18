@@ -77,6 +77,66 @@ export const getCoresForSystem = (system: string): readonly string[] =>
 export const getMaxPlayers = (system: string): number =>
     SINGLE_PLAYER.has(system) ? 1 : FOUR_PLAYER.has(system) ? 4 : 2;
 
+const CORE_DISPLAY_NAMES: Record<string, string> = {
+    '81':                 'EightyOne',
+    a5200:                'a5200',
+    azahar:               'Azahar',
+    beetle_vb:            'Beetle VB',
+    bsnes:                'bsnes',
+    cap32:                'Caprice32',
+    crocods:              'CrocoDS',
+    desmume:              'DeSmuME',
+    desmume2015:          'DeSmuME 2015',
+    dosbox_pure:          'DOSBox Pure',
+    fbalpha2012_cps1:     'FB Alpha 2012 CPS-1',
+    fbalpha2012_cps2:     'FB Alpha 2012 CPS-2',
+    fbneo:                'FBNeo',
+    fceumm:               'FCEUmm',
+    freeintv:             'FreeIntv',
+    fuse:                 'Fuse',
+    gambatte:             'Gambatte',
+    gearcoleco:           'GearColeco',
+    genesis_plus_gx:      'Genesis Plus GX',
+    genesis_plus_gx_wide: 'Genesis Plus GX Wide',
+    handy:                'Handy',
+    mame2003:             'MAME 2003',
+    mame2003_plus:        'MAME 2003-Plus',
+    mednafen_ngp:         'Mednafen NGP',
+    mednafen_pce:         'Mednafen PCE',
+    mednafen_pcfx:        'Mednafen PC-FX',
+    mednafen_psx_hw:      'Mednafen PSX HW',
+    mednafen_wswan:       'Mednafen WonderSwan',
+    melonds:              'melonDS',
+    mgba:                 'mGBA',
+    mupen64plus_next:     'Mupen64Plus-Next',
+    nestopia:             'Nestopia',
+    opera:                'Opera',
+    parallel_n64:         'ParaLLEl N64',
+    pcsx_rearmed:         'PCSX ReARMed',
+    picodrive:            'PicoDrive',
+    ppsspp:               'PPSSPP',
+    prboom:               'PrBoom',
+    prosystem:            'ProSystem',
+    puae:                 'PUAE',
+    same_cdi:             'SAME CDi',
+    smsplus:              'SMS Plus GX',
+    snes9x:               'Snes9x',
+    stella2014:           'Stella 2014',
+    vice_x128:            'VICE x128',
+    vice_x64:             'VICE x64',
+    vice_x64sc:           'VICE x64sc',
+    vice_xpet:            'VICE xpet',
+    vice_xplus4:          'VICE xplus4',
+    vice_xvic:            'VICE xvic',
+    virtualjaguar:        'Virtual Jaguar',
+    yabause:              'Yabause',
+};
+
+export function getCoreDisplayName(libretroCore: string): string {
+    return CORE_DISPLAY_NAMES[libretroCore]
+        ?? (libretroCore.charAt(0).toUpperCase() + libretroCore.slice(1));
+}
+
 // ─── User's preferred core per system ───────────────────────────────────────
 
 const CORE_PREF_KEY = 'ra_system_core_pref_v1';

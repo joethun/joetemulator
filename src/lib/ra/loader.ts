@@ -23,7 +23,7 @@ const hasThreads = (): boolean =>
     && typeof SharedArrayBuffer === 'function'
     && (window as { crossOriginIsolated?: boolean }).crossOriginIsolated === true;
 
-function pickVariant(libretroName: string): CoreVariant {
+export function pickVariant(libretroName: string): CoreVariant {
     const threads = hasThreads();
     const webgl2 = hasWebGL2();
     if (CORES_REQUIRING_THREADS.has(libretroName) && !threads) {

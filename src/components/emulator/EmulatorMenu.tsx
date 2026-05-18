@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useEffect, useRef, useState } from 'react';
-import { ChevronRight, Gamepad2, Monitor, Settings as SettingsIcon } from 'lucide-react';
+import { ChevronRight, FileText, Gamepad2, Monitor, Settings as SettingsIcon } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ThemeColors, GradientStyle } from '@/types';
 import type { EmulatorSession } from '@/hooks/useEmulator';
@@ -10,11 +10,12 @@ import { Modal, ModalHeader, ModalFooter } from '@/components/Modal';
 import { SHADOW_CARD } from '@/lib/constants';
 import { ControlsPanel } from '@/components/emulator/ControlsPanel';
 import { CoreOptionsPanel } from '@/components/emulator/CoreOptionsPanel';
+import { LicensePanel } from '@/components/emulator/LicensePanel';
 import { ShaderPanel } from '@/components/emulator/ShaderPanel';
 import { SaveStatesPanel } from '@/components/emulator/SaveStatesPanel';
 import type { EmulatorPanel } from '@/components/emulator/EmulatorControlsBar';
 
-type SettingsTab = 'controls' | 'options' | 'shader';
+type SettingsTab = 'controls' | 'options' | 'shader' | 'license';
 
 interface EmulatorMenuProps {
     section: EmulatorPanel | null;
@@ -30,6 +31,7 @@ const TAB_META: Record<SettingsTab, { title: string; subtitle: string; icon: Luc
     controls: { title: 'Controls',     subtitle: 'Click a binding to change it. Right-click to clear.',     icon: Gamepad2 },
     options:  { title: 'Core Options', subtitle: 'RetroArch core settings — some may need a restart to apply.', icon: SettingsIcon },
     shader:   { title: 'Shader',       subtitle: 'Apply a visual filter to the game output.',               icon: Monitor },
+    license:  { title: 'Licenses',     subtitle: 'View licenses for the services used by the emulator.', icon: FileText },
 };
 
 export const EmulatorMenu = memo(function EmulatorMenu({
@@ -109,6 +111,12 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                             onShaderChange={session.actions.setShader}
                         />
                     )}
+                    {displaySection === 'settings' && tab === 'license' && (
+                        <LicensePanel
+                            colors={colors}
+                            libretroCore={session.currentLibretroCore}
+                        />
+                    )}
                 </div>
 
                 <ModalFooter colors={colors}>
@@ -143,7 +151,7 @@ export const EmulatorMenu = memo(function EmulatorMenu({
 });
 
 function SettingsHub({ colors, onPick }: { colors: ThemeColors; onPick: (tab: SettingsTab) => void }) {
-    const tabs: SettingsTab[] = ['controls', 'options', 'shader'];
+    const tabs: SettingsTab[] = ['controls', 'options', 'shader', 'license'];
     return (
         <div className="grid gap-4">
             {tabs.map((key, idx) => {
