@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://cdn.jsdelivr.net/gh/joethun/joetemulator@main/duck.png" alt="Joe T Emulator" width="120"/>
+<img src="docs/duck.png" alt="Joe T Emulator" width="120"/>
 
 <h1>JOE T EMULATOR</h1>
 
@@ -33,12 +33,17 @@
 ## Adding Games
 
 1. To add a game, click the + button in the sidebar and pick a file or multiple. In addition to this you can drag files onto the page.
-<img width="1967" height="1177" alt="image" src="https://github.com/user-attachments/assets/3cf5eea9-c4fe-4e2c-ac91-e45120ba4745" />
+
+<img src="docs/readme/addbutton.png" alt="Add games with the + button or drag and drop" width="800"/>
 
 2. You will be prompted to pick a system for your game(s). You can also rename the game through this menu.
-<img width="1967" height="1177" alt="image" src="https://github.com/user-attachments/assets/c30d1495-20a7-4371-bc9d-2051b5fc08d4" />
+
+<img src="docs/readme/systempicker.png" alt="System picker and rename dialog" width="800"/>
 
 3. Cover art is then fetched automatically. You can also set your own image via the context menu by right-clicking a game.
-<img width="1967" height="1177" alt="image" src="https://github.com/user-attachments/assets/be11ca00-2da3-4945-95d2-329eb5bf79af" />
+
+<img src="docs/readme/play.png" alt="Playing a game" width="800"/>
 
 4. Play by clicking a game.
+
+
