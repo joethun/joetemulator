@@ -6,9 +6,19 @@ const RetroPad = {
     A: 8, X: 9, L: 10, R: 11, L2: 12, R2: 13, L3: 14, R3: 15,
 } as const;
 
+/** Offsets into the per-player analog block; absolute retropad ids = ANALOG_BASE + offset. */
+const RetroAnalog = {
+    L_RIGHT: 0, L_LEFT: 1, L_DOWN: 2, L_UP: 3,
+    R_RIGHT: 4, R_LEFT: 5, R_DOWN: 6, R_UP: 7,
+} as const;
+
 export const NUM_PLAYERS = 4;
 const NUM_BUTTONS = 16;
-const AXIS_DEADZONE = 0.5;
+const NUM_ANALOG = 8;
+const ANALOG_BASE = 16;
+const ANALOG_MAX = 0x7fff;
+/** Below this stick magnitude we report 0 — kills small idle drift so the diff doesn't churn. */
+const ANALOG_DEADZONE = 0.12;
 
 export type KeyMap = Record<string, { player: number; button: number }>;
 /** retropad button id → list of physical gamepad button indices that trigger it. */
@@ -104,11 +114,23 @@ const anyPressed = (pads: (Gamepad | null)[], idx: number): boolean => {
     return false;
 };
 
+/** Map raw axis (-1..1) to libretro analog range, applying deadzone + clamp. */
+function axisToAnalog(value: number): number {
+    if (!Number.isFinite(value)) return 0;
+    const abs = Math.abs(value);
+    if (abs < ANALOG_DEADZONE) return 0;
+    if (abs >= 1) return value < 0 ? -ANALOG_MAX : ANALOG_MAX;
+    return Math.round(value * ANALOG_MAX);
+}
+
 export class InputController {
     private readonly pressed = new Set<string>();
     /** Flat per-frame state for gamepad-driven buttons: index = player*16 + button. */
     private readonly gpDesired = new Uint8Array(NUM_PLAYERS * NUM_BUTTONS);
     private readonly gpCurrent = new Uint8Array(NUM_PLAYERS * NUM_BUTTONS);
+    /** Last-emitted analog magnitude per (player, analog-button-offset) for diffing. */
+    private readonly gpAnalogCurrent = new Int16Array(NUM_PLAYERS * NUM_ANALOG);
+    private readonly gpAnalogDesired = new Int16Array(NUM_PLAYERS * NUM_ANALOG);
     private rafId: number | null = null;
     private attached = false;
     private ffActive = false;
@@ -199,6 +221,14 @@ export class InputController {
         }
         this.gpDesired.fill(0);
 
+        const analog = this.gpAnalogCurrent;
+        for (let i = 0; i < analog.length; i++) {
+            if (analog[i]) {
+                analog[i] = 0;
+                this.gc.simulateInput((i / NUM_ANALOG) | 0, ANALOG_BASE + (i % NUM_ANALOG), 0);
+            }
+        }
+
         this.setFastForward(false);
         this.setRewind(false);
         this.hkPrev = { fast: false, rewind: false, save: false, load: false, pause: false };
@@ -211,7 +241,10 @@ export class InputController {
         const gamepadMap = b.gamepadMap;
         const desired = this.gpDesired;
         const current = this.gpCurrent;
+        const analogCurrent = this.gpAnalogCurrent;
+        const analogDesired = this.gpAnalogDesired;
         desired.fill(0);
+        analogDesired.fill(0);
 
         for (let player = 0; player < NUM_PLAYERS; player++) {
             const pad = pads[assignment?.[player] ?? player];
@@ -227,13 +260,19 @@ export class InputController {
                 }
             }
 
+            // Sticks → libretro analog buttons 16..23. Sending magnitudes here is
+            // what makes analog-aware cores (PSX DualShock, N64 stick) actually
+            // see stick motion; the digital D-pad still comes from buttons 12..15.
             const axes = pad.axes;
-            if (axes.length >= 2) {
-                if (axes[0] < -AXIS_DEADZONE) desired[base + RetroPad.LEFT]  = 1;
-                if (axes[0] >  AXIS_DEADZONE) desired[base + RetroPad.RIGHT] = 1;
-                if (axes[1] < -AXIS_DEADZONE) desired[base + RetroPad.UP]    = 1;
-                if (axes[1] >  AXIS_DEADZONE) desired[base + RetroPad.DOWN]  = 1;
-            }
+            const aBase = player * NUM_ANALOG;
+            const writeAxis = (pos: number, neg: number, v: number) => {
+                if (v > 0) analogDesired[aBase + pos] = v;
+                else if (v < 0) analogDesired[aBase + neg] = -v;
+            };
+            writeAxis(RetroAnalog.L_RIGHT, RetroAnalog.L_LEFT, axisToAnalog(axes[0] ?? 0));
+            writeAxis(RetroAnalog.L_DOWN,  RetroAnalog.L_UP,   axisToAnalog(axes[1] ?? 0));
+            writeAxis(RetroAnalog.R_RIGHT, RetroAnalog.R_LEFT, axisToAnalog(axes[2] ?? 0));
+            writeAxis(RetroAnalog.R_DOWN,  RetroAnalog.R_UP,   axisToAnalog(axes[3] ?? 0));
         }
 
         // Diff against last frame and emit edge events only.
@@ -242,6 +281,14 @@ export class InputController {
             if (d !== current[i]) {
                 current[i] = d;
                 this.gc.simulateInput((i / NUM_BUTTONS) | 0, i % NUM_BUTTONS, d);
+            }
+        }
+
+        for (let i = 0; i < analogDesired.length; i++) {
+            const d = analogDesired[i];
+            if (d !== analogCurrent[i]) {
+                analogCurrent[i] = d;
+                this.gc.simulateInput((i / NUM_ANALOG) | 0, ANALOG_BASE + (i % NUM_ANALOG), d);
             }
         }
 

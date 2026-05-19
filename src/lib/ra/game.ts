@@ -18,6 +18,8 @@ export class GameController {
         setVariable:   CFn<void>;
         toggleShader:  CFn<void>;
         getVideoDimensions: CFn<number>;
+        setPortDevice: CFn<void>;
+        getPortInfo:   CFn<string>;
     };
 
     constructor(
@@ -38,6 +40,8 @@ export class GameController {
             setVariable:   w<void>  ('ejs_set_variable',   'null',   ['string', 'string']),
             toggleShader:  w<void>  ('shader_enable',      'null',   ['number']),
             getVideoDimensions: w<number>('get_video_dimensions', 'number', ['string']),
+            setPortDevice: w<void>  ('ejs_set_controller_port_device', 'null',   ['number', 'number']),
+            getPortInfo:   w<string>('ejs_get_controller_port_info',   'string', []),
         };
     }
 
@@ -72,6 +76,16 @@ export class GameController {
 
     /** Raw EmulatorJS core-options dump. Returns '' if the core hasn't exported the function. */
     getCoreOptionsRaw(): string { return this.fn.getCoreOpts() ?? ''; }
+
+    /** Tell the core which libretro device type is connected to a port. */
+    setControllerPortDevice(port: number, device: number): void {
+        try { this.fn.setPortDevice(port, device); } catch { /* core may not export */ }
+    }
+
+    /** Raw EmulatorJS port-info dump. Lines: `port:deviceId:description`. */
+    getControllerPortInfoRaw(): string {
+        try { return this.fn.getPortInfo() ?? ''; } catch { return ''; }
+    }
 
     /**
      * Core-reported DAR for the running game (e.g. ~4/3 for SNES, despite the 256×224

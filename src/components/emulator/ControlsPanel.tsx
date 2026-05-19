@@ -5,6 +5,7 @@ import type { ThemeColors } from '@/types';
 import { NUM_PLAYERS, type InputBindings, type KeyMap } from '@/lib/ra/input';
 import { getButtonsForCore } from '@/lib/ra/control-schemes';
 import { getMaxPlayers } from '@/lib/ra/cores';
+import type { ControllerPort } from '@/lib/ra/controllers';
 import { SectionHeader } from '@/components/emulator/shared';
 import { BindingRow, BindingChip } from '@/components/emulator/BindingRow';
 
@@ -13,6 +14,8 @@ interface ControlsPanelProps {
     onChange: (next: InputBindings) => void;
     colors: ThemeColors;
     core: string;
+    controllerPorts?: readonly ControllerPort[];
+    onControllerDeviceChange?: (port: number, deviceId: number) => void;
 }
 
 type HotkeyKey = 'fastForwardKey' | 'rewindKey' | 'pauseKey' | 'saveStateKey' | 'loadStateKey';
@@ -91,7 +94,9 @@ function applyAssignmentSwap(
     return next;
 }
 
-export const ControlsPanel = memo(({ bindings, onChange, colors, core }: ControlsPanelProps) => {
+export const ControlsPanel = memo(({
+    bindings, onChange, colors, core, controllerPorts, onControllerDeviceChange,
+}: ControlsPanelProps) => {
     const [selectedPlayer, setSelectedPlayer] = useState(0);
 
     const [gamepads, setGamepads] = useState<(Gamepad | null)[]>([]);
@@ -290,6 +295,28 @@ export const ControlsPanel = memo(({ bindings, onChange, colors, core }: Control
 
     const assignListening = listening?.kind === 'assign' && listening.player === selectedPlayer;
 
+    const portForPlayer = controllerPorts?.find(p => p.port === selectedPlayer);
+    // Mirror the runtime's current device locally so the chip label updates
+    // immediately on click — the runtime stores the choice but doesn't push
+    // back into React state.
+    const [deviceOverride, setDeviceOverride] = useState<Record<number, number>>({});
+    useEffect(() => { setDeviceOverride({}); }, [core]);
+    const currentDeviceId = portForPlayer
+        ? deviceOverride[portForPlayer.port] ?? portForPlayer.currentDevice
+        : null;
+    const currentDevice = portForPlayer?.devices.find(d => d.id === currentDeviceId);
+    const cycleDevice = useCallback((step: 1 | -1) => {
+        if (!portForPlayer || !onControllerDeviceChange) return;
+        const { devices, port } = portForPlayer;
+        if (devices.length < 2) return;
+        const curId = deviceOverride[port] ?? portForPlayer.currentDevice;
+        const idx = devices.findIndex(d => d.id === curId);
+        const nextIdx = ((idx < 0 ? 0 : idx) + step + devices.length) % devices.length;
+        const nextId = devices[nextIdx].id;
+        onControllerDeviceChange(port, nextId);
+        setDeviceOverride(prev => ({ ...prev, [port]: nextId }));
+    }, [portForPlayer, onControllerDeviceChange, deviceOverride]);
+
     return (
         <div className="flex flex-col gap-6 min-w-0">
             {maxPlayers > 1 && (
@@ -313,19 +340,32 @@ export const ControlsPanel = memo(({ bindings, onChange, colors, core }: Control
 
             <div>
                 <SectionHeader title="Controller" colors={colors} />
-                <BindingRow label="Active Controller" active={assignListening} colors={colors}>
-                    <BindingChip
-                        label={
-                            assignListening
-                                ? 'Press button (Esc to reset)'
-                                : gamepadAssignmentLabel(bindings.gamepadAssignment, selectedPlayer, gamepads)
-                        }
-                        active={assignListening}
-                        colors={colors}
-                        onClick={() => setListening({ kind: 'assign', player: selectedPlayer })}
-                        onContextMenu={e => { e.preventDefault(); handleClearAssignment(selectedPlayer); }}
-                    />
-                </BindingRow>
+                <div className="flex flex-col gap-2.5">
+                    <BindingRow label="Active Controller" active={assignListening} colors={colors}>
+                        <BindingChip
+                            label={
+                                assignListening
+                                    ? 'Press button (Esc to reset)'
+                                    : gamepadAssignmentLabel(bindings.gamepadAssignment, selectedPlayer, gamepads)
+                            }
+                            active={assignListening}
+                            colors={colors}
+                            onClick={() => setListening({ kind: 'assign', player: selectedPlayer })}
+                            onContextMenu={e => { e.preventDefault(); handleClearAssignment(selectedPlayer); }}
+                        />
+                    </BindingRow>
+                    {portForPlayer && portForPlayer.devices.length > 1 && (
+                        <BindingRow label="Controller Type" active={false} colors={colors}>
+                            <BindingChip
+                                label={currentDevice?.name ?? 'Standard'}
+                                active={false}
+                                colors={colors}
+                                onClick={() => cycleDevice(1)}
+                                onContextMenu={e => { e.preventDefault(); cycleDevice(-1); }}
+                            />
+                        </BindingRow>
+                    )}
+                </div>
             </div>
 
             {groups.map(([groupName, items]) => (

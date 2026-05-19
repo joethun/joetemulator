@@ -88,6 +88,8 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                             onChange={session.actions.setBindings}
                             colors={colors}
                             core={session.currentCore ?? ''}
+                            controllerPorts={session.actions.getControllerPorts()}
+                            onControllerDeviceChange={session.actions.setControllerDevice}
                         />
                     )}
                     {displaySection === 'settings' && tab === 'options' && (

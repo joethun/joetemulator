@@ -13,9 +13,15 @@ import {
 import type { CoreOption } from '@/lib/ra/core-options';
 import { setCorePref } from '@/lib/ra/cores';
 import type { InputBindings } from '@/lib/ra/input';
+import type { ControllerPort } from '@/lib/ra/controllers';
 
 const MIN_AUTOSAVE_MS = 15_000;
 const DEFAULT_AUTOSAVE_MS = 60_000;
+
+// Stable empty arrays so memo'd consumers don't see a new reference each render
+// when the runtime is null.
+const EMPTY_CONTROLLER_PORTS: ControllerPort[] = [];
+const EMPTY_CORE_OPTIONS: CoreOption[] = [];
 
 const notify = (type: 'save' | 'load', source: 'manual' | 'auto'): void => {
     window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type, source } }));
@@ -59,6 +65,8 @@ interface EmulatorActions {
     getCoreOptions: () => CoreOption[];
     setCoreOption: (key: string, value: string) => void;
     resetCoreOptions: () => void;
+    getControllerPorts: () => readonly ControllerPort[];
+    setControllerDevice: (port: number, deviceId: number) => void;
     switchCore: (libretroName: string) => Promise<void>;
     setShader: (name: string) => void;
 }
@@ -92,6 +100,7 @@ export function useEmulator(): EmulatorSession {
     const startArgsRef = useRef<StartArgs | null>(null);
     const bindingsRef = useRef<InputBindings>(loadStoredBindings());
     const pausedRef = useRef(false);
+    const startingRef = useRef(false);
 
     const [status, setStatus] = useState<SessionStatus>(IDLE_STATUS);
     const [canvasEpoch, setCanvasEpoch] = useState(0);
@@ -171,53 +180,61 @@ export function useEmulator(): EmulatorSession {
         if (!canvasRef.current) {
             throw new Error('useEmulator: canvasRef has no current canvas. Render <EmulatorView session={...}/> before calling start().');
         }
-        if (runtimeRef.current) stop();
-
-        const canvas = await new Promise<HTMLCanvasElement>(resolve => {
-            canvasReadyResolvers.current.push(resolve);
-            setCanvasEpoch(e => e + 1);
-        });
-
-        startArgsRef.current = args;
-        const { gameBaseName, opts: userOpts = {}, ...runtimeOpts } = args;
-
-        setStatus({
-            ...IDLE_STATUS,
-            phase: 'loading-core',
-            game: gameBaseName,
-            system: runtimeOpts.system,
-        });
-
-        const rt = new Runtime();
-        runtimeRef.current = rt;
-
+        // Re-entry guard: rapid double clicks call start() twice before runtimeRef
+        // is set, which would otherwise spawn two Runtimes on the same canvas.
+        if (startingRef.current) return;
+        startingRef.current = true;
         try {
-            await rt.start({
-                ...runtimeOpts,
-                canvas,
-                bindings: bindingsRef.current,
-                handlers: {
-                    onSaveState: () => saveState('manual'),
-                    onLoadState: () => loadState(undefined, 'manual'),
-                },
-                onPhase: (p, m) => patchStatus(m ? { phase: p, message: m } : { phase: p }),
+            if (runtimeRef.current) stop();
+
+            const canvas = await new Promise<HTMLCanvasElement>(resolve => {
+                canvasReadyResolvers.current.push(resolve);
+                setCanvasEpoch(e => e + 1);
             });
 
-            patchStatus({ phase: 'running', paused: false, libretroCore: rt.libretroName });
+            startArgsRef.current = args;
+            const { gameBaseName, opts: userOpts = {}, ...runtimeOpts } = args;
 
-            saveOnExitRef.current = userOpts.saveOnExit ?? false;
-            if (userOpts.autoLoad) loadState(undefined, 'auto');
-            if (userOpts.autoSave) {
-                const ms = Math.max(MIN_AUTOSAVE_MS, userOpts.autoSaveInterval ?? DEFAULT_AUTOSAVE_MS);
-                autoSaveTimerRef.current = setInterval(() => {
-                    if (runtimeRef.current && !document.hidden) saveState('auto');
-                }, ms);
+            setStatus({
+                ...IDLE_STATUS,
+                phase: 'loading-core',
+                game: gameBaseName,
+                system: runtimeOpts.system,
+            });
+
+            const rt = new Runtime();
+            runtimeRef.current = rt;
+
+            try {
+                await rt.start({
+                    ...runtimeOpts,
+                    canvas,
+                    bindings: bindingsRef.current,
+                    handlers: {
+                        onSaveState: () => saveState('manual'),
+                        onLoadState: () => loadState(undefined, 'manual'),
+                    },
+                    onPhase: (p, m) => patchStatus(m ? { phase: p, message: m } : { phase: p }),
+                });
+
+                patchStatus({ phase: 'running', paused: false, libretroCore: rt.libretroName });
+
+                saveOnExitRef.current = userOpts.saveOnExit ?? false;
+                if (userOpts.autoLoad) loadState(undefined, 'auto');
+                if (userOpts.autoSave) {
+                    const ms = Math.max(MIN_AUTOSAVE_MS, userOpts.autoSaveInterval ?? DEFAULT_AUTOSAVE_MS);
+                    autoSaveTimerRef.current = setInterval(() => {
+                        if (runtimeRef.current && !document.hidden) saveState('auto');
+                    }, ms);
+                }
+            } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e);
+                console.error('emulator start failed:', e);
+                patchStatus({ error: msg, phase: 'error' });
+                stop();
             }
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            console.error('emulator start failed:', e);
-            patchStatus({ error: msg, phase: 'error' });
-            stop();
+        } finally {
+            startingRef.current = false;
         }
     }, [stop, saveState, loadState, patchStatus]);
 
@@ -249,9 +266,11 @@ export function useEmulator(): EmulatorSession {
             setBindingsState(defaults);
             runtimeRef.current?.setInputBindings(defaults);
         },
-        getCoreOptions:   () => runtimeRef.current?.getCoreOptions() ?? [],
+        getCoreOptions:   () => runtimeRef.current?.getCoreOptions() ?? EMPTY_CORE_OPTIONS,
         setCoreOption:    (key, value) => runtimeRef.current?.setCoreOption(key, value),
         resetCoreOptions: () => runtimeRef.current?.resetCoreOptions(),
+        getControllerPorts:  () => runtimeRef.current?.getControllerPorts() ?? EMPTY_CONTROLLER_PORTS,
+        setControllerDevice: (port, deviceId) => runtimeRef.current?.setControllerDevice(port, deviceId),
         setShader:        (name) => runtimeRef.current?.setShader(name),
     }), [saveState, loadState, stop, switchCore, patchStatus]);
 

@@ -5,6 +5,10 @@ import {
     type CoreOption,
 } from '@/lib/ra/core-options';
 import {
+    parseControllerPortInfo, loadStoredControllerDevices, saveStoredControllerDevice,
+    resolveDeviceForPort, type ControllerPort,
+} from '@/lib/ra/controllers';
+import {
     mountSaveFS, unmountSaveFS, writeFile, writeCoreOptionsFile,
     RETROARCH_CFG, RA_CFG_PATH,
 } from '@/lib/ra/fs';
@@ -44,9 +48,11 @@ export class Runtime {
     private input: InputController | null = null;
     private resolved: ResolvedCore | null = null;
     private srmTimer: ReturnType<typeof setInterval> | null = null;
+    private controllerPorts: ControllerPort[] = [];
 
     get controller(): GameController | null { return this.gc; }
     get libretroName(): string | null { return this.resolved?.libretroName ?? null; }
+    getControllerPorts(): readonly ControllerPort[] { return this.controllerPorts; }
 
     async start(opts: RuntimeOptions): Promise<void> {
         const { canvas, system, coreOverride, rom, bindings, handlers, onPhase } = opts;
@@ -105,6 +111,21 @@ export class Runtime {
             gc.setVariable(key, value);
         }
 
+        // Probe and apply controller-port device selection. Core reports which
+        // devices each port supports; we prefer the user's saved pick, falling
+        // back to an analog-capable device when available so the analog stick
+        // is actually recognised on cores whose default device is digital-only
+        // (e.g. PCSX-ReARMed → DualShock).
+        this.controllerPorts = parseControllerPortInfo(gc.getControllerPortInfoRaw());
+        const storedDevices = loadStoredControllerDevices(libretroName);
+        for (const port of this.controllerPorts) {
+            const device = resolveDeviceForPort(port, storedDevices);
+            if (device != null) {
+                gc.setControllerPortDevice(port.port, device);
+                port.currentDevice = device;
+            }
+        }
+
         this.srmTimer = setInterval(() => { gc.saveSRAM(); gc.syncSRAM(); }, SRM_SYNC_INTERVAL_MS);
 
         // Re-apply the user's last shader. Swallow errors so a missing/renamed
@@ -141,6 +162,14 @@ export class Runtime {
         saveStoredCoreOption(this.resolved.libretroName, key, value);
     }
 
+    setControllerDevice(port: number, deviceId: number): void {
+        if (!this.gc || !this.resolved) return;
+        this.gc.setControllerPortDevice(port, deviceId);
+        saveStoredControllerDevice(this.resolved.libretroName, port, deviceId);
+        const entry = this.controllerPorts.find(p => p.port === port);
+        if (entry) entry.currentDevice = deviceId;
+    }
+
     resetCoreOptions(): void {
         if (!this.gc || !this.resolved) return;
         const { libretroName } = this.resolved;
@@ -165,6 +194,7 @@ export class Runtime {
         this.gc = null;
         this.input = null;
         this.resolved = null;
+        this.controllerPorts = [];
         disposeCoreScripts();
     }
 }
