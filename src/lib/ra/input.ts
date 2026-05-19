@@ -15,14 +15,34 @@ const RetroAnalog = {
 export const NUM_PLAYERS = 4;
 const NUM_BUTTONS = 16;
 const NUM_ANALOG = 8;
-const ANALOG_BASE = 16;
+export const ANALOG_BASE = 16;
 const ANALOG_MAX = 0x7fff;
 /** Below this stick magnitude we report 0 — kills small idle drift so the diff doesn't churn. */
 const ANALOG_DEADZONE = 0.12;
+/** Threshold for treating an axis source as "pressed" when driving a digital retropad id. */
+const AXIS_DIGITAL_THRESHOLD = 0.5;
 
 export type KeyMap = Record<string, { player: number; button: number }>;
-/** retropad button id → list of physical gamepad button indices that trigger it. */
-export type GamepadRetroMap = Record<number, number[]>;
+
+/**
+ * A physical input on a gamepad that can drive a retropad id:
+ *  - 'button': a face/shoulder/dpad button on the pad
+ *  - 'axis':   one direction (sign) of a stick/trigger axis
+ *
+ * Any retropad id (digital 0..15 or analog 16..23) can be driven by any
+ * combination of these. For a digital id, *any* active source pressed = pressed.
+ * For an analog id, the max magnitude across sources wins (a held button
+ * counts as full deflection).
+ */
+export type GamepadSource =
+    | { kind: 'button'; index: number }
+    | { kind: 'axis'; axis: number; sign: 1 | -1 };
+
+/** retropad id → physical sources that drive it. */
+export type GamepadBinding = Record<number, GamepadSource[]>;
+
+export const sourceKey = (s: GamepadSource): string =>
+    s.kind === 'button' ? `b${s.index}` : `a${s.axis}${s.sign > 0 ? '+' : '-'}`;
 
 const DEFAULT_KEYMAP: KeyMap = {
     ArrowUp:    { player: 0, button: RetroPad.UP },
@@ -41,33 +61,44 @@ const DEFAULT_KEYMAP: KeyMap = {
     KeyV:       { player: 0, button: RetroPad.SELECT },
 };
 
-/** Default mapping: each physical button drives one retropad button. */
-const DEFAULT_GAMEPAD_MAP: GamepadRetroMap = {
-    [RetroPad.B]:      [0],
-    [RetroPad.A]:      [1],
-    [RetroPad.Y]:      [2],
-    [RetroPad.X]:      [3],
-    [RetroPad.L]:      [4],
-    [RetroPad.R]:      [5],
-    [RetroPad.L2]:     [6],
-    [RetroPad.R2]:     [7],
-    [RetroPad.SELECT]: [8],
-    [RetroPad.START]:  [9],
-    [RetroPad.L3]:     [10],
-    [RetroPad.R3]:     [11],
-    [RetroPad.UP]:     [12],
-    [RetroPad.DOWN]:   [13],
-    [RetroPad.LEFT]:   [14],
-    [RetroPad.RIGHT]:  [15],
+const btn = (index: number): GamepadSource => ({ kind: 'button', index });
+const axis = (axis: number, sign: 1 | -1): GamepadSource => ({ kind: 'axis', axis, sign });
+
+/** Standard mapping: face/shoulder/dpad to buttons, sticks to axes 0/1 and 2/3. */
+const DEFAULT_GAMEPAD_BINDING: GamepadBinding = {
+    [RetroPad.B]:      [btn(0)],
+    [RetroPad.A]:      [btn(1)],
+    [RetroPad.Y]:      [btn(2)],
+    [RetroPad.X]:      [btn(3)],
+    [RetroPad.L]:      [btn(4)],
+    [RetroPad.R]:      [btn(5)],
+    [RetroPad.L2]:     [btn(6)],
+    [RetroPad.R2]:     [btn(7)],
+    [RetroPad.SELECT]: [btn(8)],
+    [RetroPad.START]:  [btn(9)],
+    [RetroPad.L3]:     [btn(10)],
+    [RetroPad.R3]:     [btn(11)],
+    [RetroPad.UP]:     [btn(12)],
+    [RetroPad.DOWN]:   [btn(13)],
+    [RetroPad.LEFT]:   [btn(14)],
+    [RetroPad.RIGHT]:  [btn(15)],
+    [ANALOG_BASE + RetroAnalog.L_RIGHT]: [axis(0,  1)],
+    [ANALOG_BASE + RetroAnalog.L_LEFT]:  [axis(0, -1)],
+    [ANALOG_BASE + RetroAnalog.L_DOWN]:  [axis(1,  1)],
+    [ANALOG_BASE + RetroAnalog.L_UP]:    [axis(1, -1)],
+    [ANALOG_BASE + RetroAnalog.R_RIGHT]: [axis(2,  1)],
+    [ANALOG_BASE + RetroAnalog.R_LEFT]:  [axis(2, -1)],
+    [ANALOG_BASE + RetroAnalog.R_DOWN]:  [axis(3,  1)],
+    [ANALOG_BASE + RetroAnalog.R_UP]:    [axis(3, -1)],
 };
 
-const DEFAULT_GAMEPAD_BY_PLAYER: Record<number, GamepadRetroMap> = Object.fromEntries(
-    Array.from({ length: NUM_PLAYERS }, (_, p) => [p, DEFAULT_GAMEPAD_MAP]),
+const DEFAULT_GAMEPAD_BY_PLAYER: Record<number, GamepadBinding> = Object.fromEntries(
+    Array.from({ length: NUM_PLAYERS }, (_, p) => [p, DEFAULT_GAMEPAD_BINDING]),
 );
 
 export interface InputBindings {
     keyMap: KeyMap;
-    gamepadMap?: Record<number, GamepadRetroMap>;
+    gamepadBindings?: Record<number, GamepadBinding>;
     gamepadAssignment?: Record<number, number>;
     fastForwardKey?: string;
     rewindKey?: string;
@@ -83,7 +114,7 @@ export interface InputBindings {
 
 export const DEFAULT_BINDINGS: Required<InputBindings> = {
     keyMap: DEFAULT_KEYMAP,
-    gamepadMap: DEFAULT_GAMEPAD_BY_PLAYER,
+    gamepadBindings: DEFAULT_GAMEPAD_BY_PLAYER,
     gamepadAssignment: {},
     fastForwardKey: '',
     rewindKey: '',
@@ -103,7 +134,7 @@ export interface InputHandlers {
     onPause?: () => void;
 }
 
-const isPressed = (pad: Gamepad, idx: number): boolean => {
+export const isPressed = (pad: Gamepad, idx: number): boolean => {
     const b = pad.buttons[idx];
     return !!b && (b.pressed || b.value > 0.5);
 };
@@ -114,14 +145,13 @@ const anyPressed = (pads: (Gamepad | null)[], idx: number): boolean => {
     return false;
 };
 
-/** Map raw axis (-1..1) to libretro analog range, applying deadzone + clamp. */
-function axisToAnalog(value: number): number {
-    if (!Number.isFinite(value)) return 0;
-    const abs = Math.abs(value);
-    if (abs < ANALOG_DEADZONE) return 0;
-    if (abs >= 1) return value < 0 ? -ANALOG_MAX : ANALOG_MAX;
-    return Math.round(value * ANALOG_MAX);
-}
+/** Signed deflection of a source in [0, 1] (axis past deadzone, or button as 0/1). */
+const sourceDeflection = (pad: Gamepad, s: GamepadSource): number => {
+    if (s.kind === 'button') return isPressed(pad, s.index) ? 1 : 0;
+    const raw = (pad.axes[s.axis] ?? 0) * s.sign;
+    if (!Number.isFinite(raw) || raw < ANALOG_DEADZONE) return 0;
+    return raw >= 1 ? 1 : raw;
+};
 
 export class InputController {
     private readonly pressed = new Set<string>();
@@ -238,7 +268,7 @@ export class InputController {
         const pads = navigator.getGamepads();
         const b = this.bindings;
         const assignment = b.gamepadAssignment;
-        const gamepadMap = b.gamepadMap;
+        const gpBindings = b.gamepadBindings;
         const desired = this.gpDesired;
         const current = this.gpCurrent;
         const analogCurrent = this.gpAnalogCurrent;
@@ -249,33 +279,33 @@ export class InputController {
         for (let player = 0; player < NUM_PLAYERS; player++) {
             const pad = pads[assignment?.[player] ?? player];
             if (!pad) continue;
-            const map = gamepadMap?.[player] ?? DEFAULT_GAMEPAD_MAP;
+            const binding = gpBindings?.[player] ?? DEFAULT_GAMEPAD_BINDING;
             const base = player * NUM_BUTTONS;
+            const aBase = player * NUM_ANALOG;
 
-            for (const retroStr in map) {
+            for (const retroStr in binding) {
                 const retro = +retroStr;
-                const physList = map[retro];
-                for (let i = 0; i < physList.length; i++) {
-                    if (isPressed(pad, physList[i])) { desired[base + retro] = 1; break; }
+                const sources = binding[retro];
+                if (!sources || sources.length === 0) continue;
+
+                if (retro < ANALOG_BASE) {
+                    for (let i = 0; i < sources.length; i++) {
+                        if (sourceDeflection(pad, sources[i]) >= AXIS_DIGITAL_THRESHOLD) {
+                            desired[base + retro] = 1;
+                            break;
+                        }
+                    }
+                } else {
+                    let max = 0;
+                    for (let i = 0; i < sources.length; i++) {
+                        const d = sourceDeflection(pad, sources[i]);
+                        if (d > max) max = d;
+                    }
+                    if (max > 0) analogDesired[aBase + (retro - ANALOG_BASE)] = Math.round(max * ANALOG_MAX);
                 }
             }
-
-            // Sticks → libretro analog buttons 16..23. Sending magnitudes here is
-            // what makes analog-aware cores (PSX DualShock, N64 stick) actually
-            // see stick motion; the digital D-pad still comes from buttons 12..15.
-            const axes = pad.axes;
-            const aBase = player * NUM_ANALOG;
-            const writeAxis = (pos: number, neg: number, v: number) => {
-                if (v > 0) analogDesired[aBase + pos] = v;
-                else if (v < 0) analogDesired[aBase + neg] = -v;
-            };
-            writeAxis(RetroAnalog.L_RIGHT, RetroAnalog.L_LEFT, axisToAnalog(axes[0] ?? 0));
-            writeAxis(RetroAnalog.L_DOWN,  RetroAnalog.L_UP,   axisToAnalog(axes[1] ?? 0));
-            writeAxis(RetroAnalog.R_RIGHT, RetroAnalog.R_LEFT, axisToAnalog(axes[2] ?? 0));
-            writeAxis(RetroAnalog.R_DOWN,  RetroAnalog.R_UP,   axisToAnalog(axes[3] ?? 0));
         }
 
-        // Diff against last frame and emit edge events only.
         for (let i = 0; i < desired.length; i++) {
             const d = desired[i];
             if (d !== current[i]) {

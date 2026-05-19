@@ -2,7 +2,10 @@
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ThemeColors } from '@/types';
-import { NUM_PLAYERS, type InputBindings, type KeyMap } from '@/lib/ra/input';
+import {
+    ANALOG_BASE, NUM_PLAYERS, isPressed, sourceKey,
+    type GamepadSource, type InputBindings, type KeyMap,
+} from '@/lib/ra/input';
 import { getButtonsForCore } from '@/lib/ra/control-schemes';
 import { getMaxPlayers } from '@/lib/ra/cores';
 import type { ControllerPort } from '@/lib/ra/controllers';
@@ -35,12 +38,21 @@ const SYSTEM_HOTKEYS: SystemHotkey[] = [
     { keyboard: 'loadStateKey',   gamepad: 'loadStateGamepad',   label: 'Load State' },
 ];
 
+/** Threshold a stick axis must cross (from its capture baseline) to be added to a binding. */
+const CAPTURE_AXIS_TRIGGER = 0.6;
+
 function formatKeyCode(code: string | undefined): string {
     if (!code) return '—';
     if (code.startsWith('Key'))   return code.slice(3);
     if (code.startsWith('Digit')) return code.slice(5);
     if (code.startsWith('Arrow')) return code.slice(5) + ' Arrow';
     return code;
+}
+
+function formatSource(s: GamepadSource): string {
+    return s.kind === 'button'
+        ? `Button ${s.index}`
+        : `Axis ${s.axis}${s.sign > 0 ? '+' : '−'}`;
 }
 
 function findKeyForButton(keyMap: KeyMap, retroId: number, player: number): string | null {
@@ -54,7 +66,7 @@ function groupForButton(id: number): string {
     if (id >= 4  && id <= 7)  return 'D-Pad';
     if (id >= 10 && id <= 15) return 'Shoulder';
     if (id === 2 || id === 3) return 'System';
-    if (id >= 16 && id <= 23) return 'Analog';
+    if (id >= ANALOG_BASE)    return 'Analog';
     return 'Buttons';
 }
 
@@ -187,23 +199,32 @@ export const ControlsPanel = memo(({
         return () => window.removeEventListener('keydown', onKey, { capture: true });
     }, [listening, bindings, onChange, handleClearAssignment]);
 
-    // Gamepad listener — gamepad / hotkey-gamepad / assign kinds. Per-pad baseline
-    // so a held button on a different pad can't poison capture.
     useEffect(() => {
-        if (!listening || (listening.kind !== 'gamepad' && listening.kind !== 'hotkey-gamepad' && listening.kind !== 'assign')) return;
+        if (!listening) return;
+        const kind = listening.kind;
+        if (kind !== 'gamepad' && kind !== 'hotkey-gamepad' && kind !== 'assign') return;
 
         let raf = 0;
-        let baseline: boolean[][] | null = null;
-        // For 'gamepad' kind: collect every button held during the chord, then
-        // commit the whole set on release.
-        let chord: { pad: number; buttons: Set<number> } | null = null;
+        let baseline: ({ buttons: boolean[]; axes: number[] } | null)[] | null = null;
+        let chord: { pad: number; sources: Map<string, GamepadSource> } | null = null;
+
+        const sourceActive = (pad: Gamepad, s: GamepadSource): boolean =>
+            s.kind === 'button'
+                ? isPressed(pad, s.index)
+                : (pad.axes[s.axis] ?? 0) * s.sign >= CAPTURE_AXIS_TRIGGER;
+
+        const addToChord = (padIdx: number, src: GamepadSource): void => {
+            if (!chord) chord = { pad: padIdx, sources: new Map() };
+            if (chord.pad === padIdx) chord.sources.set(sourceKey(src), src);
+        };
 
         const tick = () => {
             const pads = navigator.getGamepads?.() ?? [];
             if (!baseline) {
-                baseline = Array.from(pads, pad =>
-                    pad ? pad.buttons.map(b => b.pressed || b.value > 0.5) : [],
-                );
+                baseline = pads.map(pad => pad ? {
+                    buttons: pad.buttons.map(b => b.pressed || b.value > 0.5),
+                    axes: Array.from(pad.axes),
+                } : null);
             }
 
             const target = listening;
@@ -211,48 +232,53 @@ export const ControlsPanel = memo(({
             for (let p = 0; p < pads.length; p++) {
                 const pad = pads[p];
                 if (!pad) continue;
-                const base = baseline[p] ?? (baseline[p] = pad.buttons.map(() => false));
+                const base = baseline[p] ?? (baseline[p] = {
+                    buttons: pad.buttons.map(() => false),
+                    axes: Array.from(pad.axes),
+                });
+
                 for (let i = 0; i < pad.buttons.length; i++) {
-                    const pressed = pad.buttons[i].pressed || pad.buttons[i].value > 0.5;
-                    if (pressed && !base[i]) {
-                        if (target.kind === 'gamepad') {
-                            // Lock to the first pad that produces a press; collect buttons
-                            // there until the chord is released.
-                            if (!chord) chord = { pad: p, buttons: new Set([i]) };
-                            else if (chord.pad === p) chord.buttons.add(i);
-                            base[i] = true;
-                            continue;
-                        }
+                    const pressed = isPressed(pad, i);
+                    if (pressed && !base.buttons[i]) {
                         if (target.kind === 'hotkey-gamepad') {
                             onChange({ ...bindings, [target.key]: i });
-                        } else if (target.kind === 'assign') {
+                            setListening(null);
+                            return;
+                        }
+                        if (target.kind === 'assign') {
                             onChange({
                                 ...bindings,
                                 gamepadAssignment: applyAssignmentSwap(
                                     bindings.gamepadAssignment ?? {}, target.player, p,
                                 ),
                             });
+                            setListening(null);
+                            return;
                         }
-                        setListening(null);
-                        return;
+                        addToChord(p, { kind: 'button', index: i });
                     }
-                    if (!pressed && base[i]) base[i] = false;
+                    base.buttons[i] = pressed;
+                }
+
+                if (target.kind !== 'gamepad') continue;
+
+                for (let i = 0; i < pad.axes.length; i++) {
+                    const delta = pad.axes[i] - base.axes[i];
+                    if (delta >=  CAPTURE_AXIS_TRIGGER) addToChord(p, { kind: 'axis', axis: i, sign:  1 });
+                    if (-delta >= CAPTURE_AXIS_TRIGGER) addToChord(p, { kind: 'axis', axis: i, sign: -1 });
                 }
             }
 
-            // Commit the chord once every button in it has been released.
-            if (target.kind === 'gamepad' && chord) {
+            // Commit once every source in the chord has been released.
+            if (target.kind === 'gamepad' && chord && chord.sources.size > 0) {
                 const pad = pads[chord.pad];
-                const stillHeld = !!pad && Array.from(chord.buttons).some(i => {
-                    const btn = pad.buttons[i];
-                    return !!btn && (btn.pressed || btn.value > 0.5);
-                });
+                const stillHeld = !!pad && Array.from(chord.sources.values()).some(s => sourceActive(pad, s));
                 if (!stillHeld) {
-                    const inner = { ...(bindings.gamepadMap?.[target.player] ?? {}) };
-                    inner[target.retroId] = Array.from(chord.buttons).sort((a, b) => a - b);
+                    const inner = { ...(bindings.gamepadBindings?.[target.player] ?? {}) };
+                    inner[target.retroId] = Array.from(chord.sources.values());
                     onChange({
                         ...bindings,
-                        gamepadMap: { ...(bindings.gamepadMap ?? {}), [target.player]: inner },
+                        gamepadBindings: { ...(bindings.gamepadBindings ?? {}), [target.player]: inner },
                     });
                     setListening(null);
                     return;
@@ -275,11 +301,11 @@ export const ControlsPanel = memo(({
     }, [bindings, onChange]);
 
     const handleClearGamepad = useCallback((retroId: number, player: number) => {
-        const inner = { ...(bindings.gamepadMap?.[player] ?? {}) };
+        const inner = { ...(bindings.gamepadBindings?.[player] ?? {}) };
         delete inner[retroId];
         onChange({
             ...bindings,
-            gamepadMap: { ...(bindings.gamepadMap ?? {}), [player]: inner },
+            gamepadBindings: { ...(bindings.gamepadBindings ?? {}), [player]: inner },
         });
     }, [bindings, onChange]);
 
@@ -374,13 +400,18 @@ export const ControlsPanel = memo(({
                     <div className="flex flex-col gap-2.5">
                         {items.map((item, idx) => {
                             const code  = findKeyForButton(bindings.keyMap, item.id, selectedPlayer);
-                            const physBtns = bindings.gamepadMap?.[selectedPlayer]?.[item.id] ?? [];
+                            const sources = bindings.gamepadBindings?.[selectedPlayer]?.[item.id] ?? [];
                             const kbListening = listening?.kind === 'pad'
                                 && listening.retroId === item.id
                                 && listening.player === selectedPlayer;
                             const gpListening = listening?.kind === 'gamepad'
                                 && listening.retroId === item.id
                                 && listening.player === selectedPlayer;
+                            const gpLabel = gpListening
+                                ? 'Press button or move stick…'
+                                : sources.length
+                                    ? sources.map(formatSource).join(' + ')
+                                    : 'Unbound';
                             return (
                                 <BindingRow
                                     key={item.id}
@@ -398,11 +429,7 @@ export const ControlsPanel = memo(({
                                     />
                                     <span style={{ color: colors.highlight, opacity: 0.6 }}>/</span>
                                     <BindingChip
-                                        label={
-                                            gpListening
-                                                ? 'Press button…'
-                                                : (physBtns.length ? `Button ${physBtns.join(' + ')}` : 'Unbound')
-                                        }
+                                        label={gpLabel}
                                         active={gpListening}
                                         colors={colors}
                                         onClick={() => setListening({ kind: 'gamepad', retroId: item.id, player: selectedPlayer })}

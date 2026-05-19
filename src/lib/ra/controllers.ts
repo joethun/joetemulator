@@ -1,7 +1,6 @@
 import { loadJSON, saveJSON, removeKey } from '@/lib/ra/storage';
 
 const STORAGE_KEY = 'ra_controller_devices_v1';
-const ANALOG_HINT = /analog|dualshock/i;
 
 export interface ControllerDevice {
     id: number;
@@ -67,14 +66,12 @@ export function clearStoredControllerDevices(libretroCore: string): void {
     else removeKey(STORAGE_KEY);
 }
 
-/** Prefer an analog/DualShock-style device when the core offers one, so analog
- *  sticks register on systems whose default device is digital-only (PSX). */
+/** The core's natural default device for a port (the first entry it reports). */
 export function pickDefaultDevice(devices: ControllerDevice[]): number | null {
-    if (!devices.length) return null;
-    return (devices.find(d => ANALOG_HINT.test(d.name)) ?? devices[0]).id;
+    return devices.length ? devices[0].id : null;
 }
 
-/** Final device choice for a port: stored pref > analog-preferring default > core's first option. */
+/** Final device choice for a port: stored pref > the core's natural default. */
 export function resolveDeviceForPort(
     port: ControllerPort,
     stored: Record<number, number>,
