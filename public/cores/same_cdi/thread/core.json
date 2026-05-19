@@ -1,1 +1,0 @@
-{"name":"same_cdi","extensions":["chd","iso","cue"],"makeoptions":{"buildpath":"./","makescript":"Makefile.libretro","arguments":[]},"options":{},"license":"COPYING","repo":"https://github.com/EmulatorJS/same_cdi"}

@@ -1,1 +1,0 @@
-{"name":"mame2003","extensions":["zip"],"makeoptions":{"buildpath":"./","makescript":"Makefile","arguments":[]},"options":{"file":"MAME 2003 (0.78)/MAME 2003 (0.78).opt","settings":{"mame2003_skip_disclaimer":"enabled","mame2003_skip_warnings":"enabled"}},"save":false,"license":"LICENSE.md","repo":"https://github.com/EmulatorJS/mame2003-libretro"}

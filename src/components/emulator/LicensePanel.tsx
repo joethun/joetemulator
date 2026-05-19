@@ -1,58 +1,47 @@
 'use client';
 
-import { memo, useEffect, useState } from 'react';
+import { memo, useMemo } from 'react';
 import { ExternalLink } from 'lucide-react';
 import type { ThemeColors } from '@/types';
 import { SHADOW_CARD } from '@/lib/constants';
 import { getCoreDisplayName } from '@/lib/ra/cores';
-import { pickVariant } from '@/lib/ra/loader';
+import { getCachedCoreInfo } from '@/lib/ra/loader';
 
 interface LicensePanelProps {
     colors: ThemeColors;
     libretroCore: string | null;
 }
 
-const EMULATORJS_LICENSE = 'https://github.com/EmulatorJS/EmulatorJS/blob/HEAD/LICENSE';
-const RETROARCH_LICENSE  = 'https://github.com/EmulatorJS/RetroArch/blob/HEAD/COPYING';
-
-async function fetchCoreLicenseUrl(libretroCore: string, signal: AbortSignal): Promise<string | null> {
-    const variant = pickVariant(libretroCore);
-    const res = await fetch(`/cores/${libretroCore}/${variant}/core.json`, { signal });
-    if (!res.ok) return null;
-    const data = await res.json() as { repo?: string; license?: string };
-    if (!data.repo || !data.license) return null;
-    return `${data.repo.replace(/\/+$/, '')}/blob/HEAD/${data.license}`;
-}
+const EMULATORJS_SOURCE = 'https://github.com/EmulatorJS/EmulatorJS';
+const RETROARCH_SOURCE  = 'https://github.com/EmulatorJS/RetroArch';
 
 export const LicensePanel = memo(({ colors, libretroCore }: LicensePanelProps) => {
-    const [coreLicenseUrl, setCoreLicenseUrl] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!libretroCore) { setCoreLicenseUrl(null); return; }
-        const ctl = new AbortController();
-        fetchCoreLicenseUrl(libretroCore, ctl.signal)
-            .then(setCoreLicenseUrl)
-            .catch(e => { if ((e as Error).name !== 'AbortError') setCoreLicenseUrl(null); });
-        return () => ctl.abort();
+    // CoreInfo is populated by the loader at boot, so by the time this panel is
+    // visible the cache has the repo URL for the running core.
+    const coreSourceUrl = useMemo(() => {
+        if (!libretroCore) return null;
+        const info = getCachedCoreInfo(libretroCore);
+        if (!info?.repo) return null;
+        return info.repo.replace(/\/+$/, '');
     }, [libretroCore]);
 
     const entries: { label: string; description: string; href: string | null }[] = [
         {
             label: 'Emulation Core',
             description: libretroCore
-                ? `License for the ${getCoreDisplayName(libretroCore)} libretro core.`
+                ? `Source for the ${getCoreDisplayName(libretroCore)} libretro core.`
                 : 'No core is currently loaded.',
-            href: coreLicenseUrl,
+            href: coreSourceUrl,
         },
         {
             label: 'RetroArch',
-            description: 'License for the RetroArch frontend.',
-            href: RETROARCH_LICENSE,
+            description: 'Source for RetroArch.',
+            href: RETROARCH_SOURCE,
         },
         {
             label: 'EmulatorJS',
-            description: 'License for the EmulatorJS runtime.',
-            href: EMULATORJS_LICENSE,
+            description: 'Source for EmulatorJS.',
+            href: EMULATORJS_SOURCE,
         },
     ];
 

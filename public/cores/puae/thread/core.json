@@ -1,1 +1,0 @@
-{"name":"puae","extensions":["adf","adz","dms","fdi","ipf","raw","hdf","hdz","lha","slave","info","cue","ccd","chd","nrg","mds","iso","uae","m3u","zip","7z"],"makeoptions":{"arguments":[],"buildpath":"./","makescript":"Makefile"},"options":{"supportsMouse":true},"save":"nvr","license":"COPYING","repo":"https://github.com/EmulatorJS/libretro-uae"}

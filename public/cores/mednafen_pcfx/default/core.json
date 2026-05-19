@@ -1,1 +1,0 @@
-{"name":"mednafen_pcfx","extensions":["cue","ccd","toc","chd"],"makeoptions":{"arguments":[],"buildpath":"./","makescript":"Makefile"},"options":{},"save":"srm","license":"COPYING","repo":"https://github.com/EmulatorJS/beetle-pcfx-libretro"}

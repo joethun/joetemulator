@@ -27,6 +27,7 @@ export interface CoreInfo {
     name: string;
     extensions: string[];
     save: string | false;
+    repo?: string;
     options?: {
         file?: string;
         settings?: Record<string, string>;

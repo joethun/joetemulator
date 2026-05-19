@@ -1,1 +1,0 @@
-{"name":"prboom","extensions":["wad","iwad","pwad"],"makeoptions":{"buildpath":"./","makescript":"Makefile","arguments":[]},"options":{},"save":"dsg","license":"COPYING","repo":"https://github.com/EmulatorJS/libretro-prboom"}

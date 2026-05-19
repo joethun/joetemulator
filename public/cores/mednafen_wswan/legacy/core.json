@@ -1,1 +1,0 @@
-{"name":"mednafen_wswan","extensions":["ws","wsc","pc2"],"makeoptions":{"arguments":[],"buildpath":"./","makescript":"Makefile"},"options":{},"save":"srm","license":"COPYING","repo":"https://github.com/EmulatorJS/beetle-wswan-libretro"}
