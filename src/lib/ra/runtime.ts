@@ -13,7 +13,11 @@ import {
     RETROARCH_CFG, RA_CFG_PATH,
 } from '@/lib/ra/fs';
 import { GameController } from '@/lib/ra/game';
-import { InputController, DEFAULT_BINDINGS, type InputBindings, type InputHandlers } from '@/lib/ra/input';
+import {
+    InputController, DEFAULT_BINDINGS, filterBindingsToButtons,
+    type InputBindings, type InputHandlers,
+} from '@/lib/ra/input';
+import { getRetroIdsForCore } from '@/lib/ra/control-schemes';
 import { disposeCoreScripts, loadCore } from '@/lib/ra/loader';
 import {
     writeShaderFiles, getStoredShader, setStoredShader, SHADER_DISABLED,
@@ -49,6 +53,7 @@ export class Runtime {
     private resolved: ResolvedCore | null = null;
     private srmTimer: ReturnType<typeof setInterval> | null = null;
     private controllerPorts: ControllerPort[] = [];
+    private allowedRetroIds: ReadonlySet<number> | null = null;
 
     get controller(): GameController | null { return this.gc; }
     get libretroName(): string | null { return this.resolved?.libretroName ?? null; }
@@ -98,7 +103,13 @@ export class Runtime {
 
         const gc = new GameController(mod, canvas);
         this.gc = gc;
-        this.input = new InputController(gc, { ...DEFAULT_BINDINGS, ...bindings }, handlers ?? {});
+        this.allowedRetroIds = getRetroIdsForCore(system);
+        const merged = { ...DEFAULT_BINDINGS, ...bindings };
+        this.input = new InputController(
+            gc,
+            filterBindingsToButtons(merged, this.allowedRetroIds),
+            handlers ?? {},
+        );
 
         onPhase?.('running');
         mod.callMain([romPath]);
@@ -138,7 +149,10 @@ export class Runtime {
 
     pause():  void { this.gc?.pause(); }
     resume(): void { this.gc?.resume(); }
-    setInputBindings(b: InputBindings): void { this.input?.setBindings(b); }
+    setInputBindings(b: InputBindings): void {
+        if (!this.input || !this.allowedRetroIds) return;
+        this.input.setBindings(filterBindingsToButtons(b, this.allowedRetroIds));
+    }
 
     getCoreOptions(): CoreOption[] {
         if (!this.gc || !this.resolved) return [];
@@ -195,6 +209,7 @@ export class Runtime {
         this.input = null;
         this.resolved = null;
         this.controllerPorts = [];
+        this.allowedRetroIds = null;
         disposeCoreScripts();
     }
 }

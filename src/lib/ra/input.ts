@@ -128,6 +128,36 @@ export const DEFAULT_BINDINGS: Required<InputBindings> = {
     pauseGamepad: -1,
 };
 
+/**
+ * Drop key and gamepad bindings whose retropad id isn't in {@link allowedIds}.
+ * Hotkeys are passed through — they're keycodes / hw button indices, not retropad ids.
+ */
+export function filterBindingsToButtons(
+    bindings: InputBindings,
+    allowedIds: ReadonlySet<number>,
+): InputBindings {
+    const keyMap: KeyMap = {};
+    for (const code in bindings.keyMap) {
+        const bind = bindings.keyMap[code];
+        if (allowedIds.has(bind.button)) keyMap[code] = bind;
+    }
+    let gamepadBindings: Record<number, GamepadBinding> | undefined;
+    const src = bindings.gamepadBindings;
+    if (src) {
+        gamepadBindings = {};
+        for (const pStr in src) {
+            const binding = src[+pStr];
+            const inner: GamepadBinding = {};
+            for (const retroStr in binding) {
+                const retro = +retroStr;
+                if (allowedIds.has(retro)) inner[retro] = binding[retro];
+            }
+            gamepadBindings[+pStr] = inner;
+        }
+    }
+    return { ...bindings, keyMap, gamepadBindings };
+}
+
 export interface InputHandlers {
     onSaveState?: () => void;
     onLoadState?: () => void;

@@ -159,3 +159,12 @@ const ALIASES: Record<string, string> = {
 
 export const getButtonsForCore = (core: string): ButtonDef[] =>
     SCHEMES[ALIASES[core] ?? core] ?? SCHEMES.default;
+
+/**
+ * Retropad ids the given core actually uses. Bindings driving any other id are
+ * dropped before reaching the core — otherwise the default mapping of e.g.
+ * Tab/KeyR/gamepad-buttons-6-7 → L2/R2 (retropad 12/13) silently activates
+ * core-specific functions hidden behind those slots, like mGBA's Turbo A/B.
+ */
+export const getRetroIdsForCore = (core: string): ReadonlySet<number> =>
+    new Set(getButtonsForCore(core).map(b => b.id));
