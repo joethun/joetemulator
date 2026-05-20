@@ -134,7 +134,7 @@ export const ControlsPanel = memo(({
 
     useEffect(() => { setListening(null); }, [selectedPlayer]);
 
-    const maxPlayers = useMemo(() => getMaxPlayers(core), [core]);
+    const maxPlayers = getMaxPlayers(core);
 
     // If the system shrinks below the selected slot (e.g. switching games), snap back to P1.
     useEffect(() => {
@@ -292,32 +292,32 @@ export const ControlsPanel = memo(({
         return () => cancelAnimationFrame(raf);
     }, [listening, bindings, onChange]);
 
-    const handleClearPad = useCallback((retroId: number, player: number) => {
+    const handleClearPad = (retroId: number, player: number) => {
         const nextKeyMap = { ...bindings.keyMap };
         for (const [c, bind] of Object.entries(nextKeyMap)) {
             if (bind.player === player && bind.button === retroId) delete nextKeyMap[c];
         }
         onChange({ ...bindings, keyMap: nextKeyMap });
-    }, [bindings, onChange]);
+    };
 
-    const handleClearGamepad = useCallback((retroId: number, player: number) => {
+    const handleClearGamepad = (retroId: number, player: number) => {
         const inner = { ...(bindings.gamepadBindings?.[player] ?? {}) };
         delete inner[retroId];
         onChange({
             ...bindings,
             gamepadBindings: { ...(bindings.gamepadBindings ?? {}), [player]: inner },
         });
-    }, [bindings, onChange]);
+    };
 
-    const handleClearHotkey = useCallback((key: HotkeyKey) => {
+    const handleClearHotkey = (key: HotkeyKey) => {
         const next = { ...bindings };
         delete next[key];
         onChange(next);
-    }, [bindings, onChange]);
+    };
 
-    const handleClearHotkeyGamepad = useCallback((key: HotkeyGamepadKey) => {
+    const handleClearHotkeyGamepad = (key: HotkeyGamepadKey) => {
         onChange({ ...bindings, [key]: -1 });
-    }, [bindings, onChange]);
+    };
 
     const assignListening = listening?.kind === 'assign' && listening.player === selectedPlayer;
 
@@ -331,7 +331,7 @@ export const ControlsPanel = memo(({
         ? deviceOverride[portForPlayer.port] ?? portForPlayer.currentDevice
         : null;
     const currentDevice = portForPlayer?.devices.find(d => d.id === currentDeviceId);
-    const cycleDevice = useCallback((step: 1 | -1) => {
+    const cycleDevice = (step: 1 | -1) => {
         if (!portForPlayer || !onControllerDeviceChange) return;
         const { devices, port } = portForPlayer;
         if (devices.length < 2) return;
@@ -341,7 +341,7 @@ export const ControlsPanel = memo(({
         const nextId = devices[nextIdx].id;
         onControllerDeviceChange(port, nextId);
         setDeviceOverride(prev => ({ ...prev, [port]: nextId }));
-    }, [portForPlayer, onControllerDeviceChange, deviceOverride]);
+    };
 
     return (
         <div className="flex flex-col gap-6 min-w-0">

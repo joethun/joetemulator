@@ -1,4 +1,4 @@
-import { loadJSON, saveJSON, removeKey } from '@/lib/ra/storage';
+import { loadJSON, saveJSON } from '@/lib/ra/storage';
 
 const STORAGE_KEY = 'ra_controller_devices_v1';
 
@@ -58,25 +58,12 @@ export function saveStoredControllerDevice(libretroCore: string, port: number, d
     saveJSON(STORAGE_KEY, all);
 }
 
-export function clearStoredControllerDevices(libretroCore: string): void {
-    const all = readStore();
-    if (!(libretroCore in all)) return;
-    delete all[libretroCore];
-    if (Object.keys(all).length) saveJSON(STORAGE_KEY, all);
-    else removeKey(STORAGE_KEY);
-}
-
-/** The core's natural default device for a port (the first entry it reports). */
-export function pickDefaultDevice(devices: ControllerDevice[]): number | null {
-    return devices.length ? devices[0].id : null;
-}
-
-/** Final device choice for a port: stored pref > the core's natural default. */
+/** Final device choice for a port: stored pref > the core's natural default (first device the core reports). */
 export function resolveDeviceForPort(
     port: ControllerPort,
     stored: Record<number, number>,
 ): number | null {
     const userPick = stored[port.port];
     if (userPick !== undefined && port.devices.some(d => d.id === userPick)) return userPick;
-    return pickDefaultDevice(port.devices);
+    return port.devices.length ? port.devices[0].id : null;
 }

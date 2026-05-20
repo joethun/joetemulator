@@ -23,7 +23,6 @@ interface CoreOptionsPanelProps {
 interface Entry {
     key: string;
     label: string;
-    title?: string;
     value: string;
     choices: string[];
     disabled?: boolean;
@@ -56,7 +55,7 @@ export const CoreOptionsPanel = memo((props: CoreOptionsPanelProps) => {
 
     const optionEntries = useMemo<Entry[]>(() =>
         options.map(opt => ({
-            key: opt.key, label: opt.label, title: opt.key,
+            key: opt.key, label: opt.label,
             value: opt.current, choices: opt.choices,
         })),
     [options]);
