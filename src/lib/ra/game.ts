@@ -45,18 +45,21 @@ export class GameController {
         };
     }
 
-    saveState(): Uint8Array | null {
-        const [sizeStr, ptrStr, ok] = this.fn.saveStateInfo().split('|');
+    // ASYNCIFY: cores like ppsspp serialize on the emu thread and the main-thread call
+    // yields via emscripten_sleep, so cwrap returns a Promise. Sync cores return a string
+    // directly; awaiting the non-Promise is a no-op.
+    async saveState(): Promise<Uint8Array | null> {
+        const info = await this.fn.saveStateInfo();
+        const [sizeStr, ptrStr, ok] = info.split('|');
         if (ok !== '1') return null;
         const size = parseInt(sizeStr, 10);
         const ptr = parseInt(ptrStr, 10);
         return new Uint8Array(this.mod.HEAPU8.subarray(ptr, ptr + size));
     }
 
-    loadState(state: Uint8Array): void {
-        try { this.mod.FS.unlink(STATE_FILE); } catch { /* not present */ }
+    async loadState(state: Uint8Array): Promise<void> {
         this.mod.FS.writeFile(STATE_FILE, state);
-        this.fn.loadState(STATE_FILE, 0);
+        await this.fn.loadState(STATE_FILE, 0);
     }
 
     pause():  void { this.fn.toggleLoop(0); }

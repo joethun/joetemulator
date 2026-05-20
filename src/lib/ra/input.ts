@@ -235,6 +235,22 @@ export class InputController {
         this.gc.simulateInput(bind.player, bind.button, 0);
     };
 
+    /** Emit simulateInput for every index where `desired` differs from `current`, then sync current. */
+    private flush<T extends Uint8Array | Int16Array>(
+        desired: T,
+        current: T,
+        stride: number,
+        offset: number,
+    ): void {
+        for (let i = 0; i < desired.length; i++) {
+            const d = desired[i];
+            if (d !== current[i]) {
+                current[i] = d;
+                this.gc.simulateInput((i / stride) | 0, offset + (i % stride), d);
+            }
+        }
+    }
+
     private releaseAll = (): void => {
         for (const code of this.pressed) {
             const bind = this.bindings.keyMap[code];
@@ -242,22 +258,10 @@ export class InputController {
         }
         this.pressed.clear();
 
-        const cur = this.gpCurrent;
-        for (let i = 0; i < cur.length; i++) {
-            if (cur[i]) {
-                cur[i] = 0;
-                this.gc.simulateInput((i / NUM_BUTTONS) | 0, i % NUM_BUTTONS, 0);
-            }
-        }
         this.gpDesired.fill(0);
-
-        const analog = this.gpAnalogCurrent;
-        for (let i = 0; i < analog.length; i++) {
-            if (analog[i]) {
-                analog[i] = 0;
-                this.gc.simulateInput((i / NUM_ANALOG) | 0, ANALOG_BASE + (i % NUM_ANALOG), 0);
-            }
-        }
+        this.gpAnalogDesired.fill(0);
+        this.flush(this.gpDesired, this.gpCurrent, NUM_BUTTONS, 0);
+        this.flush(this.gpAnalogDesired, this.gpAnalogCurrent, NUM_ANALOG, ANALOG_BASE);
 
         this.setFastForward(false);
         this.setRewind(false);
@@ -306,21 +310,8 @@ export class InputController {
             }
         }
 
-        for (let i = 0; i < desired.length; i++) {
-            const d = desired[i];
-            if (d !== current[i]) {
-                current[i] = d;
-                this.gc.simulateInput((i / NUM_BUTTONS) | 0, i % NUM_BUTTONS, d);
-            }
-        }
-
-        for (let i = 0; i < analogDesired.length; i++) {
-            const d = analogDesired[i];
-            if (d !== analogCurrent[i]) {
-                analogCurrent[i] = d;
-                this.gc.simulateInput((i / NUM_ANALOG) | 0, ANALOG_BASE + (i % NUM_ANALOG), d);
-            }
-        }
+        this.flush(desired, current, NUM_BUTTONS, 0);
+        this.flush(analogDesired, analogCurrent, NUM_ANALOG, ANALOG_BASE);
 
         // System hotkey buttons — fire on any pad.
         const fast   = anyPressed(pads, b.fastForwardGamepad ?? -1);

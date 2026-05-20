@@ -59,7 +59,7 @@ interface EmulatorActions {
     resume: () => void;
     saveState: (source?: 'manual' | 'auto' | 'exit') => Promise<void>;
     loadState: (key?: string, source?: 'manual' | 'auto') => Promise<void>;
-    stop: () => void;
+    stop: () => Promise<void>;
     setBindings: (b: InputBindings) => void;
     resetBindings: () => void;
     getCoreOptions: () => CoreOption[];
@@ -129,7 +129,7 @@ export function useEmulator(): EmulatorSession {
         // still run so "save on exit" works when leaving a paused game.
         if (source !== 'exit' && pausedRef.current) return;
         try {
-            const bytes = gc.saveState();
+            const bytes = await gc.saveState();
             if (!bytes) return;
             if (source === 'auto' && await isStateDuplicate(game, bytes)) return;
             // Capture now — save-on-exit tears the canvas down before any async work.
@@ -154,16 +154,19 @@ export function useEmulator(): EmulatorSession {
             if (!key) return;
             const data = await getStateBytes(key);
             if (!data) return;
-            rt.controller.loadState(data);
+            await rt.controller.loadState(data);
             notify('load', source);
         } catch (e) {
             console.error('load state failed:', e);
         }
     }, []);
 
-    const stop = useCallback(() => {
+    const stop = useCallback(async () => {
+        // Save-on-exit must complete BEFORE destroy() — destroy aborts the wasm
+        // runtime, which would orphan any in-flight async serialize (ASYNCIFY cores
+        // like ppsspp).
         if (saveOnExitRef.current && runtimeRef.current && startArgsRef.current) {
-            saveState('exit').catch(e => console.error('save on exit failed:', e));
+            await saveState('exit');
         }
         canvasReadyResolvers.current = [];
         if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
@@ -185,7 +188,7 @@ export function useEmulator(): EmulatorSession {
         if (startingRef.current) return;
         startingRef.current = true;
         try {
-            if (runtimeRef.current) stop();
+            if (runtimeRef.current) await stop();
 
             const canvas = await new Promise<HTMLCanvasElement>(resolve => {
                 canvasReadyResolvers.current.push(resolve);
@@ -231,7 +234,7 @@ export function useEmulator(): EmulatorSession {
                 const msg = e instanceof Error ? e.message : String(e);
                 console.error('emulator start failed:', e);
                 patchStatus({ error: msg, phase: 'error' });
-                stop();
+                await stop();
             }
         } finally {
             startingRef.current = false;
@@ -248,7 +251,7 @@ export function useEmulator(): EmulatorSession {
         await start({ ...prev, coreOverride: libretroName });
     }, [start]);
 
-    useEffect(() => () => stop(), [stop]);
+    useEffect(() => () => { void stop(); }, [stop]);
 
     const actions = useMemo<EmulatorActions>(() => ({
         saveState, loadState, stop, switchCore,
