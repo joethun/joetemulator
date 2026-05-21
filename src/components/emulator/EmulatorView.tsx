@@ -95,10 +95,15 @@ export const EmulatorView = memo(({
         setPanel(null);
     };
 
-    const handleExit = () => {
-        setPanel(null);
-        setUserPaused(false);
-        session.actions.stop();
+    const handleExit = async () => {
+        // Hard-reload the page once teardown has flushed save-on-exit. In-place
+        // Emscripten module disposal is unsolved in the ecosystem (RomM does the
+        // same; EmulatorJS just emits an "exit" event and punts) — listeners,
+        // RAF queues, the wasm code cache and GPU contexts pin hundreds of MB on
+        // hardware-rendered cores otherwise. The await ensures SRAM and any
+        // save-on-exit state make it to IDB before the reload tears down the tab.
+        try { await session.actions.stop(); }
+        finally { window.location.reload(); }
     };
 
     // Clicking the canvas locks the cursor for mouse-driven cores. Esc releases.
