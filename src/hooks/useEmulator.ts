@@ -35,7 +35,6 @@ interface UseEmulatorOpts {
 }
 
 type StartArgs = Omit<RuntimeOptions, 'canvas' | 'handlers' | 'onPhase'> & {
-    gameBaseName: string;
     opts?: UseEmulatorOpts;
 };
 
@@ -196,12 +195,12 @@ export function useEmulator(): EmulatorSession {
             });
 
             startArgsRef.current = args;
-            const { gameBaseName, opts: userOpts = {}, ...runtimeOpts } = args;
+            const { opts: userOpts = {}, ...runtimeOpts } = args;
 
             setStatus({
                 ...IDLE_STATUS,
                 phase: 'loading-core',
-                game: gameBaseName,
+                game: runtimeOpts.gameBaseName,
                 system: runtimeOpts.system,
             });
 

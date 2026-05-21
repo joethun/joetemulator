@@ -36,12 +36,14 @@ export function parseControllerPortInfo(raw: string): ControllerPort[] {
         .map(([port, devices]) => ({ port, devices, currentDevice: null }));
 }
 
+/** Keyed per-game (not per-core): the user might want one PSX title on DualShock
+ *  and another on the digital pad, even though they share PCSX-ReARMed. */
 type Store = Record<string, Record<string, number>>;
 
 const readStore = (): Store => loadJSON<Store | null>(STORAGE_KEY, null) ?? {};
 
-export function loadStoredControllerDevices(libretroCore: string): Record<number, number> {
-    const inner = readStore()[libretroCore] ?? {};
+export function loadStoredControllerDevices(gameBaseName: string): Record<number, number> {
+    const inner = readStore()[gameBaseName] ?? {};
     const out: Record<number, number> = {};
     for (const [k, v] of Object.entries(inner)) {
         const p = Number(k);
@@ -50,11 +52,11 @@ export function loadStoredControllerDevices(libretroCore: string): Record<number
     return out;
 }
 
-export function saveStoredControllerDevice(libretroCore: string, port: number, deviceId: number): void {
+export function saveStoredControllerDevice(gameBaseName: string, port: number, deviceId: number): void {
     const all = readStore();
-    const inner = all[libretroCore] ?? {};
+    const inner = all[gameBaseName] ?? {};
     inner[String(port)] = deviceId;
-    all[libretroCore] = inner;
+    all[gameBaseName] = inner;
     saveJSON(STORAGE_KEY, all);
 }
 

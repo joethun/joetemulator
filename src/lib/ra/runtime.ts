@@ -41,6 +41,7 @@ export interface RuntimeOptions {
     system: string;
     coreOverride?: string;
     rom: { name: string; bytes: Uint8Array };
+    gameBaseName: string;
     bindings?: Partial<InputBindings>;
     handlers?: InputHandlers;
     onPhase?: (phase: EmulatorPhase, message?: string) => void;
@@ -54,13 +55,15 @@ export class Runtime {
     private srmTimer: ReturnType<typeof setInterval> | null = null;
     private controllerPorts: ControllerPort[] = [];
     private allowedRetroIds: ReadonlySet<number> | null = null;
+    private gameBaseName: string | null = null;
 
     get controller(): GameController | null { return this.gc; }
     get libretroName(): string | null { return this.resolved?.libretroName ?? null; }
     getControllerPorts(): readonly ControllerPort[] { return this.controllerPorts; }
 
     async start(opts: RuntimeOptions): Promise<void> {
-        const { canvas, system, coreOverride, rom, bindings, handlers, onPhase } = opts;
+        const { canvas, system, coreOverride, rom, gameBaseName, bindings, handlers, onPhase } = opts;
+        this.gameBaseName = gameBaseName;
 
         // Patch AudioContext before the core's module factory creates one.
         ensureAudioPatch();
@@ -128,7 +131,7 @@ export class Runtime {
         // is actually recognised on cores whose default device is digital-only
         // (e.g. PCSX-ReARMed → DualShock).
         this.controllerPorts = parseControllerPortInfo(gc.getControllerPortInfoRaw());
-        const storedDevices = loadStoredControllerDevices(libretroName);
+        const storedDevices = loadStoredControllerDevices(gameBaseName);
         for (const port of this.controllerPorts) {
             const device = resolveDeviceForPort(port, storedDevices);
             if (device != null) {
@@ -177,9 +180,9 @@ export class Runtime {
     }
 
     setControllerDevice(port: number, deviceId: number): void {
-        if (!this.gc || !this.resolved) return;
+        if (!this.gc || !this.gameBaseName) return;
         this.gc.setControllerPortDevice(port, deviceId);
-        saveStoredControllerDevice(this.resolved.libretroName, port, deviceId);
+        saveStoredControllerDevice(this.gameBaseName, port, deviceId);
         const entry = this.controllerPorts.find(p => p.port === port);
         if (entry) entry.currentDevice = deviceId;
     }
@@ -210,6 +213,7 @@ export class Runtime {
         this.resolved = null;
         this.controllerPorts = [];
         this.allowedRetroIds = null;
+        this.gameBaseName = null;
         disposeCoreScripts();
     }
 }
