@@ -5,7 +5,7 @@ import { Runtime, type RuntimeOptions } from '@/lib/ra/runtime';
 import type { EmulatorPhase } from '@/lib/ra/types';
 import {
     isStateDuplicate, getNextSlotKey, getSlotKeys, stampSlot,
-    getStateBytes, putStateBytes, scheduleStateThumbnail, snapshotCover,
+    getStateBytes, putStateBytes, scheduleStateThumbnail, persistStateThumbnailNow, snapshotCover,
 } from '@/lib/savestates';
 import {
     loadStoredBindings, saveStoredBindings, resetStoredBindings,
@@ -59,6 +59,10 @@ interface EmulatorActions {
     saveState: (source?: 'manual' | 'auto' | 'exit') => Promise<void>;
     loadState: (key?: string, source?: 'manual' | 'auto') => Promise<void>;
     stop: () => Promise<void>;
+    /** Flush save-on-exit (if enabled) without tearing down the runtime — used
+     * by the in-game exit button, which reloads the page rather than going
+     * through the full stop/idle transition. */
+    flushExitSave: () => Promise<void>;
     setBindings: (b: InputBindings) => void;
     resetBindings: () => void;
     getCoreOptions: () => CoreOption[];
@@ -138,7 +142,13 @@ export function useEmulator(): EmulatorSession {
             stampSlot(slotKey);
             await putStateBytes(slotKey, bytes);
             if (source !== 'exit') notify('save', source);
-            if (snapshot) scheduleStateThumbnail(slotKey, game, snapshot);
+            if (snapshot) {
+                // Exit-saves await the thumbnail inline — the caller is about
+                // to reload the page, so the deferred RAF/idle encode would
+                // never run.
+                if (source === 'exit') await persistStateThumbnailNow(slotKey, game, snapshot);
+                else scheduleStateThumbnail(slotKey, game, snapshot);
+            }
         } catch (e) {
             console.error('save state failed:', e);
         }
@@ -252,8 +262,14 @@ export function useEmulator(): EmulatorSession {
 
     useEffect(() => () => { void stop(); }, [stop]);
 
+    const flushExitSave = useCallback(async () => {
+        if (saveOnExitRef.current && runtimeRef.current && startArgsRef.current) {
+            await saveState('exit');
+        }
+    }, [saveState]);
+
     const actions = useMemo<EmulatorActions>(() => ({
-        saveState, loadState, stop, switchCore,
+        saveState, loadState, stop, switchCore, flushExitSave,
         pause:  () => { runtimeRef.current?.pause();  pausedRef.current = true;  patchStatus({ paused: true  }); },
         resume: () => { runtimeRef.current?.resume(); pausedRef.current = false; patchStatus({ paused: false }); },
         setBindings: (b) => {
@@ -274,7 +290,7 @@ export function useEmulator(): EmulatorSession {
         getControllerPorts:  () => runtimeRef.current?.getControllerPorts() ?? EMPTY_CONTROLLER_PORTS,
         setControllerDevice: (port, deviceId) => runtimeRef.current?.setControllerDevice(port, deviceId),
         setShader:        (name) => runtimeRef.current?.setShader(name),
-    }), [saveState, loadState, stop, switchCore, patchStatus]);
+    }), [saveState, loadState, stop, switchCore, flushExitSave, patchStatus]);
 
     return useMemo<EmulatorSession>(() => ({
         start, canvasRef, setCanvas, canvasEpoch, actions,

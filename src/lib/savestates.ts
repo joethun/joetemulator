@@ -251,26 +251,42 @@ function deferThumbnailEncode(task: () => void): void {
     }
 }
 
+async function encodeAndPersistThumbnail(
+    key: string,
+    gameName: string,
+    snapshot: HTMLCanvasElement,
+): Promise<void> {
+    const aspect = snapshot.width / snapshot.height;
+    const dataUrl = await canvasToDataUrl(snapshot);
+    if (dataUrl) {
+        try { await putStateThumbnail(key, dataUrl, aspect); }
+        catch { /* still notify so UI leaves pending state */ }
+    }
+    dispatchThumbnail({
+        gameName, key, phase: 'ready',
+        thumbnail: dataUrl,
+        coverAspect: dataUrl ? aspect : getCoverAspect(key),
+    });
+}
+
 export function scheduleStateThumbnail(
     key: string,
     gameName: string,
     snapshot: HTMLCanvasElement,
 ): void {
-    const aspect = snapshot.width / snapshot.height;
     dispatchThumbnail({ gameName, key, phase: 'pending' });
-    deferThumbnailEncode(() => {
-        void canvasToDataUrl(snapshot).then(async dataUrl => {
-            if (dataUrl) {
-                try { await putStateThumbnail(key, dataUrl, aspect); }
-                catch { /* still notify so UI leaves pending state */ }
-            }
-            dispatchThumbnail({
-                gameName, key, phase: 'ready',
-                thumbnail: dataUrl,
-                coverAspect: dataUrl ? aspect : getCoverAspect(key),
-            });
-        });
-    });
+    deferThumbnailEncode(() => { void encodeAndPersistThumbnail(key, gameName, snapshot); });
+}
+
+/** Synchronous variant used on exit, where the page is about to reload — the
+ * deferred RAF/idle callback wouldn't fire in time, so we await the encode. */
+export async function persistStateThumbnailNow(
+    key: string,
+    gameName: string,
+    snapshot: HTMLCanvasElement,
+): Promise<void> {
+    dispatchThumbnail({ gameName, key, phase: 'pending' });
+    await encodeAndPersistThumbnail(key, gameName, snapshot);
 }
 
 function getTimestamp(key: string): Date | null {

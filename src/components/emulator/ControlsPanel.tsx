@@ -379,7 +379,7 @@ export const ControlsPanel = memo(({
                             onContextMenu={e => { e.preventDefault(); handleClearAssignment(selectedPlayer); }}
                         />
                     </BindingRow>
-                    {portForPlayer && portForPlayer.devices.length > 1 && (
+                    {portForPlayer && portForPlayer.devices.length > 1 && core === 'psx' && (
                         <BindingRow label="Controller Type" active={false} colors={colors}>
                             <BindingChip
                                 label={currentDevice?.name ?? 'Standard'}

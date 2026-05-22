@@ -9,10 +9,12 @@ interface SearchBarProps {
     colors: ThemeColors;
     value: string;
     onChange: (value: string) => void;
+    id?: string;
 }
 
-export const SearchBar = memo(({ colors, value, onChange }: SearchBarProps) => (
+export const SearchBar = memo(({ colors, value, onChange, id }: SearchBarProps) => (
     <TextInput
+        id={id}
         colors={colors}
         value={value}
         onChange={onChange}

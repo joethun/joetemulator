@@ -96,13 +96,13 @@ export const EmulatorView = memo(({
     };
 
     const handleExit = async () => {
-        // Hard-reload the page once teardown has flushed save-on-exit. In-place
-        // Emscripten module disposal is unsolved in the ecosystem (RomM does the
-        // same; EmulatorJS just emits an "exit" event and punts) — listeners,
-        // RAF queues, the wasm code cache and GPU contexts pin hundreds of MB on
-        // hardware-rendered cores otherwise. The await ensures SRAM and any
-        // save-on-exit state make it to IDB before the reload tears down the tab.
-        try { await session.actions.stop(); }
+        // Flush save-on-exit (if enabled) BEFORE reload — destroy() inside
+        // stop() would otherwise abort the wasm runtime mid-serialize. We
+        // skip stop() itself so the library/idle screen doesn't flash; the
+        // reload tears down listeners, RAF queues, the wasm code cache and
+        // GPU contexts that hardware-rendered cores leak (in-place Emscripten
+        // disposal is unsolved — RomM does the same, EmulatorJS punts).
+        try { await session.actions.flushExitSave(); }
         finally { window.location.reload(); }
     };
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from 'react';
 import { useGameLibrary } from '@/hooks/useGameLibrary';
 import { useApp } from '@/hooks/useApp';
 import { useFileHandler } from '@/hooks/useFileHandler';
@@ -24,6 +25,21 @@ export default function Home() {
     const view = useGameList(lib.games, files.uploads, app.gameSearchQuery, settings.sortOrder);
     const session = useEmulator();
     const h = usePageHandlers({ lib, app, files, settings, session });
+
+    useEffect(() => {
+        if (app.activeView !== 'library') return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+                const input = document.getElementById('library-search') as HTMLInputElement | null;
+                if (!input) return;
+                e.preventDefault();
+                input.focus();
+                input.select();
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [app.activeView]);
 
     if (!settings.isHydrated)
         return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f' }} />;
@@ -54,6 +70,7 @@ export default function Home() {
                             <div className="flex gap-3 items-center w-full md:w-auto">
                                 <div className="flex-1 md:flex-initial md:w-[340px] min-w-0">
                                     <SearchBar
+                                        id="library-search"
                                         colors={settings.currentColors}
                                         value={app.gameSearchQuery}
                                         onChange={app.setGameSearchQuery}

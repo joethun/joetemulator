@@ -50,21 +50,14 @@ export const SaveStatesPanel = memo(({
             const detail = parseSaveStateThumbnailEvent(e, gameName);
             if (!detail) return;
             const { key, phase } = detail;
-            if (phase === 'pending') {
-                setPendingCovers(prev => {
-                    if (prev.has(key)) return prev;
-                    const next = new Set(prev);
-                    next.add(key);
-                    return next;
-                });
-                return;
-            }
+            const isPending = phase === 'pending';
             setPendingCovers(prev => {
-                if (!prev.has(key)) return prev;
+                if (prev.has(key) === isPending) return prev;
                 const next = new Set(prev);
-                next.delete(key);
+                if (isPending) next.add(key); else next.delete(key);
                 return next;
             });
+            if (isPending) return;
             if (detail.thumbnail !== undefined) {
                 setStates(prev => prev.map(s => s.key === key
                     ? {
