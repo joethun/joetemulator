@@ -14,6 +14,7 @@ interface GameCardProps {
     onDelete: (game: Game) => void;
     onUploadCover: (gameId: number, data: string) => void;
     onResetCover: (gameId: number) => void;
+    onCoverFailed: (gameId: number) => void;
     onSaveStates: (title: string, name: string) => void;
     colors: ThemeColors;
     priority?: boolean;
@@ -41,7 +42,7 @@ const UploadOverlay = memo(({ progress, isComplete, colors }: { progress?: numbe
 UploadOverlay.displayName = 'UploadOverlay';
 
 export const GameCard = memo(({
-    game, onPlay, onEdit, onDelete, onUploadCover, onResetCover, onSaveStates, colors, priority = false
+    game, onPlay, onEdit, onDelete, onUploadCover, onResetCover, onCoverFailed, onSaveStates, colors, priority = false
 }: GameCardProps) => {
     const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const didOpenMenu = useRef(false);
@@ -109,25 +110,31 @@ export const GameCard = memo(({
             {isUploading && <UploadOverlay progress={game.progress} isComplete={game.isComplete} colors={colors} />}
 
             <div className="h-full w-full relative flex items-center justify-center transition-transform duration-500 overflow-hidden"
-                style={!game.coverLoading && (!game.coverArt || imgError) ? getGradientStyle(colors.gradientFrom, colors.gradientTo) : undefined}>
-                {game.coverLoading ? null : game.coverArt && !imgError ? (
-                    <Image
-                        src={game.coverArt}
-                        alt={game.title}
-                        fill
-                        sizes="320px"
-                        loading="eager"
-                        priority={priority}
-                        draggable={false}
-                        onError={() => setErroredSrc(game.coverArt)}
-                        style={{ objectFit: game.coverArtFit || 'cover', objectPosition: 'center', userSelect: 'none' }}
-                    />
-                ) : (
-                    <div className="flex items-center justify-center h-full w-full px-2 sm:px-4" style={{ color: colors.darkBg }}>
-                        <span className="block w-full text-lg sm:text-xl md:text-2xl font-bold tracking-wide text-center break-words select-none line-clamp-4 pointer-events-none" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)', hyphens: 'auto' }}>
-                            {game.title}
-                        </span>
-                    </div>
+                style={game.coverLoading ? undefined : getGradientStyle(colors.gradientFrom, colors.gradientTo)}>
+                {!game.coverLoading && (
+                    <>
+                        <div className="absolute inset-0 flex items-center justify-center px-2 sm:px-4" style={{ color: colors.darkBg }}>
+                            <span className="block w-full text-lg sm:text-xl md:text-2xl font-bold tracking-wide text-center break-words select-none line-clamp-4 pointer-events-none" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)', hyphens: 'auto' }}>
+                                {game.title}
+                            </span>
+                        </div>
+                        {game.coverArt && !imgError && (
+                            <Image
+                                src={game.coverArt}
+                                alt={game.title}
+                                fill
+                                sizes="320px"
+                                loading="eager"
+                                priority={priority}
+                                draggable={false}
+                                onError={() => {
+                                    setErroredSrc(game.coverArt);
+                                    onCoverFailed(game.id);
+                                }}
+                                style={{ objectFit: game.coverArtFit || 'cover', objectPosition: 'center', userSelect: 'none' }}
+                            />
+                        )}
+                    </>
                 )}
             </div>
 

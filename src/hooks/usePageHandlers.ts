@@ -72,6 +72,17 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
         if (g?.autoCoverArt) lib.updateGame(id, { coverArt: g.autoCoverArt });
     };
 
+    // why: an auto-cover URL from libretro can 404 if the DAT-matched filename
+    // isn't actually in their thumbnail repo. Clearing it on first failure stops
+    // every reload from re-fetching and flashing a blank card. Guarded by
+    // navigator.onLine so a transient offline state doesn't wipe valid metadata.
+    const handleCoverFailed = (id: number) => {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+        const g = lib.games.find(x => x.id === id);
+        if (!g || !g.coverArt || g.coverArt !== g.autoCoverArt) return;
+        lib.updateGame(id, { coverArt: undefined, autoCoverArt: undefined, coverArtFit: undefined });
+    };
+
     const handleEditGame = (game: Game) => {
         app.setEditingGame(game);
         app.setPendingGame({ ...game });
@@ -153,6 +164,7 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
         handlePlay,
         handleDeleteGame,
         handleResetCover,
+        handleCoverFailed,
         handleEditGame,
         handleSelectSystem,
         handleRename,

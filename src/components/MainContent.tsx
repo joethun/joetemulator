@@ -15,6 +15,7 @@ interface GameCardHandlers {
     onDelete: (game: Game) => void;
     onUploadCover: (id: number, data: string) => void;
     onResetCover: (id: number) => void;
+    onCoverFailed: (id: number) => void;
     onEdit: (game: Game) => void;
     onSaveStates: (title: string, name: string) => void;
 }
@@ -108,6 +109,7 @@ export const MainContent = memo(function MainContent({
                                         onDelete={handlers.onDelete}
                                         onUploadCover={handlers.onUploadCover}
                                         onResetCover={handlers.onResetCover}
+                                        onCoverFailed={handlers.onCoverFailed}
                                         colors={colors}
                                         onEdit={handlers.onEdit}
                                         onSaveStates={handlers.onSaveStates}
