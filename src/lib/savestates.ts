@@ -107,9 +107,6 @@ const idbGet = <T>(db: IDBDatabase, key: string) =>
 const idbPut = (db: IDBDatabase, key: string, value: unknown) =>
     idbReq(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(value, key));
 
-const idbDelete = (db: IDBDatabase, key: string) =>
-    idbReq(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(key));
-
 function idbGetMany(db: IDBDatabase, keys: string[]): Promise<Map<string, unknown>> {
     if (!keys.length) return Promise.resolve(new Map());
     return new Promise(resolve => {

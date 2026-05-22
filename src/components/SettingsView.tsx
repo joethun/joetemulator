@@ -49,9 +49,8 @@ export const SettingsView = memo(({
     autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval,
     autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon,
     saveOnExit, setSaveOnExit
-}: SettingsViewProps) => {
-    return (
-        <div className="animate-fade-in w-full grid gap-4 pb-8">
+}: SettingsViewProps) => (
+    <div className="animate-fade-in w-full grid gap-4 pb-8">
             <SettingsCard
                 colors={colors} gradient={gradient} icon={Save}
                 title="Auto-Save State" description="Automatically save your game state periodically."
@@ -108,8 +107,7 @@ export const SettingsView = memo(({
                 animationDelay="0.09s"
                 checked={saveOnExit} onToggle={() => setSaveOnExit(!saveOnExit)}
             />
-        </div>
-    );
-});
+    </div>
+));
 
 SettingsView.displayName = 'SettingsView';

@@ -145,7 +145,5 @@ export const getCorePref = (system: string): string | undefined =>
     loadStringRecord(CORE_PREF_KEY)[system];
 
 export function setCorePref(system: string, libretroName: string): void {
-    const prefs = loadStringRecord(CORE_PREF_KEY);
-    prefs[system] = libretroName;
-    saveJSON(CORE_PREF_KEY, prefs);
+    saveJSON(CORE_PREF_KEY, { ...loadStringRecord(CORE_PREF_KEY), [system]: libretroName });
 }

@@ -28,11 +28,10 @@ interface Entry {
     disabled?: boolean;
 }
 
-export const CoreOptionsPanel = memo((props: CoreOptionsPanelProps) => {
-    const {
-        colors, getOptions, onChange, system, libretroCore, onSwitchCore, refreshKey,
-        activeKey, onActiveKeyChange,
-    } = props;
+export const CoreOptionsPanel = memo(({
+    colors, getOptions, onChange, system, libretroCore, onSwitchCore, refreshKey,
+    activeKey, onActiveKeyChange,
+}: CoreOptionsPanelProps) => {
     const [options, setOptions] = useState<CoreOption[]>(getOptions);
 
     // refreshKey starts at 0; we only refresh on subsequent bumps.

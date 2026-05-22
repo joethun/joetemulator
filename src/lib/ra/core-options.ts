@@ -17,12 +17,9 @@ const stripDefault = (s: string): string =>
     s.startsWith(DEFAULT_PREFIX) ? s.slice(DEFAULT_PREFIX.length) : s;
 
 function stripCorePrefix(key: string, libretroName?: string): string {
-    if (!libretroName) return key;
+    if (!libretroName || !key.startsWith(libretroName)) return key;
     const sep = key[libretroName.length];
-    if (key.startsWith(libretroName) && (sep === '_' || sep === '-')) {
-        return key.slice(libretroName.length + 1);
-    }
-    return key;
+    return sep === '_' || sep === '-' ? key.slice(libretroName.length + 1) : key;
 }
 
 /**

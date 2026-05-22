@@ -16,8 +16,7 @@ export const RETROARCH_CFG = [
     'fastforward_ratio = 0',
     'slowmotion_ratio = 0',
     `savefile_directory = "${SAVES_DIR}"`,
-    '',
-].join('\n');
+].join('\n') + '\n';
 
 function mkdirP(mod: LibretroModule, path: string): void {
     let current = '';

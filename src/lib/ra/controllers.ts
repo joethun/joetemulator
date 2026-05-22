@@ -22,7 +22,7 @@ export function parseControllerPortInfo(raw: string): ControllerPort[] {
         if (!trimmed) continue;
         const colon1 = trimmed.indexOf(':');
         const colon2 = colon1 >= 0 ? trimmed.indexOf(':', colon1 + 1) : -1;
-        if (colon1 < 0 || colon2 < 0) continue;
+        if (colon2 < 0) continue;
         const port = Number(trimmed.slice(0, colon1));
         const id   = Number(trimmed.slice(colon1 + 1, colon2));
         const name = trimmed.slice(colon2 + 1);
@@ -54,9 +54,7 @@ export function loadStoredControllerDevices(gameBaseName: string): Record<number
 
 export function saveStoredControllerDevice(gameBaseName: string, port: number, deviceId: number): void {
     const all = readStore();
-    const inner = all[gameBaseName] ?? {};
-    inner[String(port)] = deviceId;
-    all[gameBaseName] = inner;
+    (all[gameBaseName] ??= {})[port] = deviceId;
     saveJSON(STORAGE_KEY, all);
 }
 
@@ -67,5 +65,5 @@ export function resolveDeviceForPort(
 ): number | null {
     const userPick = stored[port.port];
     if (userPick !== undefined && port.devices.some(d => d.id === userPick)) return userPick;
-    return port.devices.length ? port.devices[0].id : null;
+    return port.devices[0]?.id ?? null;
 }

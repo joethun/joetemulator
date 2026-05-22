@@ -30,9 +30,10 @@ const patchedCanvases = new WeakSet<HTMLCanvasElement>();
 
 function forcePreserveDrawingBuffer(canvas: HTMLCanvasElement): void {
     if (patchedCanvases.has(canvas)) return;
-    const orig = canvas.getContext.bind(canvas) as (id: string, opts?: object) => RenderingContext | null;
-    (canvas as unknown as { getContext: (id: string, opts?: object) => RenderingContext | null }).getContext =
-        (id, opts) => orig(id, { ...(opts ?? {}), preserveDrawingBuffer: true });
+    type GetContext = (id: string, opts?: object) => RenderingContext | null;
+    const orig = canvas.getContext.bind(canvas) as GetContext;
+    (canvas as unknown as { getContext: GetContext }).getContext =
+        (id, opts) => orig(id, { ...opts, preserveDrawingBuffer: true });
     patchedCanvases.add(canvas);
 }
 

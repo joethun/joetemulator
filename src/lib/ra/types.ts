@@ -18,7 +18,6 @@ export interface LibretroModule {
     resumeMainLoop(): void;
     cwrap<R = unknown>(name: string, ret: CwrapPrimitive, args: CwrapPrimitive[]): (...a: unknown[]) => R;
     abort?: () => void;
-    [key: string]: unknown;
 }
 
 export type ModuleFactory = (config: object) => Promise<LibretroModule>;

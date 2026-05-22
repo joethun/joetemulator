@@ -51,7 +51,7 @@ export const GameCard = memo(({
     const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
     const [menuOpen, setMenuOpen] = useState(false);
     const [mobileHovered, setMobileHovered] = useState(false);
-    const [erroredSrc, setErroredSrc] = useState<string | undefined>(undefined);
+    const [erroredSrc, setErroredSrc] = useState<string>();
     const imgError = !!game.coverArt && erroredSrc === game.coverArt;
 
     useEffect(() => () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }, []);

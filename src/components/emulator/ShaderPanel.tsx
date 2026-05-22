@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import type { ThemeColors } from '@/types';
 import {
     getShaderOptions, getStoredShader, SHADER_DISABLED,
@@ -20,8 +20,19 @@ const GROUPS: { key: ShaderCategory; title: string }[] = [
     { key: 'effects', title: 'Effects' },
 ];
 
+const SHADER_GROUPING = (() => {
+    const byGroup = new Map<ShaderCategory, ShaderOption[]>();
+    let off: ShaderOption | undefined;
+    for (const opt of getShaderOptions()) {
+        if (opt.category === null) { off = opt; continue; }
+        const arr = byGroup.get(opt.category);
+        if (arr) arr.push(opt);
+        else byGroup.set(opt.category, [opt]);
+    }
+    return { off, byGroup };
+})();
+
 export const ShaderPanel = memo(({ colors, libretroCore, onShaderChange }: ShaderPanelProps) => {
-    const options = useMemo(() => getShaderOptions(), []);
     const [selected, setSelected] = useState<string>(
         () => libretroCore ? getStoredShader(libretroCore) : SHADER_DISABLED,
     );
@@ -36,17 +47,7 @@ export const ShaderPanel = memo(({ colors, libretroCore, onShaderChange }: Shade
         onShaderChange(key);
     }, [onShaderChange, selected]);
 
-    const { off, byGroup } = useMemo(() => {
-        const byGroup = new Map<ShaderCategory, ShaderOption[]>();
-        let off: ShaderOption | undefined;
-        for (const opt of options) {
-            if (opt.category === null) { off = opt; continue; }
-            const arr = byGroup.get(opt.category);
-            if (arr) arr.push(opt);
-            else byGroup.set(opt.category, [opt]);
-        }
-        return { off, byGroup };
-    }, [options]);
+    const { off, byGroup } = SHADER_GROUPING;
 
     return (
         <div className="flex flex-col gap-6 min-w-0">

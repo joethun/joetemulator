@@ -9,7 +9,7 @@ const STORAGE_KEY = 'ra_bindings_v2';
 const isObj = (v: unknown): v is Record<string, unknown> =>
     !!v && typeof v === 'object';
 const isPosInt = (v: unknown): v is number =>
-    typeof v === 'number' && Number.isInteger(v) && v >= 0;
+    Number.isInteger(v) && (v as number) >= 0;
 const asBtn = (v: unknown): number => isPosInt(v) ? v : -1;
 
 function parseSource(raw: unknown): GamepadSource | null {
