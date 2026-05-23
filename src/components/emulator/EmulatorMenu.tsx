@@ -58,7 +58,7 @@ export const EmulatorMenu = memo(function EmulatorMenu({
     };
 
     return (
-        <Modal isClosing={isClosing} colors={colors} onClose={onClose} height="tall" z={60} ariaLabel="Emulator menu">
+        <Modal isClosing={isClosing} colors={colors} onClose={onClose} z={60} ariaLabel="Emulator menu">
             <div className="flex flex-col flex-1 min-h-0">
                 {displaySection === 'saves' ? (
                     <ModalHeader title="Manage States" subtitle={session.currentGame ?? 'Game'} colors={colors} />

@@ -78,23 +78,29 @@ export const SystemPickerModal = memo(function SystemPickerModal({
             <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
                 <SearchBar colors={colors} value={searchQuery} onChange={onSearchChange} />
                 <div className="flex-1 overflow-y-auto pr-2 mt-4">
-                    {Object.entries(categories).map(([cat, systems]) => (
-                        <div key={cat} className="mb-8 last:mb-0">
-                            <SectionHeader title={cat} colors={colors} />
-                            <div className="grid grid-cols-2 gap-2.5">
-                                {systems.map(([name, core], idx) => (
-                                    <OptionButton
-                                        key={core}
-                                        label={name}
-                                        active={currentCore === core}
-                                        idx={idx}
-                                        colors={colors}
-                                        onClick={() => onSelectSystem(core)}
-                                    />
-                                ))}
-                            </div>
+                    {Object.keys(categories).length === 0 ? (
+                        <div className="text-center py-20 opacity-60">
+                            <p style={{ color: colors.softLight }}>No systems found matching &quot;{searchQuery}&quot;</p>
                         </div>
-                    ))}
+                    ) : (
+                        Object.entries(categories).map(([cat, systems]) => (
+                            <div key={cat} className="mb-8 last:mb-0">
+                                <SectionHeader title={cat} colors={colors} />
+                                <div className="grid grid-cols-2 gap-2.5">
+                                    {systems.map(([name, core], idx) => (
+                                        <OptionButton
+                                            key={core}
+                                            label={name}
+                                            active={currentCore === core}
+                                            idx={idx}
+                                            colors={colors}
+                                            onClick={() => onSelectSystem(core)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 

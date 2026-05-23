@@ -10,8 +10,6 @@ interface ModalProps {
     colors: ThemeColors;
     onClose: () => void;
     children: React.ReactNode;
-    /** Use 'tall' to fill 90vh; 'auto' lets the content size itself. */
-    height?: 'auto' | 'tall';
     /** ARIA label for the dialog. Use this OR labelledBy. */
     ariaLabel?: string;
     labelledBy?: string;
@@ -21,7 +19,7 @@ interface ModalProps {
 
 export function Modal({
     isClosing, colors, onClose, children,
-    height = 'auto', ariaLabel, labelledBy, z = 50,
+    ariaLabel, labelledBy, z = 50,
 }: ModalProps) {
     const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -44,13 +42,13 @@ export function Modal({
                 aria-labelledby={labelledBy}
                 onClick={e => e.stopPropagation()}
                 onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose(); } }}
-                className="p-8 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col border focus:outline-none"
+                className="p-8 rounded-2xl max-w-2xl w-full flex flex-col border focus:outline-none"
                 style={{
                     backgroundColor: colors.darkBg,
                     borderColor: colors.midDark,
                     boxShadow: SHADOW_MODAL,
                     animation: anim,
-                    ...(height === 'tall' ? { height: '90vh' } : null),
+                    height: '90vh',
                 }}
             >
                 {children}

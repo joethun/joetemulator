@@ -26,7 +26,7 @@ export function SaveStateManager({
     if (!isOpen && !isClosing) return null;
 
     return (
-        <Modal isClosing={isClosing} colors={colors} onClose={onClose} height="tall" labelledBy="save-state-title">
+        <Modal isClosing={isClosing} colors={colors} onClose={onClose} labelledBy="save-state-title">
             <div className="flex flex-col flex-1 min-h-0">
                 <ModalHeader title="Manage States" subtitle={gameTitle} colors={colors} id="save-state-title" />
 
