@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import type { ThemeColors, GradientStyle } from '@/types';
 import type { EmulatorSession } from '@/hooks/useEmulator';
 import { EmulatorMenu } from '@/components/emulator/EmulatorMenu';
@@ -13,12 +14,19 @@ interface EmulatorViewProps {
     onDuplicateError: (msg: string) => void;
     /** When true, keep the game paused regardless of menu state (e.g. an external modal is open). */
     keepPaused?: boolean;
+    /** Game-friendly title for the loading splash (falls back to baseName). */
+    loadingTitle?: string;
+    /** Friendly system name for the loading splash (e.g. "Game Boy Advance"). */
+    loadingSystemName?: string;
+    /** Optional cover art to show while loading. */
+    loadingCoverArt?: string;
 }
 
 const BAR_VISIBLE_MS = 2000;
 
 export const EmulatorView = memo(({
     session, colors, gradient, onDuplicateError, keepPaused,
+    loadingTitle, loadingSystemName, loadingCoverArt,
 }: EmulatorViewProps) => {
     const isVisible = session.phase !== 'idle';
     const isLoading = session.phase === 'loading-core' || session.phase === 'booting';
@@ -150,18 +158,35 @@ export const EmulatorView = memo(({
 
             {isLoading && (
                 <div
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-6"
                     style={{ backgroundColor: '#000000' }}
                 >
+                    {loadingCoverArt && (
+                        <div
+                            className="relative rounded-xl overflow-hidden shadow-2xl"
+                            style={{ width: 'min(280px, 40vw)', aspectRatio: '0.8' }}
+                        >
+                            <Image
+                                src={loadingCoverArt}
+                                alt=""
+                                fill
+                                sizes="280px"
+                                draggable={false}
+                                style={{ objectFit: 'contain', userSelect: 'none' }}
+                            />
+                        </div>
+                    )}
                     <div
-                        className="px-5 py-3 rounded-xl text-sm border-[0.125rem]"
+                        className="px-5 py-3 rounded-xl text-sm border-[0.125rem] text-center max-w-[80vw]"
                         style={{
                             backgroundColor: colors.midDark,
                             borderColor: colors.midDark,
                             color: colors.softLight,
                         }}
                     >
-                        {session.message || (session.phase === 'booting' ? 'Booting…' : 'Loading…')}
+                        {loadingTitle && loadingSystemName
+                            ? `Loading ${loadingTitle} for ${loadingSystemName}…`
+                            : (session.message || (session.phase === 'booting' ? 'Booting…' : 'Loading…'))}
                     </div>
                 </div>
             )}

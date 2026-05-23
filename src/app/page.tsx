@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 import { useGameLibrary } from '@/hooks/useGameLibrary';
+import { getSystemNameByCore } from '@/lib/constants';
+import { stripExt } from '@/lib/utils';
 import { useApp } from '@/hooks/useApp';
 import { useFileHandler } from '@/hooks/useFileHandler';
 import { useAppSettings } from '@/hooks/useAppSettings';
@@ -102,13 +104,23 @@ export default function Home() {
                 </main>
             </div>
 
-            <EmulatorView
-                session={session}
-                colors={settings.currentColors}
-                gradient={settings.gradientStyle}
-                keepPaused={app.saveStateOpen || app.saveStateClosing}
-                onDuplicateError={app.showDuplicateError}
-            />
+            {(() => {
+                const loadingGame = session.currentGame
+                    ? lib.games.find(g => stripExt(g.fileName || g.title) === session.currentGame)
+                    : undefined;
+                return (
+                    <EmulatorView
+                        session={session}
+                        colors={settings.currentColors}
+                        gradient={settings.gradientStyle}
+                        keepPaused={app.saveStateOpen || app.saveStateClosing}
+                        onDuplicateError={app.showDuplicateError}
+                        loadingTitle={loadingGame?.title ?? session.currentGame ?? undefined}
+                        loadingSystemName={session.currentCore ? getSystemNameByCore(session.currentCore) : undefined}
+                        loadingCoverArt={loadingGame?.coverArt}
+                    />
+                );
+            })()}
 
             {app.duplicateMessage && <Alert message={app.duplicateMessage} isVisible={app.showDuplicateMessage} />}
             <EmulatorNotification colors={settings.currentColors} autoSaveIcon={settings.autoSaveIcon} autoLoadIcon={settings.autoLoadIcon} />
