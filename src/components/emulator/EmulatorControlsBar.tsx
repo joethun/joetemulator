@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useSyncExternalStore } from 'react';
+import { memo, useState, useSyncExternalStore } from 'react';
 import {
     Folder, LogOut, Maximize, Minimize, Pause, Play,
     Save, Settings, Upload,
@@ -29,37 +29,45 @@ interface EmulatorControlsBarProps {
 
 export const EmulatorControlsBar = memo(({
     visible, colors, paused, gameLoaded, onTogglePause, onSaveState, onLoadState, onOpenPanel, onExit,
-}: EmulatorControlsBarProps) => (
-    <div
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[55] transition-opacity duration-300"
-        style={{ opacity: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none' }}
-    >
+}: EmulatorControlsBarProps) => {
+    const [exiting, setExiting] = useState(false);
+    const handleExit = () => {
+        if (exiting) return;
+        setExiting(true);
+        onExit();
+    };
+    return (
         <div
-            className="flex items-center gap-3 px-4 py-3 rounded-2xl border-[0.125rem]"
-            style={{
-                backgroundColor: colors.darkBg,
-                borderColor: colors.midDark,
-                boxShadow: SHADOW_CARD,
-            }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[55] transition-opacity duration-300"
+            style={{ opacity: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none' }}
         >
-            <BarBtn
-                icon={paused ? Play : Pause}
-                label={paused ? 'Resume' : 'Pause'}
-                onClick={onTogglePause}
-                colors={colors}
-            />
-            <div className="w-px h-10 mx-1" style={{ backgroundColor: `${colors.highlight}30` }} />
-            <BarBtn icon={Save}     label="Save State"    onClick={onSaveState} colors={colors} />
-            {gameLoaded && <BarBtn icon={Upload}   label="Load State"    onClick={onLoadState} colors={colors} />}
-            <BarBtn icon={Folder}   label="Manage States" onClick={() => onOpenPanel('saves')}    colors={colors} />
-            <BarBtn icon={Settings} label="Game Settings" onClick={() => onOpenPanel('settings')} colors={colors} />
-            <VolumeButton colors={colors} />
-            <FullscreenButton colors={colors} />
-            <div className="w-px h-10 mx-1" style={{ backgroundColor: `${colors.highlight}30` }} />
-            <BarBtn icon={LogOut} label="Exit Game" onClick={onExit} colors={colors} variant="danger" />
+            <div
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl border-[0.125rem]"
+                style={{
+                    backgroundColor: colors.darkBg,
+                    borderColor: colors.midDark,
+                    boxShadow: SHADOW_CARD,
+                }}
+            >
+                <BarBtn
+                    icon={paused ? Play : Pause}
+                    label={paused ? 'Resume' : 'Pause'}
+                    onClick={onTogglePause}
+                    colors={colors}
+                />
+                <div className="w-px h-10 mx-1" style={{ backgroundColor: `${colors.highlight}30` }} />
+                <BarBtn icon={Save}     label="Save State"    onClick={onSaveState} colors={colors} />
+                {gameLoaded && <BarBtn icon={Upload}   label="Load State"    onClick={onLoadState} colors={colors} />}
+                <BarBtn icon={Folder}   label="Manage States" onClick={() => onOpenPanel('saves')}    colors={colors} />
+                <BarBtn icon={Settings} label="Game Settings" onClick={() => onOpenPanel('settings')} colors={colors} />
+                <VolumeButton colors={colors} />
+                <FullscreenButton colors={colors} />
+                <div className="w-px h-10 mx-1" style={{ backgroundColor: `${colors.highlight}30` }} />
+                <BarBtn icon={LogOut} label="Exit Game" onClick={handleExit} colors={colors} variant="danger" disabled={exiting} />
+            </div>
         </div>
-    </div>
-));
+    );
+});
 EmulatorControlsBar.displayName = 'EmulatorControlsBar';
 
 function Tooltip({ text, colors }: { text: string; colors: ThemeColors }) {
@@ -80,20 +88,22 @@ interface BarBtnProps {
     colors: ThemeColors;
     variant?: 'default' | 'danger';
     pressed?: boolean;
+    disabled?: boolean;
 }
 
-function BarBtn({ icon: Icon, label, onClick, colors, variant = 'default', pressed }: BarBtnProps) {
+function BarBtn({ icon: Icon, label, onClick, colors, variant = 'default', pressed, disabled }: BarBtnProps) {
     const style = variant === 'danger'
-        ? { backgroundColor: DANGER_BG, color: DANGER_FG }
-        : { backgroundColor: colors.midDark, color: colors.highlight };
+        ? { backgroundColor: DANGER_BG, color: DANGER_FG, opacity: disabled ? 0.5 : 1 }
+        : { backgroundColor: colors.midDark, color: colors.highlight, opacity: disabled ? 0.5 : 1 };
     return (
         <div className="relative group">
             <button
                 type="button"
                 onClick={onClick}
+                disabled={disabled}
                 aria-label={label}
                 aria-pressed={pressed}
-                className="w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                className="w-12 h-12 rounded-xl flex items-center justify-center transition-all enabled:active:scale-95 enabled:cursor-pointer disabled:cursor-not-allowed"
                 style={style}
             >
                 <Icon className="w-6 h-6" />
