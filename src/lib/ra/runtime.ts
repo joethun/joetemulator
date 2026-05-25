@@ -126,18 +126,20 @@ export class Runtime {
             gc.setVariable(key, value);
         }
 
-        // Probe and apply controller-port device selection. Core reports which
-        // devices each port supports; we prefer the user's saved pick, falling
-        // back to an analog-capable device when available so the analog stick
-        // is actually recognised on cores whose default device is digital-only
-        // (e.g. PCSX-ReARMed → DualShock).
+        // Probe controller-port devices. Only PSX exposes a picker in the UI
+        // and benefits from forcing a device (digital pad → DualShock so the
+        // analog stick is recognised on PCSX-ReARMed). Other cores' first
+        // reported device is sometimes "None"; leave them on the core's
+        // natural default instead of overriding it.
         this.controllerPorts = parseControllerPortInfo(gc.getControllerPortInfoRaw());
-        const storedDevices = loadStoredControllerDevices(gameBaseName);
-        for (const port of this.controllerPorts) {
-            const device = resolveDeviceForPort(port, storedDevices);
-            if (device != null) {
-                gc.setControllerPortDevice(port.port, device);
-                port.currentDevice = device;
+        if (system === 'psx') {
+            const storedDevices = loadStoredControllerDevices(gameBaseName);
+            for (const port of this.controllerPorts) {
+                const device = resolveDeviceForPort(port, storedDevices);
+                if (device != null) {
+                    gc.setControllerPortDevice(port.port, device);
+                    port.currentDevice = device;
+                }
             }
         }
 
