@@ -146,7 +146,7 @@ export const GameCard = memo(({
                 onSaveStates={() => onSaveStates(game.title, stripExt(game.fileName || game.title))}
                 gameTitle={game.title}
                 colors={colors}
-                hasAutoCover={!!game.autoCoverArt}
+                hasCustomCover={!!game.autoCoverArt && !!game.coverArt && game.coverArt !== game.autoCoverArt}
             />
         </div>
     );

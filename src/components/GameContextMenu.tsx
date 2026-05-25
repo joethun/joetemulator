@@ -18,7 +18,7 @@ interface GameContextMenuProps {
     onSaveStates: () => void;
     gameTitle: string;
     colors: ThemeColors;
-    hasAutoCover: boolean;
+    hasCustomCover: boolean;
 }
 
 const MENU_W = 190;
@@ -47,7 +47,7 @@ function MenuButton({ onClick, label, Icon, colors, style }: MenuButtonProps) {
 
 export function GameContextMenu({
     isOpen, position, onClose, onEdit, onDelete, onUploadCover, onResetCover, onSaveStates,
-    gameTitle, colors, hasAutoCover,
+    gameTitle, colors, hasCustomCover,
 }: GameContextMenuProps) {
     const { shouldRender, isClosing } = useDelayedUnmount(isOpen, 300);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -97,8 +97,10 @@ export function GameContextMenu({
                     {gameTitle}
                 </div>
                 <div className="flex flex-col gap-1">
-                    <MenuButton onClick={() => fileInputRef.current?.click()} label="Upload Cover" Icon={ImageIcon} colors={colors} />
-                    {hasAutoCover && <MenuButton onClick={() => { onResetCover(); onClose(); }} label="Auto Cover" Icon={RefreshCw} colors={colors} />}
+                    {hasCustomCover
+                        ? <MenuButton onClick={() => { onResetCover(); onClose(); }} label="Auto Cover" Icon={RefreshCw} colors={colors} />
+                        : <MenuButton onClick={() => fileInputRef.current?.click()} label="Upload Cover" Icon={ImageIcon} colors={colors} />
+                    }
                     <div className="h-px w-full my-1" style={{ backgroundColor: `${colors.highlight}20` }} />
                     <MenuButton onClick={() => { onClose(); requestAnimationFrame(onSaveStates); }} label="Manage States" Icon={Folder} colors={colors} />
                     <MenuButton onClick={() => { onClose(); requestAnimationFrame(onEdit); }} label="System" Icon={Settings} colors={colors} />
