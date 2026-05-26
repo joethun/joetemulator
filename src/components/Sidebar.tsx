@@ -94,7 +94,7 @@ export const Sidebar = memo(({ activeView, colors, gradient, onNavClick, onAddGa
 
         <aside className="md:hidden fixed inset-x-0 bottom-0 pb-6 flex justify-center z-50 pointer-events-none select-none">
             <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border-[0.125rem] pointer-events-auto backdrop-blur-2xl"
-                style={{ backgroundColor: `${colors.darkBg}e6`, borderColor: `${colors.midDark}80`, boxShadow: '0 12px 40px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.05)' }}>
+                style={{ backgroundColor: `${colors.darkBg}e6`, borderColor: `${colors.midDark}80`, boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
                 <a href="https://github.com/joethun/joetemulator" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository"
                     className="w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-95 cursor-pointer">
                     <Image src="/icons/duck.png" alt="Logo" width={48} height={48} className="object-contain opacity-90 pointer-events-none" draggable={false} />
