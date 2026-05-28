@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useEffect, useRef, useState } from 'react';
-import { ChevronRight, Code2, Gamepad2, Monitor, Settings as SettingsIcon } from 'lucide-react';
+import { ChevronRight, Code2, GamepadDirectional, Monitor, Settings2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ThemeColors, GradientStyle } from '@/types';
 import type { EmulatorSession } from '@/hooks/useEmulator';
@@ -28,8 +28,8 @@ interface EmulatorMenuProps {
 }
 
 const TAB_META: Record<SettingsTab, { title: string; subtitle: string; icon: LucideIcon }> = {
-    controls: { title: 'Controls',     subtitle: 'Click a binding to change it. Right-click to clear.',     icon: Gamepad2 },
-    options:  { title: 'Core Options', subtitle: 'RetroArch core settings — some may need a restart to apply.', icon: SettingsIcon },
+    controls: { title: 'Controls',     subtitle: 'Click a binding to change it. Right-click to clear.',     icon: GamepadDirectional },
+    options:  { title: 'Core Options', subtitle: 'RetroArch core settings — some may need a restart to apply.', icon: Settings2 },
     shader:   { title: 'Shader',       subtitle: 'Apply a visual filter to the game output.',               icon: Monitor },
     license:  { title: 'Credits',      subtitle: 'Source repositories for the services used by the emulator.', icon: Code2 },
 };
