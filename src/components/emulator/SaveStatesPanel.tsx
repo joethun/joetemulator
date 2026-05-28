@@ -29,21 +29,22 @@ export const SaveStatesPanel = memo(({
     colors, gameName, gameTitle, onDuplicateError, onLoad, importRef,
 }: SaveStatesPanelProps) => {
     const [states, setStates] = useState<SaveState[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loadedGame, setLoadedGame] = useState<string | null>(null);
     const [pendingCovers, setPendingCovers] = useState<Set<string>>(() => new Set());
+    const [reloadKey, setReloadKey] = useState(0);
+    const loading = loadedGame !== gameName;
 
-    const refresh = useCallback(async () => {
-        setLoading(true);
-        try {
-            setStates(await fetchStates(gameName));
-        } catch {
-            setStates([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [gameName]);
-
-    useEffect(() => { refresh(); }, [refresh]);
+    // Load the game's save states. setState runs only after the await (never a synchronous
+    // cascade), guarded against a stale gameName. Bump reloadKey to force a re-fetch.
+    useEffect(() => {
+        let active = true;
+        (async () => {
+            let next: SaveState[] = [];
+            try { next = await fetchStates(gameName); } catch { next = []; }
+            if (active) { setStates(next); setLoadedGame(gameName); }
+        })();
+        return () => { active = false; };
+    }, [gameName, reloadKey]);
 
     useEffect(() => {
         const onThumbnail = (e: Event) => {
@@ -88,12 +89,12 @@ export const SaveStatesPanel = memo(({
         e.target.value = '';
         try {
             await importState(gameName, file);
-            await refresh();
+            setReloadKey(k => k + 1);
         } catch (err) {
             if (err instanceof Error && err.message === 'duplicate') onDuplicateError('Save state already exists');
             else console.error('import failed:', err);
         }
-    }, [gameName, refresh, onDuplicateError]);
+    }, [gameName, onDuplicateError]);
 
     return (
         <>

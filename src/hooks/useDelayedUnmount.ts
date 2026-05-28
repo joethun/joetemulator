@@ -8,20 +8,24 @@ export function useDelayedUnmount(open: boolean, delayMs = 200) {
     const [shouldRender, setShouldRender] = useState(open);
     const [isClosing, setIsClosing] = useState(false);
 
-    useEffect(() => {
-        if (open) {
+    // State transitions happen during render; only the unmount delay needs the effect.
+    if (open) {
+        if (!shouldRender || isClosing) {
             setShouldRender(true);
             setIsClosing(false);
-            return;
         }
-        if (!shouldRender) return;
+    } else if (shouldRender && !isClosing) {
         setIsClosing(true);
+    }
+
+    useEffect(() => {
+        if (open || !isClosing) return;
         const t = setTimeout(() => {
             setShouldRender(false);
             setIsClosing(false);
         }, delayMs);
         return () => clearTimeout(t);
-    }, [open, shouldRender, delayMs]);
+    }, [open, isClosing, delayMs]);
 
     return { shouldRender, isClosing };
 }

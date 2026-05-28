@@ -33,12 +33,13 @@ export const CoreOptionsPanel = memo(({
     activeKey, onActiveKeyChange,
 }: CoreOptionsPanelProps) => {
     const [options, setOptions] = useState<CoreOption[]>(getOptions);
+    const [seenRefreshKey, setSeenRefreshKey] = useState(refreshKey);
 
-    // refreshKey starts at 0; we only refresh on subsequent bumps.
-    useEffect(() => {
-        if (refreshKey === 0) return;
+    // Re-pull options whenever the refresh signal bumps (the initial mount value is skipped).
+    if (refreshKey !== seenRefreshKey) {
+        setSeenRefreshKey(refreshKey);
         setOptions(getOptions());
-    }, [refreshKey, getOptions]);
+    }
 
     const coreEntry = useMemo<Entry | null>(() => {
         const availableCores = system ? getCoresForSystem(system) : [];

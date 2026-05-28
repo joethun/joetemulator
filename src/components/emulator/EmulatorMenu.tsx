@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import { ChevronRight, Code2, GamepadDirectional, Monitor, Settings2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ThemeColors, GradientStyle } from '@/types';
@@ -40,14 +40,19 @@ export const EmulatorMenu = memo(function EmulatorMenu({
     const { shouldRender, isClosing } = useDelayedUnmount(section !== null);
     const [displaySection, setDisplaySection] = useState<EmulatorPanel | null>(section);
     const [tab, setTab] = useState<SettingsTab | null>(null);
+    const [prevSection, setPrevSection] = useState(section);
     const [optionsVersion, setOptionsVersion] = useState(0);
     const [optionsActiveKey, setOptionsActiveKey] = useState<string | null>(null);
     const saveImportRef = useRef<HTMLInputElement>(null);
 
-    if (section && section !== displaySection) setDisplaySection(section);
-
-    // Reset the settings sub-tab whenever the menu is re-opened from the bar.
-    useEffect(() => { if (section === 'settings') setTab(null); }, [section]);
+    // Adjust derived state when the incoming section changes. displaySection retains
+    // the last non-null value so the panel can animate out; the settings sub-tab resets
+    // whenever the menu is (re-)opened to settings from the bar.
+    if (section !== prevSection) {
+        setPrevSection(section);
+        if (section) setDisplaySection(section);
+        if (section === 'settings') setTab(null);
+    }
 
     if (!shouldRender || !displaySection) return null;
 

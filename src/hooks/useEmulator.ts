@@ -107,7 +107,7 @@ export function useEmulator(): EmulatorSession {
 
     const [status, setStatus] = useState<SessionStatus>(IDLE_STATUS);
     const [canvasEpoch, setCanvasEpoch] = useState(0);
-    const [bindings, setBindingsState] = useState<InputBindings>(bindingsRef.current);
+    const [bindings, setBindingsState] = useState<InputBindings>(loadStoredBindings);
     const patchStatus = useCallback(
         (p: Partial<SessionStatus>) => setStatus(s => ({ ...s, ...p })),
         [],
