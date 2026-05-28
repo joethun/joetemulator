@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, Settings, Image as ImageIcon, RefreshCw, Folder } from 'lucide-react';
+import { Trash2, Cpu, Image as ImageIcon, RefreshCw, Folder } from 'lucide-react';
 import { ThemeColors } from '@/types';
 import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
@@ -103,7 +103,7 @@ export function GameContextMenu({
                     }
                     <div className="h-px w-full my-1" style={{ backgroundColor: `${colors.highlight}20` }} />
                     <MenuButton onClick={() => { onClose(); requestAnimationFrame(onSaveStates); }} label="Manage States" Icon={Folder} colors={colors} />
-                    <MenuButton onClick={() => { onClose(); requestAnimationFrame(onEdit); }} label="System" Icon={Settings} colors={colors} />
+                    <MenuButton onClick={() => { onClose(); requestAnimationFrame(onEdit); }} label="System" Icon={Cpu} colors={colors} />
                     <MenuButton onClick={() => { onClose(); requestAnimationFrame(onDelete); }} label="Delete" Icon={Trash2} colors={colors} style={{ backgroundColor: DANGER_BG, color: DANGER_FG }} />
                 </div>
             </div>
