@@ -8,7 +8,7 @@ const THUMB_SUFFIX = ':thumb';
 
 export const SAVE_STATE_THUMBNAIL_EVENT = 'savestate_thumbnail';
 
-export interface SaveStateThumbnailDetail {
+interface SaveStateThumbnailDetail {
     gameName: string;
     key: string;
     phase: 'pending' | 'ready';
@@ -156,7 +156,7 @@ export const getStateBytes = (key: string): Promise<Uint8Array | null> =>
 export const putStateBytes = (key: string, bytes: Uint8Array): Promise<void> =>
     withDB(async db => { await idbPut(db, key, bytes); }, undefined);
 
-export const putStateThumbnail = (key: string, dataUrl: string, aspect: number): Promise<void> => {
+const putStateThumbnail = (key: string, dataUrl: string, aspect: number): Promise<void> => {
     stampCoverAspect(key, aspect);
     return withDB(async db => { await idbPut(db, key + THUMB_SUFFIX, dataUrl); }, undefined);
 };

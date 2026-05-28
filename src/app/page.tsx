@@ -24,7 +24,7 @@ export default function Home() {
     const app = useApp();
     const settings = useAppSettings();
     const files = useFileHandler(lib.games, lib.addGame, app);
-    const view = useGameList(lib.games, files.uploads, app.gameSearchQuery, settings.sortOrder);
+    const view = useGameList(lib.games, files.uploads, app.gameSearchQuery);
     const session = useEmulator();
     const h = usePageHandlers({ lib, app, files, settings, session });
 
