@@ -85,11 +85,9 @@ export function loadStoredBindings(): Required<InputBindings> {
         fastForwardKey:     parsed.fastForwardKey ?? DEFAULT_BINDINGS.fastForwardKey,
         saveStateKey:       parsed.saveStateKey   ?? DEFAULT_BINDINGS.saveStateKey,
         loadStateKey:       parsed.loadStateKey   ?? DEFAULT_BINDINGS.loadStateKey,
-        pauseKey:           parsed.pauseKey       ?? DEFAULT_BINDINGS.pauseKey,
         fastForwardGamepad: asBtn(parsed.fastForwardGamepad),
         saveStateGamepad:   asBtn(parsed.saveStateGamepad),
         loadStateGamepad:   asBtn(parsed.loadStateGamepad),
-        pauseGamepad:       asBtn(parsed.pauseGamepad),
     };
 }
 

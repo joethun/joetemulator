@@ -103,11 +103,9 @@ export interface InputBindings {
     fastForwardKey?: string;
     saveStateKey?: string;
     loadStateKey?: string;
-    pauseKey?: string;
     fastForwardGamepad?: number;
     saveStateGamepad?: number;
     loadStateGamepad?: number;
-    pauseGamepad?: number;
 }
 
 export const DEFAULT_BINDINGS: Required<InputBindings> = {
@@ -117,11 +115,9 @@ export const DEFAULT_BINDINGS: Required<InputBindings> = {
     fastForwardKey: '',
     saveStateKey: 'F1',
     loadStateKey: 'F2',
-    pauseKey: 'Escape',
     fastForwardGamepad: -1,
     saveStateGamepad: -1,
     loadStateGamepad: -1,
-    pauseGamepad: -1,
 };
 
 /**
@@ -157,7 +153,6 @@ export function filterBindingsToButtons(
 export interface InputHandlers {
     onSaveState?: () => void;
     onLoadState?: () => void;
-    onPause?: () => void;
 }
 
 export const isPressed = (pad: Gamepad, idx: number): boolean => {
@@ -190,7 +185,7 @@ export class InputController {
     private rafId: number | null = null;
     private attached = false;
     private ffActive = false;
-    private hkPrev = { fast: false, save: false, load: false, pause: false };
+    private hkPrev = { fast: false, save: false, load: false };
 
     constructor(
         private readonly gc: GameController,
@@ -234,7 +229,6 @@ export class InputController {
         if (code === b.fastForwardKey) { e.preventDefault(); this.setFastForward(true);  return; }
         if (code === b.saveStateKey)   { e.preventDefault(); this.handlers.onSaveState?.(); return; }
         if (code === b.loadStateKey)   { e.preventDefault(); this.handlers.onLoadState?.(); return; }
-        if (code === b.pauseKey)       { e.preventDefault(); this.handlers.onPause?.();     return; }
 
         const bind = b.keyMap[code];
         if (!bind || this.pressed.has(code)) return;
@@ -281,7 +275,7 @@ export class InputController {
         this.flush(this.gpAnalogDesired, this.gpAnalogCurrent, NUM_ANALOG, ANALOG_BASE);
 
         this.setFastForward(false);
-        this.hkPrev = { fast: false, save: false, load: false, pause: false };
+        this.hkPrev = { fast: false, save: false, load: false };
     };
 
     private gamepadTick = (): void => {
@@ -333,13 +327,11 @@ export class InputController {
         const fast   = anyPressed(pads, b.fastForwardGamepad ?? -1);
         const save   = anyPressed(pads, b.saveStateGamepad   ?? -1);
         const load   = anyPressed(pads, b.loadStateGamepad   ?? -1);
-        const pause  = anyPressed(pads, b.pauseGamepad       ?? -1);
         const hk = this.hkPrev;
         if (fast   !== hk.fast)          this.setFastForward(fast);
         if (save   && !hk.save)          this.handlers.onSaveState?.();
         if (load   && !hk.load)          this.handlers.onLoadState?.();
-        if (pause  && !hk.pause)         this.handlers.onPause?.();
-        hk.fast = fast; hk.save = save; hk.load = load; hk.pause = pause;
+        hk.fast = fast; hk.save = save; hk.load = load;
 
         this.rafId = requestAnimationFrame(this.gamepadTick);
     };

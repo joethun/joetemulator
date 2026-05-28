@@ -21,8 +21,8 @@ interface ControlsPanelProps {
     onControllerDeviceChange?: (port: number, deviceId: number) => void;
 }
 
-type HotkeyKey = 'fastForwardKey' | 'pauseKey' | 'saveStateKey' | 'loadStateKey';
-type HotkeyGamepadKey = 'fastForwardGamepad' | 'pauseGamepad' | 'saveStateGamepad' | 'loadStateGamepad';
+type HotkeyKey = 'fastForwardKey' | 'saveStateKey' | 'loadStateKey';
+type HotkeyGamepadKey = 'fastForwardGamepad' | 'saveStateGamepad' | 'loadStateGamepad';
 
 interface SystemHotkey {
     keyboard: HotkeyKey;
@@ -32,7 +32,6 @@ interface SystemHotkey {
 
 const SYSTEM_HOTKEYS: SystemHotkey[] = [
     { keyboard: 'fastForwardKey', gamepad: 'fastForwardGamepad', label: 'Fast-Forward' },
-    { keyboard: 'pauseKey',       gamepad: 'pauseGamepad',       label: 'Pause / Menu' },
     { keyboard: 'saveStateKey',   gamepad: 'saveStateGamepad',   label: 'Save State' },
     { keyboard: 'loadStateKey',   gamepad: 'loadStateGamepad',   label: 'Load State' },
 ];

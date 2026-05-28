@@ -3,7 +3,7 @@ import { THEMES, getGradientStyle } from '@/types';
 
 export function useAppSettings() {
     const [selectedTheme, setSelectedTheme] = useLocalStorage('theme', 'blue');
-    const [sortOrder, setSortOrder] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
+    const [sortOrder] = useLocalStorage<'asc' | 'desc'>('sortOrder', 'asc');
     const [autoLoadState, setAutoLoadState] = useLocalStorage('autoLoadState', true);
     const [autoLoadIcon, setAutoLoadIcon] = useLocalStorage('autoLoadIcon', true);
     const [autoSaveState, setAutoSaveState] = useLocalStorage('autoSaveState', true);
@@ -16,7 +16,7 @@ export function useAppSettings() {
 
     return {
         selectedTheme, setSelectedTheme,
-        sortOrder, setSortOrder,
+        sortOrder,
         autoLoadState, setAutoLoadState,
         autoLoadIcon, setAutoLoadIcon,
         autoSaveState, setAutoSaveState,

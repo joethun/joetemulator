@@ -237,7 +237,7 @@ export async function calculateAutoCoverArt(file: File, core: string, opfsFile?:
         const { crc, serialId, fileSha1 } = hashes;
 
         const hashName =
-            datMap[crc] ?? datMap[crc.toLowerCase()] ??
+            datMap[crc] ??
             (fileSha1 && datMap[fileSha1]) ??
             (serialId && datMap[serialId]) ??
             findByName(stripExt(file.name).replace(/\s*\([^)]*\)/g, '').trim(), datMap) ??

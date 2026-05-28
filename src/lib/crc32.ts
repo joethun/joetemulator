@@ -17,9 +17,7 @@ function crc32(data: Uint8Array): string {
 }
 
 export function computeRomCrc(data: Uint8Array, system: string): string {
-    if ((system === 'SNES' || system === 'Super Nintendo') && data.length % 1024 === 512)
-        data = data.slice(512);
-    if ((system === 'NES' || system === 'Nintendo Entertainment System') && data.length % 1024 === 16)
-        data = data.slice(16);
+    if (system === 'SNES' && data.length % 1024 === 512) data = data.slice(512);
+    if (system === 'NES'  && data.length % 1024 === 16)  data = data.slice(16);
     return crc32(data);
 }
