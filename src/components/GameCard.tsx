@@ -4,7 +4,7 @@ import { memo, useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Game, ThemeColors, getGradientStyle } from '@/types';
 import { GameContextMenu } from './GameContextMenu';
-import { getSystemAspectRatio } from '@/lib/constants';
+import { getSystemAspectRatio, SHADOW_CARD } from '@/lib/constants';
 import { stripExt } from '@/lib/utils';
 
 interface GameCardProps {
@@ -101,7 +101,7 @@ export const GameCard = memo(({
             className={`group relative overflow-hidden w-full rounded-xl border-[0.125rem] transition-all duration-300
                 ${isUploading ? 'cursor-default pointer-events-none' : 'cursor-pointer'}
                 ${mobileHovered ? 'shadow-lg scale-[1.025]' : 'hover:shadow-lg hover:scale-[1.025]'}`}
-            style={{ aspectRatio: getSystemAspectRatio(game.genre), backgroundColor: colors.midDark, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', borderColor: colors.midDark }}
+            style={{ aspectRatio: getSystemAspectRatio(game.genre), backgroundColor: colors.midDark, boxShadow: SHADOW_CARD, borderColor: colors.midDark }}
             onClick={handleClick}
             onContextMenu={e => { e.preventDefault(); openMenu(e.clientX, e.clientY); }}
             onTouchStart={handleTouchStart}

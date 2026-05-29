@@ -101,7 +101,10 @@ export function useEmulator(): EmulatorSession {
     const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const saveOnExitRef = useRef(false);
     const startArgsRef = useRef<StartArgs | null>(null);
-    const bindingsRef = useRef<InputBindings>(loadStoredBindings());
+    // Lazy init: the useRef argument is evaluated on every render and discarded,
+    // so read+parse storage once via the sentinel instead.
+    const bindingsRef = useRef<InputBindings | null>(null);
+    if (bindingsRef.current === null) bindingsRef.current = loadStoredBindings();
     const pausedRef = useRef(false);
     const startingRef = useRef(false);
 
@@ -170,13 +173,20 @@ export function useEmulator(): EmulatorSession {
         }
     }, []);
 
+    // Flush save-on-exit (if enabled) without tearing down the runtime — used by
+    // the in-game exit button, which reloads the page rather than going through
+    // the full stop/idle transition. stop() reuses it before destroy().
+    const flushExitSave = useCallback(async () => {
+        if (saveOnExitRef.current && runtimeRef.current && startArgsRef.current) {
+            await saveState('exit');
+        }
+    }, [saveState]);
+
     const stop = useCallback(async () => {
         // Save-on-exit must complete BEFORE destroy() — destroy aborts the wasm
         // runtime, which would orphan any in-flight async serialize (ASYNCIFY cores
         // like ppsspp).
-        if (saveOnExitRef.current && runtimeRef.current && startArgsRef.current) {
-            await saveState('exit');
-        }
+        await flushExitSave();
         canvasReadyResolvers.current = [];
         if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
         autoSaveTimerRef.current = null;
@@ -186,7 +196,7 @@ export function useEmulator(): EmulatorSession {
         startArgsRef.current = null;
         pausedRef.current = false;
         setStatus(IDLE_STATUS);
-    }, [saveState]);
+    }, [flushExitSave]);
 
     const start: EmulatorSession['start'] = useCallback(async (args) => {
         if (!canvasRef.current) {
@@ -221,7 +231,7 @@ export function useEmulator(): EmulatorSession {
                 await rt.start({
                     ...runtimeOpts,
                     canvas,
-                    bindings: bindingsRef.current,
+                    bindings: bindingsRef.current!,
                     handlers: {
                         onSaveState: () => saveState('manual'),
                         onLoadState: () => loadState(undefined, 'manual'),
@@ -261,12 +271,6 @@ export function useEmulator(): EmulatorSession {
     }, [start]);
 
     useEffect(() => () => { void stop(); }, [stop]);
-
-    const flushExitSave = useCallback(async () => {
-        if (saveOnExitRef.current && runtimeRef.current && startArgsRef.current) {
-            await saveState('exit');
-        }
-    }, [saveState]);
 
     const actions = useMemo<EmulatorActions>(() => ({
         saveState, loadState, stop, switchCore, flushExitSave,

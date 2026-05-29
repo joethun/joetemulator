@@ -4,6 +4,7 @@ import { memo, ReactNode } from 'react';
 import Image from 'next/image';
 import { Gamepad2, Palette, Settings, Plus, LucideIcon } from 'lucide-react';
 import { ThemeColors, GradientStyle, ViewType } from '@/types';
+import { SHADOW_CARD } from '@/lib/constants';
 
 const NAV_ITEMS: { view: ViewType; icon: LucideIcon; label: string }[] = [
     { view: 'library', icon: Gamepad2, label: 'Library' },
@@ -22,7 +23,7 @@ interface SidebarProps {
 const Tooltip = memo(({ text, colors }: { text: ReactNode; colors: ThemeColors }) => (
     <div
         className="absolute left-full top-1/2 -translate-y-1/2 ml-6 px-3 py-2 rounded-xl whitespace-nowrap z-[60] opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200"
-        style={{ backgroundColor: colors.midDark, color: colors.softLight, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+        style={{ backgroundColor: colors.midDark, color: colors.softLight, boxShadow: SHADOW_CARD }}
     >
         {text}
     </div>

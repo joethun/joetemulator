@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Trash2, Cpu, Image as ImageIcon, RefreshCw, Folder } from 'lucide-react';
 import { ThemeColors } from '@/types';
 import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
+import { blobToDataUrl } from '@/lib/utils';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 
 interface GameContextMenuProps {
@@ -82,14 +83,11 @@ export function GameContextMenu({
             onClick={e => e.stopPropagation()}
         >
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-                onChange={e => {
+                onChange={async e => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = ev => {
-                        if (typeof ev.target?.result === 'string') { onUploadCover(ev.target.result); onClose(); }
-                    };
-                    reader.readAsDataURL(file);
+                    const url = await blobToDataUrl(file);
+                    if (url) { onUploadCover(url); onClose(); }
                 }}
             />
             <div className="p-3">

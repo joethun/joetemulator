@@ -203,6 +203,9 @@ const REGION_PRIORITY = ['(USA)', '(USA, Europe)', '(World)', '(Europe)', '(En)'
 // Normalize a title for fuzzy comparison: lowercase, strip all non-alphanumeric chars
 const normalizeTitle = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
+// Strip parenthesized region/version tags, e.g. "Game (USA) (Rev 1)" -> "Game"
+const stripParenTags = (s: string) => s.replace(/\s*\([^)]*\)/g, '').trim();
+
 function findByName(cleanTitle: string, datMap: Record<string, string>): string | null {
     const needle = normalizeTitle(cleanTitle);
     let best: string | null = null;
@@ -210,7 +213,7 @@ function findByName(cleanTitle: string, datMap: Record<string, string>): string 
 
     for (const title of Object.values(datMap)) {
         // Strip region/version tags to get the bare title for comparison
-        const bare = normalizeTitle(title.replace(/\s*\([^)]*\)/g, '').trim());
+        const bare = normalizeTitle(stripParenTags(title));
         if (bare !== needle) continue;
 
         const priority = REGION_PRIORITY.findIndex(r => title.includes(r));
@@ -240,7 +243,7 @@ export async function calculateAutoCoverArt(file: File, core: string, opfsFile?:
             datMap[crc] ??
             (fileSha1 && datMap[fileSha1]) ??
             (serialId && datMap[serialId]) ??
-            findByName(stripExt(file.name).replace(/\s*\([^)]*\)/g, '').trim(), datMap) ??
+            findByName(stripParenTags(stripExt(file.name)), datMap) ??
             null;
 
         if (!hashName) return null;

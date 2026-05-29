@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { CircleCheck } from 'lucide-react';
 import { THEMES, getGradientStyle } from '@/types';
+import { SHADOW_CARD } from '@/lib/constants';
 
 interface ThemeGridProps {
     selectedTheme: string;
@@ -21,7 +22,7 @@ export const ThemeGrid = memo(({ selectedTheme, onSelectTheme }: ThemeGridProps)
                     style={{
                         backgroundColor: theme.darkBg,
                         borderColor: selected ? theme.highlight : theme.midDark,
-                        boxShadow: selected ? `0 4px 12px rgba(0,0,0,0.3), 0 0 0 2px ${theme.highlight}30` : '0 4px 12px rgba(0,0,0,0.3)',
+                        boxShadow: selected ? `${SHADOW_CARD}, 0 0 0 2px ${theme.highlight}30` : SHADOW_CARD,
                         animation: `fadeIn 0.4s ease-out ${i * 0.03}s both`,
                     }}
                 >
