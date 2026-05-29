@@ -3,7 +3,7 @@
 import { useRef } from 'react';
 import { ThemeColors, GradientStyle } from '@/types';
 import { SaveStatesPanel } from '@/components/emulator/SaveStatesPanel';
-import { Modal, ModalHeader, ModalFooter } from '@/components/Modal';
+import { Modal, ModalHeader, ModalFooter, ModalButton } from '@/components/Modal';
 
 interface SaveStateManagerProps {
     isOpen: boolean;
@@ -42,16 +42,12 @@ export function SaveStateManager({
                 </div>
 
                 <ModalFooter colors={colors}>
-                    <button onClick={e => { e.stopPropagation(); importRef.current?.click(); }}
-                        className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 cursor-pointer"
-                        style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>
+                    <ModalButton onClick={e => { e.stopPropagation(); importRef.current?.click(); }} colors={colors}>
                         Import
-                    </button>
-                    <button onClick={onClose}
-                        className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 cursor-pointer"
-                        style={{ ...gradient, color: colors.darkBg }}>
+                    </ModalButton>
+                    <ModalButton onClick={onClose} colors={colors} variant="gradient" gradient={gradient}>
                         {showBack ? 'Back' : 'Done'}
-                    </button>
+                    </ModalButton>
                 </ModalFooter>
             </div>
         </Modal>

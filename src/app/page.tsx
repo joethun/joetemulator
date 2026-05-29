@@ -46,6 +46,10 @@ export default function Home() {
     if (!settings.isHydrated)
         return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f' }} />;
 
+    const loadingGame = session.currentGame
+        ? lib.games.find(g => stripExt(g.fileName || g.title) === session.currentGame)
+        : undefined;
+
     return (
         <div className="min-h-screen flex font-[family-name:var(--font-lexend)]" style={{ backgroundColor: settings.currentColors.darkBg }}>
             <Sidebar
@@ -104,23 +108,16 @@ export default function Home() {
                 </main>
             </div>
 
-            {(() => {
-                const loadingGame = session.currentGame
-                    ? lib.games.find(g => stripExt(g.fileName || g.title) === session.currentGame)
-                    : undefined;
-                return (
-                    <EmulatorView
-                        session={session}
-                        colors={settings.currentColors}
-                        gradient={settings.gradientStyle}
-                        keepPaused={app.saveStateOpen || app.saveStateClosing}
-                        onDuplicateError={app.showDuplicateError}
-                        loadingTitle={loadingGame?.title ?? session.currentGame ?? undefined}
-                        loadingSystemName={session.currentCore ? getSystemNameByCore(session.currentCore) : undefined}
-                        loadingCoverArt={loadingGame?.coverArt}
-                    />
-                );
-            })()}
+            <EmulatorView
+                session={session}
+                colors={settings.currentColors}
+                gradient={settings.gradientStyle}
+                keepPaused={app.saveStateOpen || app.saveStateClosing}
+                onDuplicateError={app.showDuplicateError}
+                loadingTitle={loadingGame?.title ?? session.currentGame ?? undefined}
+                loadingSystemName={session.currentCore ? getSystemNameByCore(session.currentCore) : undefined}
+                loadingCoverArt={loadingGame?.coverArt}
+            />
 
             {app.duplicateMessage && <Alert message={app.duplicateMessage} isVisible={app.showDuplicateMessage} />}
             <EmulatorNotification colors={settings.currentColors} autoSaveIcon={settings.autoSaveIcon} autoLoadIcon={settings.autoLoadIcon} />

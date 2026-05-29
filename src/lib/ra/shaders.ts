@@ -1,6 +1,6 @@
 import { writeFile } from '@/lib/ra/fs';
 import type { LibretroModule } from '@/lib/ra/types';
-import { loadStringRecord, saveJSON } from '@/lib/ra/storage';
+import { loadStringRecord, saveJSON, getStringRecordEntry } from '@/lib/ra/storage';
 import { SHADER_DATA } from '@/lib/ra/shaders-data';
 import { base64ToBytes } from '@/lib/utils';
 
@@ -54,7 +54,7 @@ export function writeShaderFiles(mod: LibretroModule, name: string): boolean {
 // ─── Persistence (per libretro core) ────────────────────────────────────────
 
 export const getStoredShader = (libretroName: string): string =>
-    loadStringRecord(STORAGE_KEY)[libretroName] ?? SHADER_DISABLED;
+    getStringRecordEntry(STORAGE_KEY, libretroName) ?? SHADER_DISABLED;
 
 export function setStoredShader(libretroName: string, key: string): void {
     const prefs = loadStringRecord(STORAGE_KEY);

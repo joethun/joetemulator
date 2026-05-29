@@ -333,8 +333,7 @@ export const ControlsPanel = memo(({
         if (!portForPlayer || !onControllerDeviceChange) return;
         const { devices, port } = portForPlayer;
         if (devices.length < 2) return;
-        const curId = deviceOverride[port] ?? portForPlayer.currentDevice;
-        const idx = devices.findIndex(d => d.id === curId);
+        const idx = devices.findIndex(d => d.id === currentDeviceId);
         const nextIdx = ((idx < 0 ? 0 : idx) + step + devices.length) % devices.length;
         const nextId = devices[nextIdx].id;
         onControllerDeviceChange(port, nextId);

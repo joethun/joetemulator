@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { ThemeColors } from '@/types';
+import type { ThemeColors, GradientStyle } from '@/types';
 import { SHADOW_MODAL } from '@/lib/constants';
 
 interface ModalProps {
@@ -82,5 +82,35 @@ export function ModalFooter({ colors, children, align = 'between' }: ModalFooter
         >
             {children}
         </div>
+    );
+}
+
+interface ModalButtonProps {
+    onClick: (e: React.MouseEvent) => void;
+    colors: ThemeColors;
+    /** 'solid' fills with the highlight color; 'gradient' uses the theme gradient. */
+    variant?: 'solid' | 'gradient';
+    gradient?: GradientStyle;
+    disabled?: boolean;
+    className?: string;
+    children: React.ReactNode;
+}
+
+/** The standard h-12 footer action button used across all modals. */
+export function ModalButton({
+    onClick, colors, variant = 'solid', gradient, disabled, className, children,
+}: ModalButtonProps) {
+    const style = variant === 'gradient' && gradient
+        ? { ...gradient, color: colors.darkBg }
+        : { backgroundColor: colors.highlight, color: colors.darkBg };
+    return (
+        <button
+            onClick={onClick}
+            disabled={disabled}
+            className={`h-12 px-8 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer${className ? ` ${className}` : ''}`}
+            style={style}
+        >
+            {children}
+        </button>
     );
 }

@@ -1,4 +1,4 @@
-import { loadStringRecord, removeKey, saveJSON } from '@/lib/ra/storage';
+import { loadStringRecord, removeKey, setStringRecordEntry } from '@/lib/ra/storage';
 
 const STORAGE_PREFIX = 'ra_core_options_v1:';
 const DEFAULT_PREFIX = '(Default) ';
@@ -60,15 +60,12 @@ export function parseCoreOptions(raw: string, libretroName?: string): CoreOption
     return out;
 }
 
-const k = (libretroName: string) => `${STORAGE_PREFIX}${libretroName}`;
+const storageKey = (libretroName: string) => `${STORAGE_PREFIX}${libretroName}`;
 
 export const loadStoredCoreOptions = (libretroName: string): Record<string, string> =>
-    loadStringRecord(k(libretroName));
+    loadStringRecord(storageKey(libretroName));
 
-export function saveStoredCoreOption(libretroName: string, key: string, value: string): void {
-    const current = loadStoredCoreOptions(libretroName);
-    current[key] = value;
-    saveJSON(k(libretroName), current);
-}
+export const saveStoredCoreOption = (libretroName: string, key: string, value: string): void =>
+    setStringRecordEntry(storageKey(libretroName), key, value);
 
-export const clearStoredCoreOptions = (libretroName: string): void => removeKey(k(libretroName));
+export const clearStoredCoreOptions = (libretroName: string): void => removeKey(storageKey(libretroName));

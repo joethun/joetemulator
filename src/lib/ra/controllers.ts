@@ -1,4 +1,6 @@
-import { loadJSON, saveJSON } from '@/lib/ra/storage';
+import { loadJSON, saveJSON, parseNumberRecord } from '@/lib/ra/storage';
+
+const isNumber = (v: unknown): v is number => typeof v === 'number';
 
 const STORAGE_KEY = 'ra_controller_devices_v1';
 
@@ -42,15 +44,8 @@ type Store = Record<string, Record<string, number>>;
 
 const readStore = (): Store => loadJSON<Store | null>(STORAGE_KEY, null) ?? {};
 
-export function loadStoredControllerDevices(gameBaseName: string): Record<number, number> {
-    const inner = readStore()[gameBaseName] ?? {};
-    const out: Record<number, number> = {};
-    for (const [k, v] of Object.entries(inner)) {
-        const p = Number(k);
-        if (Number.isInteger(p) && typeof v === 'number') out[p] = v;
-    }
-    return out;
-}
+export const loadStoredControllerDevices = (gameBaseName: string): Record<number, number> =>
+    parseNumberRecord(readStore()[gameBaseName], isNumber);
 
 export function saveStoredControllerDevice(gameBaseName: string, port: number, deviceId: number): void {
     const all = readStore();

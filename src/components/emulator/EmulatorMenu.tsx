@@ -6,8 +6,8 @@ import type { LucideIcon } from 'lucide-react';
 import type { ThemeColors, GradientStyle } from '@/types';
 import type { EmulatorSession } from '@/hooks/useEmulator';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
-import { Modal, ModalHeader, ModalFooter } from '@/components/Modal';
-import { SHADOW_CARD } from '@/lib/constants';
+import { Modal, ModalHeader, ModalFooter, ModalButton } from '@/components/Modal';
+import { NavCard } from '@/components/emulator/shared';
 import { ControlsPanel } from '@/components/emulator/ControlsPanel';
 import { CoreOptionsPanel } from '@/components/emulator/CoreOptionsPanel';
 import { LicensePanel } from '@/components/emulator/LicensePanel';
@@ -128,68 +128,45 @@ export const EmulatorMenu = memo(function EmulatorMenu({
 
                 <ModalFooter colors={colors}>
                     {displaySection === 'saves' ? (
-                        <button onClick={() => saveImportRef.current?.click()}
-                            className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 cursor-pointer"
-                            style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>
+                        <ModalButton onClick={() => saveImportRef.current?.click()} colors={colors}>
                             Import
-                        </button>
+                        </ModalButton>
                     ) : tab === 'controls' ? (
-                        <button onClick={session.actions.resetBindings}
-                            className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 cursor-pointer"
-                            style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>
+                        <ModalButton onClick={session.actions.resetBindings} colors={colors}>
                             Reset
-                        </button>
+                        </ModalButton>
                     ) : tab === 'options' ? (
-                        <button onClick={() => { session.actions.resetCoreOptions(); setOptionsVersion(v => v + 1); }}
-                            className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 cursor-pointer"
-                            style={{ backgroundColor: colors.highlight, color: colors.darkBg }}>
+                        <ModalButton onClick={() => { session.actions.resetCoreOptions(); setOptionsVersion(v => v + 1); }} colors={colors}>
                             Reset
-                        </button>
+                        </ModalButton>
                     ) : <div />}
-                    <button onClick={handleBack}
-                        className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 cursor-pointer"
-                        style={{ ...gradient, color: colors.darkBg }}>
+                    <ModalButton onClick={handleBack} colors={colors} variant="gradient" gradient={gradient}>
                         Back
-                    </button>
+                    </ModalButton>
                 </ModalFooter>
             </div>
         </Modal>
     );
 });
 
+const SETTINGS_TABS: SettingsTab[] = ['controls', 'options', 'shader', 'license'];
+
 function SettingsHub({ colors, onPick }: { colors: ThemeColors; onPick: (tab: SettingsTab) => void }) {
-    const tabs: SettingsTab[] = ['controls', 'options', 'shader', 'license'];
     return (
         <div className="grid gap-4">
-            {tabs.map((key, idx) => {
-                const { title, subtitle, icon: Icon } = TAB_META[key];
+            {SETTINGS_TABS.map((key, idx) => {
+                const { title, subtitle, icon } = TAB_META[key];
                 return (
-                    <button
+                    <NavCard
                         key={key}
-                        type="button"
+                        title={title}
+                        subtitle={subtitle}
+                        colors={colors}
+                        idx={idx}
+                        leadingIcon={icon}
+                        trailingIcon={ChevronRight}
                         onClick={() => onPick(key)}
-                        className="p-4 sm:p-6 rounded-xl border-[0.125rem] flex items-center text-left transition-all active:scale-[0.98] cursor-pointer"
-                        style={{
-                            backgroundColor: colors.darkBg,
-                            borderColor: colors.midDark,
-                            boxShadow: SHADOW_CARD,
-                            animation: `fadeIn 0.4s ease-out ${idx * 0.04}s both`,
-                        }}
-                    >
-                        <div className="flex items-center gap-3 sm:gap-5 overflow-hidden flex-1">
-                            <div
-                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0"
-                                style={{ backgroundColor: colors.midDark, color: colors.highlight }}
-                            >
-                                <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-base sm:text-lg font-bold leading-tight mb-1" style={{ color: colors.softLight }}>{title}</h3>
-                                <p className="text-xs sm:text-sm leading-relaxed opacity-80" style={{ color: colors.highlight }}>{subtitle}</p>
-                            </div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 shrink-0 opacity-60 ml-3" style={{ color: colors.highlight }} />
-                    </button>
+                    />
                 );
             })}
         </div>

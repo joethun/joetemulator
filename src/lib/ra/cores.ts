@@ -1,4 +1,4 @@
-import { loadStringRecord, saveJSON } from '@/lib/ra/storage';
+import { getStringRecordEntry, setStringRecordEntry } from '@/lib/ra/storage';
 
 const SYSTEM_TO_CORES: Record<string, readonly string[]> = {
     atari2600: ['stella2014'],
@@ -130,11 +130,10 @@ export function getCoreDisplayName(libretroCore: string): string {
 
 // ─── User's preferred core per system ───────────────────────────────────────
 
-const CORE_PREF_KEY = 'ra_system_core_pref_v1';
+const STORAGE_KEY = 'ra_system_core_pref_v1';
 
 export const getCorePref = (system: string): string | undefined =>
-    loadStringRecord(CORE_PREF_KEY)[system];
+    getStringRecordEntry(STORAGE_KEY, system);
 
-export function setCorePref(system: string, libretroName: string): void {
-    saveJSON(CORE_PREF_KEY, { ...loadStringRecord(CORE_PREF_KEY), [system]: libretroName });
-}
+export const setCorePref = (system: string, libretroName: string): void =>
+    setStringRecordEntry(STORAGE_KEY, system, libretroName);

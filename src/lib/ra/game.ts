@@ -25,8 +25,8 @@ export class GameController {
         public readonly mod: LibretroModule,
         private readonly canvas: HTMLCanvasElement,
     ) {
-        const w = <R>(name: string, ret: CwrapPrimitive, args: CwrapPrimitive[]) =>
-            mod.cwrap<R>(name, ret, args) as CFn<R>;
+        const w = <R>(name: string, ret: CwrapPrimitive, args: CwrapPrimitive[]): CFn<R> =>
+            mod.cwrap<R>(name, ret, args);
         this.fn = {
             saveStateInfo: w<string>('save_state_info',    'string', []),
             loadState:     w<number>('load_state',         'number', ['string', 'number']),

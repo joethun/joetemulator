@@ -2,18 +2,14 @@ import {
     DEFAULT_BINDINGS, sourceKey,
     type GamepadBinding, type GamepadSource, type InputBindings, type KeyMap,
 } from '@/lib/ra/input';
-import { loadJSON, saveJSON, removeKey } from '@/lib/ra/storage';
+import { loadJSON, saveJSON, removeKey, isObject, isPosInt, parseNumberRecord } from '@/lib/ra/storage';
 
 const STORAGE_KEY = 'ra_bindings_v2';
 
-const isObj = (v: unknown): v is Record<string, unknown> =>
-    !!v && typeof v === 'object';
-const isPosInt = (v: unknown): v is number =>
-    Number.isInteger(v) && (v as number) >= 0;
 const asBtn = (v: unknown): number => isPosInt(v) ? v : -1;
 
 function parseSource(raw: unknown): GamepadSource | null {
-    if (!isObj(raw)) return null;
+    if (!isObject(raw)) return null;
     if (raw.kind === 'button' && isPosInt(raw.index)) {
         return { kind: 'button', index: raw.index };
     }
@@ -24,10 +20,10 @@ function parseSource(raw: unknown): GamepadSource | null {
 }
 
 function parseKeyMap(value: unknown): KeyMap {
-    if (!isObj(value)) return {};
+    if (!isObject(value)) return {};
     const out: KeyMap = {};
     for (const [code, raw] of Object.entries(value)) {
-        if (!isObj(raw)) continue;
+        if (!isObject(raw)) continue;
         const { player, button } = raw;
         if (typeof player === 'number' && typeof button === 'number') {
             out[code] = { player, button };
@@ -37,11 +33,11 @@ function parseKeyMap(value: unknown): KeyMap {
 }
 
 function parseGamepadBindings(value: unknown): Record<number, GamepadBinding> {
-    if (!isObj(value)) return {};
+    if (!isObject(value)) return {};
     const out: Record<number, GamepadBinding> = {};
     for (const [pStr, sub] of Object.entries(value)) {
         const player = Number(pStr);
-        if (!Number.isInteger(player) || !isObj(sub)) continue;
+        if (!Number.isInteger(player) || !isObject(sub)) continue;
         const inner: GamepadBinding = {};
         for (const [retroStr, sourcesRaw] of Object.entries(sub)) {
             const retro = Number(retroStr);
@@ -63,15 +59,8 @@ function parseGamepadBindings(value: unknown): Record<number, GamepadBinding> {
     return out;
 }
 
-function parseAssignment(value: unknown): Record<number, number> {
-    if (!isObj(value)) return {};
-    const out: Record<number, number> = {};
-    for (const [k, v] of Object.entries(value)) {
-        const player = Number(k);
-        if (Number.isInteger(player) && isPosInt(v)) out[player] = v;
-    }
-    return out;
-}
+const parseAssignment = (value: unknown): Record<number, number> =>
+    parseNumberRecord(value, isPosInt);
 
 export function loadStoredBindings(): Required<InputBindings> {
     const parsed = loadJSON<Partial<InputBindings> | null>(STORAGE_KEY, null);

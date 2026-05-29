@@ -13,7 +13,7 @@ async function getDir(): Promise<FileSystemDirectoryHandle> {
 }
 
 const romName = (id: number) => `${id}.rom`;
-const isNotFound = (e: unknown) => (e as DOMException).name === 'NotFoundError';
+const isNotFound = (e: unknown) => e instanceof DOMException && e.name === 'NotFoundError';
 
 export async function saveGameFile(gameId: number, file: File, onProgress?: (percent: number) => void): Promise<void> {
     const dir = await getDir();

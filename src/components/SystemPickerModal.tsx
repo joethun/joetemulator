@@ -5,7 +5,7 @@ import { Edit2 } from 'lucide-react';
 import { SYSTEM_PICKER } from '@/lib/constants';
 import { SearchBar } from '@/components/SearchBar';
 import { TextInput } from '@/components/TextInput';
-import { Modal, ModalHeader, ModalFooter } from '@/components/Modal';
+import { Modal, ModalHeader, ModalFooter, ModalButton } from '@/components/Modal';
 import { OptionButton, SectionHeader } from '@/components/emulator/shared';
 import { Game, ThemeColors, GradientStyle } from '@/types';
 
@@ -104,24 +104,21 @@ export const SystemPickerModal = memo(function SystemPickerModal({
 
             <ModalFooter colors={colors} align="end">
                 {!editingGame && (
-                    <button
-                        onClick={onClose}
-                        disabled={isClosing}
-                        className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-                        style={{ backgroundColor: colors.highlight, color: colors.darkBg }}
-                    >
+                    <ModalButton onClick={onClose} disabled={isClosing} colors={colors}>
                         Cancel
-                    </button>
+                    </ModalButton>
                 )}
                 {(editingGame || pendingFiles.length > 0) && (
-                    <button
+                    <ModalButton
                         onClick={onDone}
                         disabled={isClosing || !systemSelected}
-                        className="h-12 px-8 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-                        style={{ ...gradient, color: colors.darkBg }}
+                        colors={colors}
+                        variant="gradient"
+                        gradient={gradient}
+                        className="flex items-center gap-2"
                     >
                         Done
-                    </button>
+                    </ModalButton>
                 )}
             </ModalFooter>
         </Modal>
