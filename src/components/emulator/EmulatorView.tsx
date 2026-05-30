@@ -6,6 +6,7 @@ import type { ThemeColors, GradientStyle } from '@/types';
 import type { EmulatorSession } from '@/hooks/useEmulator';
 import { EmulatorMenu } from '@/components/emulator/EmulatorMenu';
 import { EmulatorControlsBar, type EmulatorPanel } from '@/components/emulator/EmulatorControlsBar';
+import { useIsTouch } from '@/hooks/useIsTouch';
 
 interface EmulatorViewProps {
     session: EmulatorSession;
@@ -23,6 +24,9 @@ interface EmulatorViewProps {
 }
 
 const BAR_VISIBLE_MS = 2000;
+// Touch has no continuous pointer movement to keep the bar alive, so give the
+// tapped-open bar a slightly longer idle window before it auto-hides.
+const TOUCH_BAR_VISIBLE_MS = 4000;
 
 export const EmulatorView = memo(({
     session, colors, gradient, onDuplicateError, keepPaused,
@@ -36,6 +40,10 @@ export const EmulatorView = memo(({
     const [showBar, setShowBar] = useState(false);
     const [pointerLocked, setPointerLocked] = useState(false);
     const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isTouch = useIsTouch();
+    // Bumped on each tap within the controls bar to restart the touch auto-hide timer.
+    const [barActivity, setBarActivity] = useState(0);
+    const canvasWrapRef = useRef<HTMLDivElement>(null);
 
     // Track pointer-lock state so the bar can be suppressed while the cursor is
     // captured by the game (otherwise mousemove deltas keep retriggering it).
@@ -63,15 +71,25 @@ export const EmulatorView = memo(({
         return () => window.removeEventListener('emulator_notification', onNotify);
     }, []);
 
-    // Show the bottom bar on mouse movement, hide after idle. Suppressed while a
-    // panel modal covers the screen, the cursor is pointer-locked, or the core
-    // is still loading (otherwise the bar flashes in during the boot sequence).
+    // Show the bottom bar on mouse movement, hide after idle. Suppressed while the
+    // cursor is pointer-locked or the core is still loading (otherwise the bar flashes
+    // in during the boot sequence).
     useEffect(() => {
-        if (!isVisible || panel || pointerLocked || isLoading) {
+        const hide = () => {
             setShowBar(false);
             if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
-            return;
-        }
+        };
+        // Force-hidden states, regardless of input type. `panel` is deliberately NOT
+        // here: the render gate (visible={showBar && !panel}) already hides the bar
+        // while a panel is open, so clearing showBar would drop the touch tap-toggle
+        // state across a panel round-trip (open Settings → Back would lose the bar).
+        if (!isVisible || pointerLocked || isLoading) { hide(); return; }
+        // Touch devices emit no mousemove, so they reveal the bar with an explicit tap
+        // (handleCanvasClick); auto-hide is handled by the touch effect below. No
+        // panel-driven clearing here, so closing a panel reveals the still-open bar.
+        if (isTouch) return;
+        // Non-touch: hide under a panel modal; the next mousemove re-reveals it.
+        if (panel) { hide(); return; }
 
         const onMove = () => {
             if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
@@ -83,7 +101,52 @@ export const EmulatorView = memo(({
             window.removeEventListener('mousemove', onMove);
             if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
         };
-    }, [isVisible, panel, pointerLocked, isLoading]);
+    }, [isVisible, panel, pointerLocked, isLoading, isTouch]);
+
+    // Touch auto-hide: the tapped-open bar fades out after an idle window (there's no
+    // mousemove to drive the desktop timer). Each tap on the bar bumps barActivity,
+    // restarting the countdown; a tap on the game (the touch listener below) toggles
+    // it off, so tapping outside the bar dismisses it the same way.
+    useEffect(() => {
+        if (!isTouch || !isVisible || !showBar || panel) return;
+        const t = setTimeout(() => setShowBar(false), TOUCH_BAR_VISIBLE_MS);
+        return () => clearTimeout(t);
+    }, [isTouch, isVisible, showBar, panel, barActivity]);
+
+    // Touch tap → toggle the controls bar. We listen in the CAPTURE phase on the canvas
+    // wrapper instead of using the canvas's onClick: the core registers its own canvas
+    // pointer/touch listeners that call preventDefault, which swallows the synthetic
+    // click on touch devices (so onClick never fires). Capture phase runs before the
+    // core's handlers, and the bar is a sibling of this wrapper — taps on the bar never
+    // reach here, so tapping the game toggles the bar and tapping it again dismisses.
+    useEffect(() => {
+        if (!isTouch || !isVisible) return;
+        const el = canvasWrapRef.current;
+        if (!el) return;
+        let sx = 0, sy = 0, st = 0, tracking = false;
+        const onStart = (e: TouchEvent) => {
+            tracking = e.touches.length === 1;
+            if (!tracking) return;
+            sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = e.timeStamp;
+        };
+        const onEnd = (e: TouchEvent) => {
+            if (!tracking) return;
+            tracking = false;
+            if (isLoading || panel) return;
+            const t = e.changedTouches[0];
+            if (!t) return;
+            // Only a quick, near-stationary tap toggles — ignore swipes and long presses.
+            if (Math.hypot(t.clientX - sx, t.clientY - sy) > 12) return;
+            if (e.timeStamp - st > 600) return;
+            setShowBar(v => !v);
+        };
+        el.addEventListener('touchstart', onStart, { capture: true, passive: true });
+        el.addEventListener('touchend', onEnd, { capture: true, passive: true });
+        return () => {
+            el.removeEventListener('touchstart', onStart, true);
+            el.removeEventListener('touchend', onEnd, true);
+        };
+    }, [isTouch, isVisible, isLoading, panel]);
 
     // why: session.paused is intentionally excluded from deps — including it would loop the
     // pause/resume cycle when the user manually toggles pause from the in-game bar.
@@ -114,10 +177,12 @@ export const EmulatorView = memo(({
         finally { window.location.reload(); }
     };
 
-    // Clicking the canvas locks the cursor for mouse-driven cores. Esc releases.
+    // Mouse click locks the cursor for mouse-driven cores (Esc releases). Touch taps are
+    // handled by the capture-phase touch listener above; we bail on touch here so a
+    // synthetic click (if the browser fires one) can't double-toggle the bar.
     const handleCanvasClick = () => {
         const canvas = session.canvasRef.current;
-        if (!canvas || isLoading || panel) return;
+        if (!canvas || isLoading || panel || isTouch) return;
         if (document.pointerLockElement === canvas) return;
         // why: rejection (browser refusal, sandbox restriction) is non-fatal — keep gameplay going.
         const result = canvas.requestPointerLock();
@@ -137,6 +202,7 @@ export const EmulatorView = memo(({
             data-emulator-root="1"
         >
             <div
+                ref={canvasWrapRef}
                 className="flex-1 flex items-center justify-center overflow-hidden"
                 style={{ backgroundColor: '#000000' }}
             >
@@ -216,6 +282,7 @@ export const EmulatorView = memo(({
                 onLoadState={() => handleLoadState()}
                 onOpenPanel={setPanel}
                 onExit={handleExit}
+                onActivity={() => setBarActivity(n => n + 1)}
             />
 
             <EmulatorMenu
