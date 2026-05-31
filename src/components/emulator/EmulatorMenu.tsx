@@ -31,7 +31,7 @@ const TAB_META: Record<SettingsTab, { title: string; subtitle: string; icon: Luc
     controls: { title: 'Controls',     subtitle: 'Click a binding to change it. Right-click to clear.',     icon: GamepadDirectional },
     options:  { title: 'Core Options', subtitle: 'RetroArch core settings. Some may need a restart to apply.', icon: Settings2 },
     shader:   { title: 'Shader',       subtitle: 'Apply a visual filter to the game output.',               icon: Monitor },
-    license:  { title: 'Credits',      subtitle: 'Source repositories for the emulation core, RetroArch, and EmulatorJS.', icon: Code2 },
+    license:  { title: 'Credits',      subtitle: 'Repos for the emulation core, RetroArch, and EmulatorJS.', icon: Code2 },
 };
 
 export const EmulatorMenu = memo(function EmulatorMenu({
