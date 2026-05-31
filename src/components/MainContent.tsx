@@ -74,7 +74,7 @@ export const MainContent = memo(function MainContent({
                     <Gamepad2 className="w-10 h-10" />
                 </div>
                 <h3 className="text-xl font-bold mb-2" style={{ color: colors.softLight }}>No games found</h3>
-                <p className="mb-8 opacity-70" style={{ color: colors.highlight }}>Add your ROMs by clicking the + button in the sidebar</p>
+                <p className="mb-8 opacity-70" style={{ color: colors.highlight }}>Use the + sidebar button or drag and drop your game files.</p>
             </div>
         );
 
