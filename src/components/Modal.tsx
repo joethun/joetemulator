@@ -71,7 +71,7 @@ export function ModalHeader({ title, subtitle, colors, id }: ModalHeaderProps) {
 interface ModalFooterProps {
     colors: ThemeColors;
     children: React.ReactNode;
-    /** When false, render only the right side with the left slot collapsed. */
+    /** 'end' right-aligns the actions; 'between' (default) spreads them apart. */
     align?: 'between' | 'end';
 }
 export function ModalFooter({ colors, children, align = 'between' }: ModalFooterProps) {

@@ -8,7 +8,7 @@ import { selectFiles, prewarmDat, calculateAutoCoverArt } from '@/lib/files';
 import { getSystemNameByCore } from '@/lib/constants';
 import { getCorePref } from '@/lib/ra/cores';
 import { getGameFile } from '@/lib/storage';
-import { stripExt } from '@/lib/utils';
+import { gameSaveName } from '@/lib/utils';
 
 interface Deps {
     lib: ReturnType<typeof useGameLibrary>;
@@ -46,7 +46,7 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
         try {
             const file = await getGameFile(game.id);
             if (!file || !game.core) { console.error('missing file or core:', game); return; }
-            const baseName = stripExt(game.fileName || game.title);
+            const baseName = gameSaveName(game);
             await session.start({
                 system: game.core,
                 coreOverride: getCorePref(game.core),

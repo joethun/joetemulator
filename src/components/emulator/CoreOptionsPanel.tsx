@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ThemeColors } from '@/types';
 import type { CoreOption } from '@/lib/ra/core-options';
 import { getCoresForSystem } from '@/lib/ra/cores';
-import { OptionButton, SectionHeader } from '@/components/emulator/shared';
+import { OptionButton, SectionHeader, OPTION_GRID_CLASS } from '@/components/emulator/shared';
 
 const CORE_KEY = '__core__';
 
@@ -102,7 +102,7 @@ export const CoreOptionsPanel = memo(({
             <div className="flex flex-col gap-6 min-w-0" style={{ animation: 'fadeIn 0.2s ease-out both' }}>
                 <div>
                     <SectionHeader title={active.label} colors={colors} />
-                    <div role="listbox" className="grid grid-cols-2 gap-2.5">
+                    <div role="listbox" className={OPTION_GRID_CLASS}>
                         {items.map((item, idx) => (
                             <OptionButton
                                 key={item}

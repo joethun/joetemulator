@@ -59,9 +59,6 @@ function parseGamepadBindings(value: unknown): Record<number, GamepadBinding> {
     return out;
 }
 
-const parseAssignment = (value: unknown): Record<number, number> =>
-    parseNumberRecord(value, isPosInt);
-
 export function loadStoredBindings(): Required<InputBindings> {
     const parsed = loadJSON<Partial<InputBindings> | null>(STORAGE_KEY, null);
     if (!parsed) return DEFAULT_BINDINGS;
@@ -70,7 +67,7 @@ export function loadStoredBindings(): Required<InputBindings> {
     return {
         keyMap:             Object.keys(keyMap).length ? keyMap : DEFAULT_BINDINGS.keyMap,
         gamepadBindings:    Object.keys(gamepadBindings).length ? gamepadBindings : DEFAULT_BINDINGS.gamepadBindings,
-        gamepadAssignment:  parseAssignment(parsed.gamepadAssignment),
+        gamepadAssignment:  parseNumberRecord(parsed.gamepadAssignment, isPosInt),
         fastForwardKey:     parsed.fastForwardKey ?? DEFAULT_BINDINGS.fastForwardKey,
         saveStateKey:       parsed.saveStateKey   ?? DEFAULT_BINDINGS.saveStateKey,
         loadStateKey:       parsed.loadStateKey   ?? DEFAULT_BINDINGS.loadStateKey,

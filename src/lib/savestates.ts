@@ -182,6 +182,12 @@ function clearCoverAspect(key: string): void {
     try { localStorage.removeItem(STATE_COVER_ASPECT_PREFIX + key); } catch { /* noop */ }
 }
 
+/** Drop the per-slot localStorage metadata (timestamp + cover aspect) for one state key. */
+function clearSlotMeta(key: string): void {
+    try { localStorage.removeItem(STATE_TS_PREFIX + key); } catch { /* noop */ }
+    clearCoverAspect(key);
+}
+
 function dispatchThumbnail(detail: SaveStateThumbnailDetail): void {
     window.dispatchEvent(new CustomEvent(SAVE_STATE_THUMBNAIL_EVENT, { detail }));
 }
@@ -316,13 +322,8 @@ export async function deleteAllStates(gameName: string): Promise<void> {
         db => idbDeleteMany(db, keys.flatMap(key => [key, key + THUMB_SUFFIX])),
         undefined,
     );
-    try {
-        for (const key of keys) {
-            localStorage.removeItem(STATE_TS_PREFIX + key);
-            clearCoverAspect(key);
-        }
-        localStorage.removeItem(SLOT_PREFIX + gameName);
-    } catch { /* noop */ }
+    for (const key of keys) clearSlotMeta(key);
+    try { localStorage.removeItem(SLOT_PREFIX + gameName); } catch { /* noop */ }
 }
 
 function rowFromStore(key: string, store: Map<string, unknown>): SaveState | null {
@@ -359,8 +360,7 @@ export const fetchStates = (gameName: string): Promise<SaveState[]> =>
 export async function removeState(key: string, gameName: string): Promise<void> {
     await withDB(db => idbDeleteMany(db, [key, key + THUMB_SUFFIX]), undefined);
     updateManifest(gameName, m => ({ ...m, slots: m.slots.filter(s => s !== key) }));
-    try { localStorage.removeItem(STATE_TS_PREFIX + key); } catch { /* noop */ }
-    clearCoverAspect(key);
+    clearSlotMeta(key);
 }
 
 const BUNDLE_STATE_ENTRY = 'state.bin';
@@ -389,7 +389,7 @@ async function unpackImportFile(file: File): Promise<{ state: Uint8Array; thumbn
 
 export async function importState(gameName: string, file: File): Promise<void> {
     const { state: incoming, thumbnail } = await unpackImportFile(file);
-    const existing = await fetchStates(gameName);
+    const existing = await fetchStateRows(gameName, false);
     if (isDuplicate(incoming, existing)) throw new Error('duplicate');
 
     const key = `${gameName}.state_imported_${Date.now()}`;

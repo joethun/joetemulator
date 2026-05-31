@@ -5,6 +5,9 @@ import type { LucideIcon } from 'lucide-react';
 import type { ThemeColors } from '@/types';
 import { SHADOW_CARD } from '@/lib/constants';
 
+/** Two-column grid wrapping a set of {@link OptionButton}s (system picker, shaders, core options). */
+export const OPTION_GRID_CLASS = 'grid grid-cols-2 gap-2.5';
+
 interface SectionHeaderProps {
     title: string;
     colors: ThemeColors;

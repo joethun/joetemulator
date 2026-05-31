@@ -3,7 +3,7 @@ import { Game } from '@/types';
 import { deleteGameFile, migrateLegacyRoms } from '@/lib/storage';
 import { deleteAllStates } from '@/lib/savestates';
 import { getSystemNameByCore } from '@/lib/constants';
-import { stripExt } from '@/lib/utils';
+import { gameSaveName } from '@/lib/utils';
 
 const GAMES_KEY = 'games';
 
@@ -48,9 +48,9 @@ export function useGameLibrary() {
         deleteGame: async (id: number, fileName?: string, title?: string) => {
             try { await deleteGameFile(id); }
             catch (e) { console.error('Failed to delete game file:', e); }
-            const baseName = fileName || title;
-            if (baseName) {
-                try { await deleteAllStates(stripExt(baseName)); }
+            const name = gameSaveName({ fileName, title });
+            if (name) {
+                try { await deleteAllStates(name); }
                 catch (e) { console.error('Failed to delete save states:', e); }
             }
             mutate(g => g.filter(x => x.id !== id));

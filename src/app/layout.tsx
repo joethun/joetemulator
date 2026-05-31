@@ -34,11 +34,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');`,
-          }}
-        />
-        <script
-          dangerouslySetInnerHTML={{
             __html: `if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});`,
           }}
         />

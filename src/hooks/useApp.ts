@@ -16,7 +16,7 @@ export function useApp() {
 
     const [editingGame, setEditingGame] = useState<Game | null>(null);
     const [pendingGame, setPendingGame] = useState<Partial<Game> | null>(null);
-    const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; index: number }>>([]);
+    const [pendingFiles, setPendingFiles] = useState<Array<{ file: File }>>([]);
     const [systemSearchQuery, setSystemSearchQuery] = useState('');
     const [pendingBatchCore, setPendingBatchCore] = useState<string | null>(null);
     const [pickerOpen, setPickerOpen] = useState(false);

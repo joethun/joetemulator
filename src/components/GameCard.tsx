@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { Game, ThemeColors, getGradientStyle } from '@/types';
 import { GameContextMenu } from './GameContextMenu';
 import { getSystemAspectRatio, SHADOW_CARD } from '@/lib/constants';
-import { stripExt } from '@/lib/utils';
+import { gameSaveName } from '@/lib/utils';
+import { TOUCH_QUERY } from '@/hooks/useIsTouch';
 
 interface GameCardProps {
     game: Game;
@@ -90,7 +91,7 @@ export const GameCard = memo(({
 
     const handleClick = () => {
         if (menuOpen) return;
-        const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+        const isTouch = window.matchMedia(TOUCH_QUERY).matches;
         if (isTouch && !mobileHovered) { setMobileHovered(true); return; }
         onPlay(game);
     };
@@ -143,7 +144,7 @@ export const GameCard = memo(({
                 onDelete={() => onDelete(game)}
                 onUploadCover={(data) => onUploadCover(game.id, data)}
                 onResetCover={() => onResetCover(game.id)}
-                onSaveStates={() => onSaveStates(game.title, stripExt(game.fileName || game.title))}
+                onSaveStates={() => onSaveStates(game.title, gameSaveName(game))}
                 gameTitle={game.title}
                 colors={colors}
                 hasCustomCover={!!game.autoCoverArt && !!game.coverArt && game.coverArt !== game.autoCoverArt}

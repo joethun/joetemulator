@@ -6,7 +6,7 @@ import {
     getShaderOptions, getStoredShader, SHADER_DISABLED,
     type ShaderOption, type ShaderCategory,
 } from '@/lib/ra/shaders';
-import { OptionButton, SectionHeader } from '@/components/emulator/shared';
+import { OptionButton, SectionHeader, OPTION_GRID_CLASS } from '@/components/emulator/shared';
 
 interface ShaderPanelProps {
     colors: ThemeColors;
@@ -52,7 +52,7 @@ export const ShaderPanel = memo(({ colors, libretroCore, onShaderChange }: Shade
     return (
         <div className="flex flex-col gap-6 min-w-0">
             {off && (
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className={OPTION_GRID_CLASS}>
                     <OptionButton
                         label="Disabled"
                         active={selected === off.key}
@@ -69,7 +69,7 @@ export const ShaderPanel = memo(({ colors, libretroCore, onShaderChange }: Shade
                 return (
                     <div key={key}>
                         <SectionHeader title={title} colors={colors} />
-                        <div className="grid grid-cols-2 gap-2.5">
+                        <div className={OPTION_GRID_CLASS}>
                             {items.map((opt, idx) => (
                                 <OptionButton
                                     key={opt.key}

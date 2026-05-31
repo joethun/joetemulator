@@ -58,7 +58,6 @@ interface EmulatorActions {
     resume: () => void;
     saveState: (source?: 'manual' | 'auto' | 'exit') => Promise<void>;
     loadState: (key?: string, source?: 'manual' | 'auto') => Promise<void>;
-    stop: () => Promise<void>;
     /** Flush save-on-exit (if enabled) without tearing down the runtime — used
      * by the in-game exit button, which reloads the page rather than going
      * through the full stop/idle transition. */
@@ -273,7 +272,7 @@ export function useEmulator(): EmulatorSession {
     useEffect(() => () => { void stop(); }, [stop]);
 
     const actions = useMemo<EmulatorActions>(() => ({
-        saveState, loadState, stop, switchCore, flushExitSave,
+        saveState, loadState, switchCore, flushExitSave,
         pause:  () => { runtimeRef.current?.pause();  pausedRef.current = true;  patchStatus({ paused: true  }); },
         resume: () => { runtimeRef.current?.resume(); pausedRef.current = false; patchStatus({ paused: false }); },
         setBindings: (b) => {
@@ -294,7 +293,7 @@ export function useEmulator(): EmulatorSession {
         getControllerPorts:  () => runtimeRef.current?.getControllerPorts() ?? EMPTY_CONTROLLER_PORTS,
         setControllerDevice: (port, deviceId) => runtimeRef.current?.setControllerDevice(port, deviceId),
         setShader:        (name) => runtimeRef.current?.setShader(name),
-    }), [saveState, loadState, stop, switchCore, flushExitSave, patchStatus]);
+    }), [saveState, loadState, switchCore, flushExitSave, patchStatus]);
 
     return useMemo<EmulatorSession>(() => ({
         start, canvasRef, setCanvas, canvasEpoch, actions,

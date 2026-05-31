@@ -10,7 +10,7 @@ const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 interface FileHandlerOps {
     showDuplicateError: (msg: string) => void;
-    setPendingFiles: (files: Array<{ file: File; index: number }>) => void;
+    setPendingFiles: (files: Array<{ file: File }>) => void;
     setPendingGame: (game: Partial<Game> | null) => void;
     openSystemPicker: () => void;
     setPendingBatchCore: (core: string | null) => void;
@@ -110,7 +110,7 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
             return;
         }
 
-        setPendingFiles(fresh.map((file, index) => ({ file, index })));
+        setPendingFiles(fresh.map(file => ({ file })));
         setPendingGame(fresh.length === 1
             ? { id: Date.now(), title: stripExt(fresh[0].name), genre: 'Unknown', fileName: fresh[0].name }
             : null

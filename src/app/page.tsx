@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useGameLibrary } from '@/hooks/useGameLibrary';
 import { getSystemNameByCore } from '@/lib/constants';
-import { stripExt } from '@/lib/utils';
+import { gameSaveName } from '@/lib/utils';
 import { useApp } from '@/hooks/useApp';
 import { useFileHandler } from '@/hooks/useFileHandler';
 import { useAppSettings } from '@/hooks/useAppSettings';
@@ -47,7 +47,7 @@ export default function Home() {
         return <div className="min-h-screen" style={{ backgroundColor: '#0a0a0f' }} />;
 
     const loadingGame = session.currentGame
-        ? lib.games.find(g => stripExt(g.fileName || g.title) === session.currentGame)
+        ? lib.games.find(g => gameSaveName(g) === session.currentGame)
         : undefined;
 
     return (

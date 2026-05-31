@@ -2,10 +2,10 @@
 
 import { useSyncExternalStore } from 'react';
 
-const QUERY = '(hover: none) and (pointer: coarse)';
+export const TOUCH_QUERY = '(hover: none) and (pointer: coarse)';
 
 const subscribe = (cb: () => void) => {
-    const mq = window.matchMedia(QUERY);
+    const mq = window.matchMedia(TOUCH_QUERY);
     mq.addEventListener('change', cb);
     return () => mq.removeEventListener('change', cb);
 };
@@ -18,7 +18,7 @@ const subscribe = (cb: () => void) => {
 export function useIsTouch(): boolean {
     return useSyncExternalStore(
         subscribe,
-        () => window.matchMedia(QUERY).matches,
+        () => window.matchMedia(TOUCH_QUERY).matches,
         () => false,
     );
 }

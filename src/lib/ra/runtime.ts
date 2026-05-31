@@ -160,13 +160,17 @@ export class Runtime {
         this.input.setBindings(filterBindingsToButtons(b, this.allowedRetroIds));
     }
 
+    /** Parse the core's live option dump. Callers must guard on this.gc/this.resolved. */
+    private parsedCoreOptions(): CoreOption[] {
+        return parseCoreOptions(this.gc!.getCoreOptionsRaw(), this.resolved!.libretroName);
+    }
+
     getCoreOptions(): CoreOption[] {
         if (!this.gc || !this.resolved) return [];
-        const { libretroName } = this.resolved;
-        const stored = loadStoredCoreOptions(libretroName);
+        const stored = loadStoredCoreOptions(this.resolved.libretroName);
         // Surface the user's saved value (set live via setVariable, but the core
         // still reports its own internal current value in get_core_options).
-        return parseCoreOptions(this.gc.getCoreOptionsRaw(), libretroName)
+        return this.parsedCoreOptions()
             .map(opt => stored[opt.key] ? { ...opt, current: stored[opt.key] } : opt);
     }
 
@@ -192,11 +196,10 @@ export class Runtime {
 
     resetCoreOptions(): void {
         if (!this.gc || !this.resolved) return;
-        const { libretroName } = this.resolved;
-        for (const opt of parseCoreOptions(this.gc.getCoreOptionsRaw(), libretroName)) {
+        for (const opt of this.parsedCoreOptions()) {
             this.gc.setVariable(opt.key, opt.defaultValue);
         }
-        clearStoredCoreOptions(libretroName);
+        clearStoredCoreOptions(this.resolved.libretroName);
     }
 
     destroy(): void {

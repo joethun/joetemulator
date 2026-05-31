@@ -6,7 +6,7 @@ import { SYSTEM_PICKER } from '@/lib/constants';
 import { SearchBar } from '@/components/SearchBar';
 import { TextInput } from '@/components/TextInput';
 import { Modal, ModalHeader, ModalFooter, ModalButton } from '@/components/Modal';
-import { OptionButton, SectionHeader } from '@/components/emulator/shared';
+import { OptionButton, SectionHeader, OPTION_GRID_CLASS } from '@/components/emulator/shared';
 import { Game, ThemeColors, GradientStyle } from '@/types';
 
 interface SystemPickerProps {
@@ -15,7 +15,7 @@ interface SystemPickerProps {
     gradient: GradientStyle;
     editingGame: Game | null;
     pendingGame: Partial<Game> | null;
-    pendingFiles: Array<{ file: File; index: number }>;
+    pendingFiles: Array<{ file: File }>;
     searchQuery: string;
     onSearchChange: (q: string) => void;
     onClose: () => void;
@@ -85,7 +85,7 @@ export const SystemPickerModal = memo(function SystemPickerModal({
                     Object.entries(categories).map(([cat, systems]) => (
                         <div key={cat} className="mb-8 last:mb-0">
                             <SectionHeader title={cat} colors={colors} />
-                            <div className="grid grid-cols-2 gap-2.5">
+                            <div className={OPTION_GRID_CLASS}>
                                 {systems.map(([name, core], idx) => (
                                     <OptionButton
                                         key={core}
