@@ -60,7 +60,9 @@ function findKeyForButton(keyMap: KeyMap, retroId: number, player: number): stri
     return null;
 }
 
-function groupForButton(id: number): string {
+function groupForButton(button: { id: number; group?: string }): string {
+    if (button.group) return button.group;
+    const id = button.id;
     if (id >= 4  && id <= 7)  return 'D-Pad';
     if (id >= 10 && id <= 15) return 'Shoulder';
     if (id === 2 || id === 3) return 'System';
@@ -144,7 +146,7 @@ export const ControlsPanel = memo(({
     const groups = useMemo(() => {
         const map = new Map<string, typeof availableButtons>();
         for (const item of availableButtons) {
-            const key = groupForButton(item.id);
+            const key = groupForButton(item);
             const arr = map.get(key);
             if (arr) arr.push(item);
             else map.set(key, [item]);

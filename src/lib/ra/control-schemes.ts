@@ -1,11 +1,24 @@
 interface ButtonDef {
     id: number;
     label: string;
+    /** Overrides the default ID-range grouping in the controls UI. */
+    group?: string;
 }
 
-const b = (id: number, label: string): ButtonDef => ({ id, label });
+const b = (id: number, label: string, group?: string): ButtonDef => ({ id, label, group });
 
 const DPAD: ButtonDef[] = [b(4, 'UP'), b(5, 'DOWN'), b(6, 'LEFT'), b(7, 'RIGHT')];
+
+// FBNeo / MAME share the standard libretro arcade layout: six action buttons on
+// the retropad face/shoulders, START, and Coin (mapped to SELECT) shown as a
+// stand-alone "Insert Coin" under the Other section.
+const ARCADE: ButtonDef[] = [
+    b(0, 'BUTTON 1'), b(8, 'BUTTON 2'), b(1, 'BUTTON 3'),
+    b(9, 'BUTTON 4'), b(10, 'BUTTON 5'), b(11, 'BUTTON 6'),
+    b(3, 'START'),
+    ...DPAD,
+    b(2, 'INSERT COIN', 'Other'),
+];
 
 const SCHEMES: Record<string, ButtonDef[]> = {
     gb: [
@@ -34,7 +47,7 @@ const SCHEMES: Record<string, ButtonDef[]> = {
         b(8, 'A'), b(0, 'B'), b(9, 'X'), b(1, 'Y'),
         b(2, 'SELECT'), b(3, 'START'),
         ...DPAD,
-        b(10, 'L'), b(11, 'R'), b(14, 'Microphone'),
+        b(10, 'L'), b(11, 'R'), b(14, 'Microphone', 'Other'),
     ],
     vb: [
         b(8, 'A'), b(0, 'B'), b(10, 'L'), b(11, 'R'),
@@ -68,9 +81,9 @@ const SCHEMES: Record<string, ButtonDef[]> = {
     atari2600: [
         b(0, 'FIRE'), b(2, 'SELECT'), b(3, 'RESET'),
         ...DPAD,
-        b(10, 'LEFT DIFFICULTY A'), b(12, 'LEFT DIFFICULTY B'),
-        b(11, 'RIGHT DIFFICULTY A'), b(13, 'RIGHT DIFFICULTY B'),
-        b(14, 'COLOR'), b(15, 'B/W'),
+        b(10, 'LEFT DIFFICULTY A', 'Other'), b(12, 'LEFT DIFFICULTY B', 'Other'),
+        b(11, 'RIGHT DIFFICULTY A', 'Other'), b(13, 'RIGHT DIFFICULTY B', 'Other'),
+        b(14, 'COLOR', 'Other'), b(15, 'B/W', 'Other'),
     ],
     atari5200: [
         b(0, 'FIRE'), b(2, 'PAUSE'), b(3, 'RESET'),
@@ -81,7 +94,7 @@ const SCHEMES: Record<string, ButtonDef[]> = {
         b(0, 'BUTTON 1'), b(8, 'BUTTON 2'),
         b(2, 'SELECT'), b(3, 'PAUSE'), b(9, 'RESET'),
         ...DPAD,
-        b(10, 'LEFT DIFFICULTY'), b(11, 'RIGHT DIFFICULTY'),
+        b(10, 'LEFT DIFFICULTY', 'Other'), b(11, 'RIGHT DIFFICULTY', 'Other'),
     ],
     lynx: [
         b(8, 'A'), b(0, 'B'), b(10, 'OPTION 1'), b(11, 'OPTION 2'),
@@ -113,16 +126,16 @@ const SCHEMES: Record<string, ButtonDef[]> = {
     ],
     coleco: [
         b(8, 'LEFT BUTTON'), b(0, 'RIGHT BUTTON'),
-        b(9, '1'), b(1, '2'), b(11, '3'), b(10, '4'),
-        b(13, '5'), b(12, '6'), b(15, '7'), b(14, '8'),
-        b(2, '*'), b(3, '#'),
+        b(9, '1', 'Other'), b(1, '2', 'Other'), b(11, '3', 'Other'), b(10, '4', 'Other'),
+        b(13, '5', 'Other'), b(12, '6', 'Other'), b(15, '7', 'Other'), b(14, '8', 'Other'),
+        b(2, '*', 'Other'), b(3, '#', 'Other'),
         ...DPAD,
     ],
     intellivision: [
         b(0, 'TOP ACTION'), b(8, 'RIGHT ACTION'), b(9, 'LEFT ACTION'),
-        b(1, 'NUMBER KEYPAD'), b(11, 'MINI-KEYPAD'), b(10, 'MUTE AUDIO'),
-        b(3, '1'), b(2, '9'), b(12, 'CLEAR'), b(13, 'ENTER'),
-        b(14, '0'), b(15, 'LAST KEYPAD'),
+        b(1, 'NUMBER KEYPAD', 'Other'), b(11, 'MINI-KEYPAD', 'Other'), b(10, 'MUTE AUDIO', 'Other'),
+        b(3, '1', 'Other'), b(2, '9', 'Other'), b(12, 'CLEAR', 'Other'), b(13, 'ENTER', 'Other'),
+        b(14, '0', 'Other'), b(15, 'LAST KEYPAD', 'Other'),
         ...DPAD,
     ],
     psp: [
@@ -140,6 +153,8 @@ const SCHEMES: Record<string, ButtonDef[]> = {
         b(19, 'L STICK UP'), b(18, 'L STICK DOWN'), b(17, 'L STICK LEFT'), b(16, 'L STICK RIGHT'),
         b(23, 'R STICK UP'), b(22, 'R STICK DOWN'), b(21, 'R STICK LEFT'), b(20, 'R STICK RIGHT'),
     ],
+    arcade: ARCADE,
+    mame: ARCADE,
     default: [
         b(8, 'A'), b(0, 'B'), b(9, 'X'), b(1, 'Y'),
         b(2, 'SELECT'), b(3, 'START'),
@@ -155,6 +170,7 @@ const ALIASES: Record<string, string> = {
     nes: 'gb',
     segaCD: 'segaMD',
     sega32x: 'segaMD',
+    mame2003_plus: 'mame',
 };
 
 export const getButtonsForCore = (core: string): ButtonDef[] =>
