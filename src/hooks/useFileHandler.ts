@@ -4,6 +4,7 @@ import { saveGameFile, getGameFile } from '@/lib/storage';
 import { getSystemNameByCore } from '@/lib/constants';
 import { calculateAutoCoverArt } from '@/lib/files';
 import { stripExt } from '@/lib/utils';
+import { useUnloadWarning } from '@/hooks/useUnloadWarning';
 
 const PROGRESS_THROTTLE_MS = 100;
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -24,6 +25,10 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
     const snapshots = useRef<Record<number, Game>>({});
     const active = useRef<Set<number>>(new Set());
     const { showDuplicateError, setPendingFiles, setPendingGame, openSystemPicker, setPendingBatchCore } = ops;
+
+    // Warn before the tab closes/refreshes while uploads are in flight so a
+    // half-written game file isn't abandoned.
+    useUnloadWarning(Object.keys(uploads).length > 0);
 
     const patchUpload = useCallback((id: number, patch: Partial<Game>) => {
         setUploads(prev => {

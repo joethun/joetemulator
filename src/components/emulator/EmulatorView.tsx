@@ -1,12 +1,13 @@
 'use client';
 
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import type { ThemeColors, GradientStyle } from '@/types';
 import type { EmulatorSession } from '@/hooks/useEmulator';
 import { EmulatorMenu } from '@/components/emulator/EmulatorMenu';
 import { EmulatorControlsBar, type EmulatorPanel } from '@/components/emulator/EmulatorControlsBar';
 import { useIsTouch } from '@/hooks/useIsTouch';
+import { useUnloadWarning } from '@/hooks/useUnloadWarning';
 
 interface EmulatorViewProps {
     session: EmulatorSession;
@@ -44,6 +45,12 @@ export const EmulatorView = memo(({
     // Bumped on each tap within the controls bar to restart the touch auto-hide timer.
     const [barActivity, setBarActivity] = useState(0);
     const canvasWrapRef = useRef<HTMLDivElement>(null);
+    // Set by handleExit so its intentional reload skips the close-page prompt.
+    const exitingRef = useRef(false);
+
+    // Warn before the tab closes/refreshes while a game is active so progress
+    // isn't lost by accident.
+    useUnloadWarning(isVisible, useCallback(() => !exitingRef.current, []));
 
     // Track pointer-lock state so the bar can be suppressed while the cursor is
     // captured by the game (otherwise mousemove deltas keep retriggering it).
@@ -167,6 +174,8 @@ export const EmulatorView = memo(({
     };
 
     const handleExit = async () => {
+        // The exit reload is intentional — don't show the close-page prompt.
+        exitingRef.current = true;
         // Flush save-on-exit (if enabled) BEFORE reload — destroy() inside
         // stop() would otherwise abort the wasm runtime mid-serialize. We
         // skip stop() itself so the library/idle screen doesn't flash; the
