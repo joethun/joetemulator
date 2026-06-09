@@ -18,7 +18,7 @@ const SYSTEM_TO_CORES: Record<string, readonly string[]> = {
     lynx:      ['handy'],
     mame:      ['mame2003_plus', 'mame2003'],
     n64:       ['mupen64plus_next', 'parallel_n64'],
-    nds:       ['melonds', 'desmume', 'desmume2015'],
+    nds:       ['melonds', 'melondsds', 'desmume', 'desmume2015'],
     nes:       ['fceumm', 'nestopia'],
     ngp:       ['mednafen_ngp'],
     pce:       ['mednafen_pce'],
@@ -43,7 +43,7 @@ const SYSTEM_TO_CORES: Record<string, readonly string[]> = {
     // Legacy system ids — SYSTEM_PICKER persisted these libretro core names
     // directly as `game.core`, so older library entries look them up by core
     // name instead of canonical system id.
-    melonds:         ['melonds', 'desmume', 'desmume2015'],
+    melonds:         ['melondsds', 'melonds', 'desmume', 'desmume2015'],
     mame2003_plus:   ['mame2003_plus', 'mame2003'],
     genesis_plus_gx: ['genesis_plus_gx'],
     vice_x64:        ['vice_x64'],
@@ -55,8 +55,8 @@ const SYSTEM_TO_CORES: Record<string, readonly string[]> = {
     dosbox_pure:     ['dosbox_pure'],
 };
 
-export const CORES_REQUIRING_THREADS = new Set(['ppsspp', 'dosbox_pure']);
-export const CORES_REQUIRING_WEBGL2 = new Set(['ppsspp']);
+export const CORES_REQUIRING_THREADS = new Set(['ppsspp', 'dosbox_pure', 'melondsds']);
+export const CORES_REQUIRING_WEBGL2 = new Set(['ppsspp', 'melondsds']);
 
 // Single-player consoles (handhelds + Game Gear) get no player switcher.
 const SINGLE_PLAYER = new Set([
@@ -100,6 +100,7 @@ const CORE_DISPLAY_NAMES: Record<string, string> = {
     mednafen_psx_hw:      'Mednafen PSX HW',
     mednafen_wswan:       'Mednafen WonderSwan',
     melonds:              'melonDS',
+    melondsds:            'melonDS DS',
     mgba:                 'mGBA',
     mupen64plus_next:     'Mupen64Plus-Next',
     nestopia:             'Nestopia',

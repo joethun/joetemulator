@@ -16,6 +16,12 @@ export const RETROARCH_CFG = [
     'fastforward_ratio = 0',
     'slowmotion_ratio = 0',
     `savefile_directory = "${SAVES_DIR}"`,
+    // melonDS DS (and other newer cores) refuse to load content without a real
+    // system directory ("No system directory is available").
+    'system_directory = "/home/web_user/retroarch/system"',
+    // Browser microphone capture (custom driver in our RetroArch build); the
+    // built-in default is the null driver, so it must be selected explicitly.
+    'microphone_driver = "rwebmic"',
 ].join('\n') + '\n';
 
 function mkdirP(mod: LibretroModule, path: string): void {
