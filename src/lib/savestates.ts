@@ -54,8 +54,22 @@ function saveManifest(name: string, m: SlotManifest): void {
     try { localStorage.setItem(SLOT_PREFIX + name, JSON.stringify(m)); } catch { /* noop */ }
 }
 
-function updateManifest(name: string, fn: (m: SlotManifest) => SlotManifest): void {
-    saveManifest(name, fn(getManifest(name)));
+/**
+ * Persist a new manifest and delete the data (state bytes, thumbnail, localStorage
+ * meta) of every slot that fell out of it — otherwise evicted slots would orphan
+ * their IndexedDB entries forever. All slot-list mutations must go through here.
+ */
+function commitManifest(name: string, next: SlotManifest): Promise<void> {
+    const prev = getManifest(name);
+    saveManifest(name, next);
+    const kept = new Set(next.slots);
+    const evicted = prev.slots.filter(k => !kept.has(k));
+    if (!evicted.length) return Promise.resolve();
+    for (const key of evicted) clearSlotMeta(key);
+    return withDB(
+        db => idbDeleteMany(db, evicted.flatMap(key => [key, key + THUMB_SUFFIX])),
+        undefined,
+    );
 }
 
 export const getSlotKeys = (name: string) => getManifest(name).slots;
@@ -63,7 +77,7 @@ export const getSlotKeys = (name: string) => getManifest(name).slots;
 export function getNextSlotKey(name: string): string {
     const m = getManifest(name);
     const key = `${name}.state${m.nextIndex}`;
-    saveManifest(name, {
+    void commitManifest(name, {
         slots: [...m.slots.filter(s => s !== key), key].slice(-MAX_SLOTS),
         nextIndex: (m.nextIndex + 1) % MAX_SLOTS,
     });
@@ -317,12 +331,7 @@ function isDuplicate(incoming: Uint8Array, existing: SaveState[]): boolean {
 }
 
 export async function deleteAllStates(gameName: string): Promise<void> {
-    const keys = getSlotKeys(gameName);
-    await withDB(
-        db => idbDeleteMany(db, keys.flatMap(key => [key, key + THUMB_SUFFIX])),
-        undefined,
-    );
-    for (const key of keys) clearSlotMeta(key);
+    await commitManifest(gameName, EMPTY_MANIFEST);
     try { localStorage.removeItem(SLOT_PREFIX + gameName); } catch { /* noop */ }
 }
 
@@ -358,9 +367,8 @@ export const fetchStates = (gameName: string): Promise<SaveState[]> =>
     fetchStateRows(gameName, true);
 
 export async function removeState(key: string, gameName: string): Promise<void> {
-    await withDB(db => idbDeleteMany(db, [key, key + THUMB_SUFFIX]), undefined);
-    updateManifest(gameName, m => ({ ...m, slots: m.slots.filter(s => s !== key) }));
-    clearSlotMeta(key);
+    const m = getManifest(gameName);
+    await commitManifest(gameName, { ...m, slots: m.slots.filter(s => s !== key) });
 }
 
 const BUNDLE_STATE_ENTRY = 'state.bin';
@@ -396,10 +404,11 @@ export async function importState(gameName: string, file: File): Promise<void> {
     const ok = await withDB(async db => { await idbPut(db, key, incoming); return true; }, false);
     if (!ok) throw new Error('IndexedDB unavailable');
 
-    updateManifest(gameName, m => ({
+    const m = getManifest(gameName);
+    await commitManifest(gameName, {
         ...m,
         slots: m.slots.includes(key) ? m.slots : [...m.slots, key].slice(-MAX_SLOTS),
-    }));
+    });
     try {
         localStorage.setItem(STATE_TS_PREFIX + key, new Date(file.lastModified || Date.now()).toISOString());
     } catch { /* noop */ }

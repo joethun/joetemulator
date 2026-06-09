@@ -6,7 +6,6 @@ import { SaveStatesPanel } from '@/components/emulator/SaveStatesPanel';
 import { Modal, ModalHeader, ModalFooter, ModalButton } from '@/components/Modal';
 
 interface SaveStateManagerProps {
-    isOpen: boolean;
     isClosing: boolean;
     colors: ThemeColors;
     gradient: GradientStyle;
@@ -14,16 +13,13 @@ interface SaveStateManagerProps {
     gameName: string;
     onClose: () => void;
     onDuplicateError: (msg: string) => void;
-    showBack?: boolean;
-    onLoad?: (key: string) => void;
 }
 
 export function SaveStateManager({
-    isOpen, isClosing, colors, gradient, gameTitle, gameName,
-    onClose, onDuplicateError, showBack, onLoad,
+    isClosing, colors, gradient, gameTitle, gameName,
+    onClose, onDuplicateError,
 }: SaveStateManagerProps) {
     const importRef = useRef<HTMLInputElement>(null);
-    if (!isOpen && !isClosing) return null;
 
     return (
         <Modal isClosing={isClosing} colors={colors} onClose={onClose} labelledBy="save-state-title">
@@ -36,7 +32,6 @@ export function SaveStateManager({
                         gameName={gameName}
                         gameTitle={gameTitle}
                         onDuplicateError={onDuplicateError}
-                        onLoad={onLoad}
                         importRef={importRef}
                     />
                 </div>
@@ -46,7 +41,7 @@ export function SaveStateManager({
                         Import
                     </ModalButton>
                     <ModalButton onClick={onClose} colors={colors} variant="gradient" gradient={gradient}>
-                        {showBack ? 'Back' : 'Done'}
+                        Done
                     </ModalButton>
                 </ModalFooter>
             </div>

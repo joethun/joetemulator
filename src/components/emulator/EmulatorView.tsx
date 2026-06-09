@@ -14,8 +14,6 @@ interface EmulatorViewProps {
     colors: ThemeColors;
     gradient: GradientStyle;
     onDuplicateError: (msg: string) => void;
-    /** When true, keep the game paused regardless of menu state (e.g. an external modal is open). */
-    keepPaused?: boolean;
     /** Game-friendly title for the loading splash (falls back to baseName). */
     loadingTitle?: string;
     /** Friendly system name for the loading splash (e.g. "Game Boy Advance"). */
@@ -30,7 +28,7 @@ const BAR_VISIBLE_MS = 2000;
 const TOUCH_BAR_VISIBLE_MS = 4000;
 
 export const EmulatorView = memo(({
-    session, colors, gradient, onDuplicateError, keepPaused,
+    session, colors, gradient, onDuplicateError,
     loadingTitle, loadingSystemName, loadingCoverArt,
 }: EmulatorViewProps) => {
     const isVisible = session.phase !== 'idle';
@@ -159,14 +157,14 @@ export const EmulatorView = memo(({
     // pause/resume cycle when the user manually toggles pause from the in-game bar.
     useEffect(() => {
         if (!isVisible) return;
-        const needsPause = panel !== null || userPaused || !!keepPaused;
+        const needsPause = panel !== null || userPaused;
         if (needsPause) {
             if (!session.paused) session.actions.pause();
         } else if (session.phase === 'running') {
             session.actions.resume();
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [panel, userPaused, keepPaused, isVisible, session.phase]);
+    }, [panel, userPaused, isVisible, session.phase]);
 
     const handleLoadState = (key?: string) => {
         session.actions.loadState(key);

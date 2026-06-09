@@ -24,7 +24,6 @@ export function useApp() {
 
     const [saveStateGame, setSaveStateGame] = useState<{ title: string; name: string } | null>(null);
     const [saveStateOpen, setSaveStateOpen] = useState(false);
-    const [saveStateOnBack, setSaveStateOnBack] = useState<(() => void) | null>(null);
     const saveState = useDelayedUnmount(saveStateOpen);
 
     const dupHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -75,20 +74,16 @@ export function useApp() {
         }, MODAL_EXIT_MS);
     };
 
-    const openSaveStateManager = (title: string, name: string, onBack?: () => void) => {
+    const openSaveStateManager = (title: string, name: string) => {
         if (saveStateResetRef.current) { clearTimeout(saveStateResetRef.current); saveStateResetRef.current = null; }
         setSaveStateGame({ title, name });
-        setSaveStateOnBack(() => onBack ?? null);
         setSaveStateOpen(true);
     };
 
-    const closeSaveStateManager = (skipAfter?: boolean) => {
-        const after = skipAfter ? null : saveStateOnBack;
-        setSaveStateOnBack(null);
+    const closeSaveStateManager = () => {
         setSaveStateOpen(false);
         if (saveStateResetRef.current) clearTimeout(saveStateResetRef.current);
         saveStateResetRef.current = setTimeout(() => setSaveStateGame(null), MODAL_EXIT_MS);
-        after?.();
     };
 
     return {
@@ -109,7 +104,6 @@ export function useApp() {
         saveStateGame,
         saveStateOpen: saveState.shouldRender,
         saveStateClosing: saveState.isClosing,
-        saveStateHasBack: !!saveStateOnBack,
         openSaveStateManager, closeSaveStateManager,
     };
 }

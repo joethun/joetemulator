@@ -1,6 +1,8 @@
 import { useLocalStorage, useHydrated } from '@/hooks/useLocalStorage';
 import { THEMES, getGradientStyle } from '@/types';
 
+export type AppSettings = ReturnType<typeof useAppSettings>;
+
 export function useAppSettings() {
     const [selectedTheme, setSelectedTheme] = useLocalStorage('theme', 'blue');
     const [autoLoadState, setAutoLoadState] = useLocalStorage('autoLoadState', true);

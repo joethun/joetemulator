@@ -112,7 +112,6 @@ export default function Home() {
                 session={session}
                 colors={settings.currentColors}
                 gradient={settings.gradientStyle}
-                keepPaused={app.saveStateOpen || app.saveStateClosing}
                 onDuplicateError={app.showDuplicateError}
                 loadingTitle={loadingGame?.title ?? session.currentGame ?? undefined}
                 loadingSystemName={session.currentCore ? getSystemNameByCore(session.currentCore) : undefined}
@@ -122,7 +121,7 @@ export default function Home() {
             {app.duplicateMessage && <Alert message={app.duplicateMessage} isVisible={app.showDuplicateMessage} />}
             <EmulatorNotification colors={settings.currentColors} autoSaveIcon={settings.autoSaveIcon} autoLoadIcon={settings.autoLoadIcon} />
 
-            {(app.systemPickerOpen || app.systemPickerClosing) && (
+            {app.systemPickerOpen && (
                 <SystemPickerModal
                     isClosing={app.systemPickerClosing}
                     colors={settings.currentColors}
@@ -140,23 +139,15 @@ export default function Home() {
                 />
             )}
 
-            {(app.saveStateOpen || app.saveStateClosing) && app.saveStateGame && (
+            {app.saveStateOpen && app.saveStateGame && (
                 <SaveStateManager
-                    isOpen={app.saveStateOpen}
                     isClosing={app.saveStateClosing}
                     colors={settings.currentColors}
                     gradient={settings.gradientStyle}
                     gameTitle={app.saveStateGame.title}
                     gameName={app.saveStateGame.name}
-                    onClose={() => app.closeSaveStateManager()}
+                    onClose={app.closeSaveStateManager}
                     onDuplicateError={app.showDuplicateError}
-                    showBack={app.saveStateHasBack}
-                    onLoad={app.saveStateHasBack && session.currentGame === app.saveStateGame.name
-                        ? (key) => {
-                            session.actions.loadState(key, 'manual');
-                            app.closeSaveStateManager(true);
-                        }
-                        : undefined}
                 />
             )}
         </div>

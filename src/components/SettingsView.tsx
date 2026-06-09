@@ -3,6 +3,7 @@ import { Clock, Eye, EyeOff, Save, Upload, LogOut, LucideIcon } from 'lucide-rea
 import { SettingsCard } from '@/components/SettingsCard';
 import { Switch } from '@/components/Switch';
 import { ThemeColors, GradientStyle } from '@/types';
+import type { AppSettings } from '@/hooks/useAppSettings';
 
 interface SettingItemProps {
     colors: ThemeColors;
@@ -27,29 +28,16 @@ function SettingItem({ colors, gradient, icon: Icon, label, checked, onToggle }:
 
 const SAVE_INTERVALS = [30, 60, 120, 300, 600] as const;
 
-interface SettingsViewProps {
-    colors: ThemeColors;
-    gradient: GradientStyle;
-    autoLoadState: boolean;
-    setAutoLoadState: (v: boolean) => void;
-    autoSaveState: boolean;
-    setAutoSaveState: (v: boolean) => void;
-    autoSaveInterval: number;
-    setAutoSaveInterval: (v: number) => void;
-    autoSaveIcon: boolean;
-    setAutoSaveIcon: (v: boolean) => void;
-    autoLoadIcon: boolean;
-    setAutoLoadIcon: (v: boolean) => void;
-    saveOnExit: boolean;
-    setSaveOnExit: (v: boolean) => void;
-}
+export const SettingsView = memo(({ settings }: { settings: AppSettings }) => {
+    const {
+        currentColors: colors, gradientStyle: gradient,
+        autoLoadState, setAutoLoadState,
+        autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval,
+        autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon,
+        saveOnExit, setSaveOnExit,
+    } = settings;
 
-export const SettingsView = memo(({
-    colors, gradient, autoLoadState, setAutoLoadState,
-    autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval,
-    autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon,
-    saveOnExit, setSaveOnExit
-}: SettingsViewProps) => (
+    return (
     <div className="animate-fade-in w-full grid gap-4 pb-8">
             <SettingsCard
                 colors={colors} gradient={gradient} icon={Save}
@@ -108,6 +96,7 @@ export const SettingsView = memo(({
                 checked={saveOnExit} onToggle={() => setSaveOnExit(!saveOnExit)}
             />
     </div>
-));
+    );
+});
 
 SettingsView.displayName = 'SettingsView';

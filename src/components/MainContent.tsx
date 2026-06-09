@@ -1,12 +1,13 @@
 'use client';
 
 import { memo } from 'react';
-import { Game, ThemeColors, GradientStyle, ViewType } from '@/types';
+import { Game, ViewType } from '@/types';
 import { GameCard } from '@/components/GameCard';
 import { ThemeGrid } from '@/components/ThemeGrid';
 import { SettingsView } from '@/components/SettingsView';
 import { SectionHeader } from '@/components/emulator/shared';
 import { Gamepad2 } from 'lucide-react';
+import type { AppSettings } from '@/hooks/useAppSettings';
 
 const GRID_CLASS = "grid gap-4 md:gap-6 w-full grid-cols-[repeat(auto-fill,minmax(min(150px,100%),1fr))] md:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]";
 
@@ -20,19 +21,6 @@ interface GameCardHandlers {
     onSaveStates: (title: string, name: string) => void;
 }
 
-interface SettingsProps {
-    autoLoadState: boolean; setAutoLoadState: (v: boolean) => void;
-    autoSaveState: boolean; setAutoSaveState: (v: boolean) => void;
-    autoSaveInterval: number; setAutoSaveInterval: (v: number) => void;
-    autoSaveIcon: boolean; setAutoSaveIcon: (v: boolean) => void;
-    autoLoadIcon: boolean; setAutoLoadIcon: (v: boolean) => void;
-    saveOnExit: boolean; setSaveOnExit: (v: boolean) => void;
-    currentColors: ThemeColors;
-    gradientStyle: GradientStyle;
-    selectedTheme: string;
-    setSelectedTheme: (theme: string) => void;
-}
-
 interface MainContentProps {
     activeView: ViewType;
     games: Game[];
@@ -42,7 +30,7 @@ interface MainContentProps {
     gameSearchQuery: string;
     libraryAnimationKey: number;
     handlers: GameCardHandlers;
-    settings: SettingsProps;
+    settings: AppSettings;
 }
 
 export const MainContent = memo(function MainContent({
@@ -55,17 +43,7 @@ export const MainContent = memo(function MainContent({
         return <ThemeGrid selectedTheme={settings.selectedTheme} onSelectTheme={settings.setSelectedTheme} />;
 
     if (activeView === 'settings')
-        return (
-            <SettingsView
-                colors={colors} gradient={settings.gradientStyle}
-                autoLoadState={settings.autoLoadState} setAutoLoadState={settings.setAutoLoadState}
-                autoSaveState={settings.autoSaveState} setAutoSaveState={settings.setAutoSaveState}
-                autoSaveInterval={settings.autoSaveInterval} setAutoSaveInterval={settings.setAutoSaveInterval}
-                autoSaveIcon={settings.autoSaveIcon} setAutoSaveIcon={settings.setAutoSaveIcon}
-                autoLoadIcon={settings.autoLoadIcon} setAutoLoadIcon={settings.setAutoLoadIcon}
-                saveOnExit={settings.saveOnExit} setSaveOnExit={settings.setSaveOnExit}
-            />
-        );
+        return <SettingsView settings={settings} />;
 
     if (!games.length && !Object.keys(uploads).length)
         return (

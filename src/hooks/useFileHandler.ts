@@ -107,7 +107,11 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
 
     const handleIncomingFiles = useCallback(async (files: File[]) => {
         if (!files.length) return;
-        const existing = new Set(games.map(g => g.fileName).filter(Boolean));
+        // In-flight uploads count as existing too, so re-adding a file mid-upload
+        // can't produce two library entries.
+        const existing = new Set(
+            [...games, ...Object.values(uploads)].map(g => g.fileName).filter(Boolean),
+        );
         const fresh = files.filter(f => !existing.has(f.name));
 
         if (!fresh.length) {
@@ -122,7 +126,7 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
         );
         setPendingBatchCore(null);
         openSystemPicker();
-    }, [games, showDuplicateError, setPendingFiles, setPendingGame, setPendingBatchCore, openSystemPicker]);
+    }, [games, uploads, showDuplicateError, setPendingFiles, setPendingGame, setPendingBatchCore, openSystemPicker]);
 
     return { uploads, processGameFile, handleIncomingFiles };
 }
