@@ -4,9 +4,10 @@ import { memo, useCallback, useEffect, useState } from 'react';
 import type { ThemeColors } from '@/types';
 import {
     getShaderOptions, getStoredShader, SHADER_DISABLED,
-    type ShaderOption, type ShaderCategory,
+    type ShaderCategory,
 } from '@/lib/ra/shaders';
 import { OptionButton, SectionHeader, OPTION_GRID_CLASS } from '@/components/emulator/shared';
+import { groupBy } from '@/lib/utils';
 
 interface ShaderPanelProps {
     colors: ThemeColors;
@@ -21,15 +22,11 @@ const GROUPS: { key: ShaderCategory; title: string }[] = [
 ];
 
 const SHADER_GROUPING = (() => {
-    const byGroup = new Map<ShaderCategory, ShaderOption[]>();
-    let off: ShaderOption | undefined;
-    for (const opt of getShaderOptions()) {
-        if (opt.category === null) { off = opt; continue; }
-        const arr = byGroup.get(opt.category);
-        if (arr) arr.push(opt);
-        else byGroup.set(opt.category, [opt]);
-    }
-    return { off, byGroup };
+    const opts = getShaderOptions();
+    return {
+        off: opts.find(o => o.category === null),
+        byGroup: groupBy(opts.filter(o => o.category !== null), o => o.category!),
+    };
 })();
 
 export const ShaderPanel = memo(({ colors, libretroCore, onShaderChange }: ShaderPanelProps) => {

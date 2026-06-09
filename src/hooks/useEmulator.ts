@@ -100,16 +100,17 @@ export function useEmulator(): EmulatorSession {
     const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const saveOnExitRef = useRef(false);
     const startArgsRef = useRef<StartArgs | null>(null);
-    // Lazy init: the useRef argument is evaluated on every render and discarded,
-    // so read+parse storage once via the sentinel instead.
     const bindingsRef = useRef<InputBindings | null>(null);
-    if (bindingsRef.current === null) bindingsRef.current = loadStoredBindings();
     const pausedRef = useRef(false);
     const startingRef = useRef(false);
 
     const [status, setStatus] = useState<SessionStatus>(IDLE_STATUS);
     const [canvasEpoch, setCanvasEpoch] = useState(0);
+    // useState's lazy initializer parses stored bindings exactly once. Seed the
+    // mutable ref (the runtime's render-independent view) from that same value so
+    // storage is read once, not twice, on mount.
     const [bindings, setBindingsState] = useState<InputBindings>(loadStoredBindings);
+    if (bindingsRef.current === null) bindingsRef.current = bindings;
     const patchStatus = useCallback(
         (p: Partial<SessionStatus>) => setStatus(s => ({ ...s, ...p })),
         [],

@@ -2,6 +2,18 @@ import type { ThemeColors } from '@/types';
 
 export const stripExt = (name: string) => name.replace(/\.[^/.]+$/, '');
 
+/** Group items into a Map keyed by `keyOf`, preserving first-seen key order and push order. */
+export function groupBy<T, K>(items: Iterable<T>, keyOf: (item: T) => K): Map<K, T[]> {
+    const map = new Map<K, T[]>();
+    for (const item of items) {
+        const key = keyOf(item);
+        const arr = map.get(key);
+        if (arr) arr.push(item);
+        else map.set(key, [item]);
+    }
+    return map;
+}
+
 /** Canonical base name keying a game's save states / SRAM: the ROM filename
  * without extension, falling back to the title. Must stay in sync across every
  * call site, so derive it here rather than inlining `stripExt(fileName || title)`. */

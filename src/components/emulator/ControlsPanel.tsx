@@ -9,6 +9,7 @@ import {
 import { getButtonsForCore } from '@/lib/ra/control-schemes';
 import { getMaxPlayers } from '@/lib/ra/cores';
 import type { ControllerPort } from '@/lib/ra/controllers';
+import { groupBy } from '@/lib/utils';
 import { SectionHeader } from '@/components/emulator/shared';
 import { BindingRow, BindingChip } from '@/components/emulator/BindingRow';
 
@@ -143,16 +144,10 @@ export const ControlsPanel = memo(({
 
     const availableButtons = useMemo(() => getButtonsForCore(core), [core]);
 
-    const groups = useMemo(() => {
-        const map = new Map<string, typeof availableButtons>();
-        for (const item of availableButtons) {
-            const key = groupForButton(item);
-            const arr = map.get(key);
-            if (arr) arr.push(item);
-            else map.set(key, [item]);
-        }
-        return Array.from(map.entries());
-    }, [availableButtons]);
+    const groups = useMemo(
+        () => [...groupBy(availableButtons, groupForButton)],
+        [availableButtons],
+    );
 
     const handleClearAssignment = useCallback((player: number) => {
         const nextAssignment = { ...(bindings.gamepadAssignment ?? {}) };

@@ -1,4 +1,4 @@
-import { blobToDataUrl, dataUrlToBytes } from '@/lib/utils';
+import { blobToDataUrl, dataUrlToBytes, groupBy } from '@/lib/utils';
 import { looksLikeZip, loadJSZip } from '@/lib/files';
 
 const STATE_TS_PREFIX = 'ejs_state_ts_';
@@ -472,17 +472,12 @@ const DAY_MS = 86400000;
 export function groupByDay(states: SaveState[]): Array<{ label: string; items: SaveState[] }> {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const map = new Map<string, SaveState[]>();
-    for (const s of states) {
-        let label = 'Unknown';
-        if (s.savedAt) {
-            const day = new Date(s.savedAt.getFullYear(), s.savedAt.getMonth(), s.savedAt.getDate()).getTime();
-            label = day === today ? 'Today'
-                : day === today - DAY_MS ? 'Yesterday'
-                : s.savedAt.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-        }
-        const arr = map.get(label) ?? (map.set(label, []).get(label)!);
-        arr.push(s);
-    }
-    return Array.from(map, ([label, items]) => ({ label, items }));
+    const labelFor = (s: SaveState): string => {
+        if (!s.savedAt) return 'Unknown';
+        const day = new Date(s.savedAt.getFullYear(), s.savedAt.getMonth(), s.savedAt.getDate()).getTime();
+        return day === today ? 'Today'
+            : day === today - DAY_MS ? 'Yesterday'
+            : s.savedAt.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+    };
+    return Array.from(groupBy(states, labelFor), ([label, items]) => ({ label, items }));
 }
