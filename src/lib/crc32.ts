@@ -8,16 +8,17 @@ const CRC_TABLE = (() => {
     return t;
 })();
 
-function crc32(data: Uint8Array): string {
+/** Standard CRC-32 (the polynomial zip archives and ROM databases use). */
+export function crc32(data: Uint8Array): number {
     let crc = -1;
     for (let i = 0; i < data.length; i++) {
         crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ data[i]) & 0xFF];
     }
-    return ((crc ^ -1) >>> 0).toString(16).padStart(8, '0');
+    return (crc ^ -1) >>> 0;
 }
 
 export function computeRomCrc(data: Uint8Array, system: string): string {
     if (system === 'SNES' && data.length % 1024 === 512) data = data.slice(512);
     if (system === 'NES'  && data.length % 1024 === 16)  data = data.slice(16);
-    return crc32(data);
+    return crc32(data).toString(16).padStart(8, '0');
 }

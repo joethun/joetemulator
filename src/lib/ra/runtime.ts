@@ -1,3 +1,4 @@
+import { bootPlan } from '@/lib/discs';
 import { ensureAudioPatch } from '@/lib/ra/audio';
 import { resolveLibretroCore } from '@/lib/ra/cores';
 import {
@@ -37,11 +38,20 @@ function forcePreserveDrawingBuffer(canvas: HTMLCanvasElement): void {
     patchedCanvases.add(canvas);
 }
 
+/** Disk-control state of the running core: playlist size and inserted disc. */
+export interface DiscInfo {
+    count: number;
+    current: number;
+}
+
 export interface RuntimeOptions {
     canvas: HTMLCanvasElement;
     system: string;
     coreOverride?: string;
-    rom: { name: string; bytes: Uint8Array };
+    /** Game files in playlist order, primary disc/rom first (its name keys
+     *  the generated .m3u and the .srm). Multi-disc sets boot from an .m3u so
+     *  the core's disk-control interface can swap discs. */
+    roms: Array<{ name: string; bytes: Uint8Array }>;
     gameBaseName: string;
     bindings?: Partial<InputBindings>;
     handlers?: InputHandlers;
@@ -63,7 +73,7 @@ export class Runtime {
     getControllerPorts(): readonly ControllerPort[] { return this.controllerPorts; }
 
     async start(opts: RuntimeOptions): Promise<void> {
-        const { canvas, system, coreOverride, rom, gameBaseName, bindings, handlers, onPhase } = opts;
+        const { canvas, system, coreOverride, roms, gameBaseName, bindings, handlers, onPhase } = opts;
         this.gameBaseName = gameBaseName;
 
         // Patch AudioContext before the core's module factory creates one.
@@ -102,8 +112,10 @@ export class Runtime {
         await mountSaveFS(mod);
         writeFile(mod, RA_CFG_PATH, RETROARCH_CFG);
         writeCoreOptionsFile(mod, coreInfo);
-        const romPath = '/' + rom.name;
-        writeFile(mod, romPath, rom.bytes);
+        for (const f of roms) writeFile(mod, '/' + f.name, f.bytes);
+        const plan = bootPlan(roms.map(f => f.name));
+        if (plan.m3u) writeFile(mod, '/' + plan.m3u.name, plan.m3u.content);
+        const romPath = '/' + plan.boot;
 
         const gc = new GameController(mod, canvas);
         this.gc = gc;
@@ -185,6 +197,13 @@ export class Runtime {
         this.gc.setVariable(key, value);
         saveStoredCoreOption(this.resolved.libretroName, key, value);
     }
+
+    getDiscInfo(): DiscInfo {
+        if (!this.gc) return { count: 0, current: 0 };
+        return { count: this.gc.getDiscCount(), current: this.gc.getCurrentDisc() };
+    }
+
+    setDisc(index: number): void { this.gc?.setCurrentDisc(index); }
 
     setControllerDevice(port: number, deviceId: number): void {
         if (!this.gc || !this.gameBaseName) return;

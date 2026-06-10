@@ -3,6 +3,8 @@ export interface Game {
   title: string;
   genre: string;
   fileName?: string;
+  /** All disc file names for multi-disc games, in playlist order (index 0 === fileName). */
+  discNames?: string[];
   core?: string;
   coverArt?: string;
   autoCoverArt?: string;
@@ -11,6 +13,23 @@ export interface Game {
   isComplete?: boolean;
   coverLoading?: boolean;
 }
+
+import type { ZipDirEntry } from '@/lib/zip';
+
+/** A disc entry inside a zip, recorded before extraction: the zip directory
+ *  record plus the flattened file name it will be stored under. */
+export interface ZipDiscRef extends ZipDirEntry {
+  name: string;
+}
+
+/** A game awaiting system selection: loose files in playlist order (index 0
+ *  is the primary disc and becomes `fileName`), or the disc entries of a
+ *  zipped set. Zip entries stay unextracted while the picker is open —
+ *  extraction is expensive, so it runs during the upload progress phase after
+ *  the user confirms. */
+export type PendingFile =
+  | { files: File[]; zip?: undefined }
+  | { zip: File; discs: ZipDiscRef[]; files?: undefined };
 
 export type ViewType = 'library' | 'themes' | 'settings';
 

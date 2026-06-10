@@ -1,21 +1,23 @@
 'use client';
 
 import { memo, useRef, useState } from 'react';
-import { ChevronRight, Code2, GamepadDirectional, Monitor, Settings2 } from 'lucide-react';
+import { ChevronRight, Code2, Disc3, GamepadDirectional, Monitor, Settings2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ThemeColors, GradientStyle } from '@/types';
 import type { EmulatorSession } from '@/hooks/useEmulator';
+import type { DiscInfo } from '@/lib/ra/runtime';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 import { Modal, ModalHeader, ModalFooter, ModalButton } from '@/components/Modal';
 import { NavCard } from '@/components/emulator/shared';
 import { ControlsPanel } from '@/components/emulator/ControlsPanel';
 import { CoreOptionsPanel } from '@/components/emulator/CoreOptionsPanel';
+import { DiscsPanel } from '@/components/emulator/DiscsPanel';
 import { LicensePanel } from '@/components/emulator/LicensePanel';
 import { ShaderPanel } from '@/components/emulator/ShaderPanel';
 import { SaveStatesPanel } from '@/components/emulator/SaveStatesPanel';
 import type { EmulatorPanel } from '@/components/emulator/EmulatorControlsBar';
 
-type SettingsTab = 'controls' | 'options' | 'shader' | 'license';
+type SettingsTab = 'discs' | 'controls' | 'options' | 'shader' | 'license';
 
 interface EmulatorMenuProps {
     section: EmulatorPanel | null;
@@ -28,6 +30,7 @@ interface EmulatorMenuProps {
 }
 
 const TAB_META: Record<SettingsTab, { title: string; subtitle: string; icon: LucideIcon }> = {
+    discs:    { title: 'Discs',        subtitle: 'Swap which disc is in the drive.',                        icon: Disc3 },
     controls: { title: 'Controls',     subtitle: 'Click a binding to change it. Right-click to clear.',     icon: GamepadDirectional },
     options:  { title: 'Core Options', subtitle: 'RetroArch core settings. Some may need a restart to apply.', icon: Settings2 },
     shader:   { title: 'Shader',       subtitle: 'Apply a visual filter to the game output.',               icon: Monitor },
@@ -85,7 +88,14 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                         />
                     )}
                     {displaySection === 'settings' && !tab && (
-                        <SettingsHub colors={colors} onPick={setTab} />
+                        <SettingsHub colors={colors} onPick={setTab} getDiscInfo={session.actions.getDiscInfo} />
+                    )}
+                    {displaySection === 'settings' && tab === 'discs' && (
+                        <DiscsPanel
+                            colors={colors}
+                            getDiscInfo={session.actions.getDiscInfo}
+                            onSetDisc={session.actions.setDisc}
+                        />
                     )}
                     {displaySection === 'settings' && tab === 'controls' && (
                         <ControlsPanel
@@ -151,10 +161,14 @@ export const EmulatorMenu = memo(function EmulatorMenu({
 
 const SETTINGS_TABS: SettingsTab[] = ['controls', 'options', 'shader', 'license'];
 
-function SettingsHub({ colors, onPick }: { colors: ThemeColors; onPick: (tab: SettingsTab) => void }) {
+function SettingsHub({ colors, onPick, getDiscInfo }: { colors: ThemeColors; onPick: (tab: SettingsTab) => void; getDiscInfo: () => DiscInfo }) {
+    // The disc count is fixed for the session — read it once per mount instead
+    // of calling into the running core on every render.
+    const [discCount] = useState(() => getDiscInfo().count);
+    const tabs: SettingsTab[] = discCount > 1 ? ['discs', ...SETTINGS_TABS] : SETTINGS_TABS;
     return (
         <div className="grid gap-4">
-            {SETTINGS_TABS.map((key, idx) => {
+            {tabs.map((key, idx) => {
                 const { title, subtitle, icon } = TAB_META[key];
                 return (
                     <NavCard

@@ -7,8 +7,8 @@ import type { useEmulator } from '@/hooks/useEmulator';
 import { selectFiles, prewarmDat, calculateAutoCoverArt } from '@/lib/files';
 import { getSystemNameByCore } from '@/lib/constants';
 import { getCorePref } from '@/lib/ra/cores';
-import { getGameFile } from '@/lib/storage';
-import { gameSaveName } from '@/lib/utils';
+import { getGameFile, getGameDiscs } from '@/lib/storage';
+import { gameFileNames, gameSaveName, pendingFileNames } from '@/lib/utils';
 
 interface Deps {
     lib: ReturnType<typeof useGameLibrary>;
@@ -44,14 +44,14 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
 
     const handlePlay = async (game: Game) => {
         try {
-            const file = await getGameFile(game.id);
-            if (!file || !game.core) { console.error('missing file or core:', game); return; }
-            const baseName = gameSaveName(game);
+            const roms = await getGameDiscs(game.id, game.discNames ?? [game.fileName ?? '']);
+            if (!roms.length || !game.core) { console.error('missing file or core:', game); return; }
+
             await session.start({
                 system: game.core,
                 coreOverride: getCorePref(game.core),
-                rom: { name: game.fileName || file.name || `${baseName}.bin`, bytes: new Uint8Array(await file.arrayBuffer()) },
-                gameBaseName: baseName,
+                roms,
+                gameBaseName: gameSaveName(game),
                 opts: {
                     autoLoad: settings.autoLoadState,
                     autoSave: settings.autoSaveState,
@@ -140,8 +140,9 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
         const core = app.pendingFiles.length > 1 ? app.pendingBatchCore : app.pendingGame?.core;
         if (!core) { app.showDuplicateError('Please select a system'); return; }
 
-        if (app.pendingFiles.length === 1 && lib.games.some(g => g.fileName === app.pendingFiles[0].file.name)) {
-            app.showDuplicateError(`"${app.pendingFiles[0].file.name}" is duplicate`);
+        const firstName = app.pendingFiles.length === 1 ? pendingFileNames(app.pendingFiles[0])[0] : null;
+        if (firstName && lib.games.some(g => gameFileNames(g).includes(firstName))) {
+            app.showDuplicateError(`"${firstName}" is duplicate`);
             app.closeSystemPicker();
             return;
         }
@@ -150,7 +151,7 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
         app.closeSystemPicker();
         try {
             await Promise.all(app.pendingFiles.map((item, i) =>
-                files.processGameFile(item.file, core, i === 0 ? meta : undefined)
+                files.processGameFile(item, core, i === 0 ? meta : undefined)
             ));
         } catch (err) { console.error('batch processing error:', err); }
     };

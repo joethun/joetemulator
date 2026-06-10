@@ -1,5 +1,6 @@
 import { blobToDataUrl, dataUrlToBytes, groupBy } from '@/lib/utils';
-import { looksLikeZip, loadJSZip } from '@/lib/files';
+import { looksLikeZip } from '@/lib/files';
+import { buildZip, openZipEntry, readZipDirectory } from '@/lib/zip';
 
 const STATE_TS_PREFIX = 'ejs_state_ts_';
 const STATE_COVER_ASPECT_PREFIX = 'ejs_state_cover_aspect_';
@@ -380,15 +381,14 @@ async function unpackImportFile(file: File): Promise<{ state: Uint8Array; thumbn
     if (!looksLikeZip(bytes.subarray(0, 4))) {
         return { state: bytes, thumbnail: null };
     }
-    const JSZip = await loadJSZip();
-    const zip = await JSZip.loadAsync(buf);
-    const stateEntry = zip.file(BUNDLE_STATE_ENTRY);
-    if (!stateEntry) throw new Error('invalid bundle: missing state');
-    const state = new Uint8Array(await stateEntry.async('arraybuffer'));
-    const thumbEntry = zip.file(BUNDLE_THUMB_ENTRY);
+    const entries = await readZipDirectory(file);
+    const stateEntry = entries?.find(e => e.path === BUNDLE_STATE_ENTRY);
+    if (!entries || !stateEntry) throw new Error('invalid bundle: missing state');
+    const state = new Uint8Array(await new Response(await openZipEntry(file, stateEntry)).arrayBuffer());
+    const thumbEntry = entries.find(e => e.path === BUNDLE_THUMB_ENTRY);
     const thumbnail = thumbEntry
         ? await blobToDataUrl(new Blob(
-            [await thumbEntry.async('arraybuffer')],
+            [await new Response(await openZipEntry(file, thumbEntry)).arrayBuffer()],
             { type: 'image/png' },
         ))
         : null;
@@ -457,11 +457,10 @@ export async function downloadState(
 
     const thumbBytes = thumbnail ? dataUrlToBytes(thumbnail) : null;
     if (thumbBytes) {
-        const JSZip = await loadJSZip();
-        const zip = new JSZip();
-        zip.file(BUNDLE_STATE_ENTRY, bytes);
-        zip.file(BUNDLE_THUMB_ENTRY, thumbBytes);
-        const blob = await zip.generateAsync({ type: 'blob' });
+        const blob = buildZip([
+            { path: BUNDLE_STATE_ENTRY, data: bytes },
+            { path: BUNDLE_THUMB_ENTRY, data: thumbBytes },
+        ]);
         triggerDownload(blob, `${baseName}.zip`);
     } else {
         triggerDownload(

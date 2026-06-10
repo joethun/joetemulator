@@ -1,5 +1,6 @@
 import { getSystemNameByCore } from '@/lib/constants';
 import { stripExt } from '@/lib/utils';
+import { openZipEntry, readZipDirectory } from '@/lib/zip';
 
 interface OpenFilePickerWindow extends Window {
     showOpenFilePicker?: (opts: { multiple?: boolean }) => Promise<Array<{ getFile(): Promise<File> }>>;
@@ -38,7 +39,7 @@ const ROM_EXT_RANK: Record<string, number> = Object.fromEntries([
     'adf', 'd64', 'prg', 't64', 'tap', 'crt', 'col', 'rom', 'jag',
 ].map((ext, i) => [ext, i]));
 
-const fileExt = (name: string) => name.split('.').pop()?.toLowerCase() ?? '';
+export const fileExt = (name: string) => name.split('.').pop()?.toLowerCase() ?? '';
 
 /** PK\x03\x04 / PK\x05\x06 / PK\x07\x08 — the three valid ZIP local-file headers. */
 export const looksLikeZip = (header: Uint8Array): boolean =>
@@ -46,37 +47,23 @@ export const looksLikeZip = (header: Uint8Array): boolean =>
     && header[0] === 0x50 && header[1] === 0x4B
     && (header[2] === 0x03 || header[2] === 0x05 || header[2] === 0x07);
 
-import type JSZip from 'jszip';
-
-let jsZipPromise: Promise<typeof JSZip> | null = null;
-
-export const loadJSZip = (): Promise<typeof JSZip> =>
-    jsZipPromise ??= import('jszip').then(m => {
-        const mod = m as typeof import('jszip') & { default?: typeof JSZip };
-        return mod.default ?? mod;
-    });
+// macOS zips ship "__MACOSX/" resource forks and ".DS_Store" alongside the content.
+export const isJunkPath = (path: string) =>
+    path.startsWith('__MACOSX/') || (path.split('/').pop() ?? '').startsWith('.');
 
 async function extractRomBytesFromZip(file: File): Promise<ArrayBuffer | null> {
-    const header = new Uint8Array(await file.slice(0, 4).arrayBuffer());
-    if (!looksLikeZip(header)) return null;
+    const entries = (await readZipDirectory(file))?.filter(e => !isJunkPath(e.path));
+    if (!entries?.length) return null;
+
+    const candidates = entries.filter(e => fileExt(e.path) in ROM_EXT_RANK);
+    const pool = candidates.length ? candidates : entries;
+
+    pool.sort((a, b) =>
+        (ROM_EXT_RANK[fileExt(a.path)] ?? 999) - (ROM_EXT_RANK[fileExt(b.path)] ?? 999)
+        || b.size - a.size);
 
     try {
-        const JSZip = await loadJSZip();
-        const zip = await JSZip.loadAsync(await file.arrayBuffer());
-        const entries = Object.values(zip.files).filter(f => !f.dir);
-        if (!entries.length) return null;
-
-        const candidates = entries.filter(f => fileExt(f.name) in ROM_EXT_RANK);
-        const pool = candidates.length ? candidates : entries;
-
-        pool.sort((a, b) => {
-            const rankDiff = (ROM_EXT_RANK[fileExt(a.name)] ?? 999) - (ROM_EXT_RANK[fileExt(b.name)] ?? 999);
-            if (rankDiff !== 0) return rankDiff;
-            const sizeOf = (e: typeof a) => (e as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0;
-            return sizeOf(b) - sizeOf(a);
-        });
-
-        return pool[0].async('arraybuffer');
+        return await new Response(await openZipEntry(file, pool[0])).arrayBuffer();
     } catch (err) {
         console.warn('Zip extraction failed:', err);
         return null;
@@ -201,7 +188,7 @@ export function prewarmDat(core: string): void {
 const REGION_PRIORITY = ['(USA)', '(USA, Europe)', '(World)', '(Europe)', '(En)'];
 
 // Normalize a title for fuzzy comparison: lowercase, strip all non-alphanumeric chars
-const normalizeTitle = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+export const normalizeTitle = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
 // Strip parenthesized region/version tags, e.g. "Game (USA) (Rev 1)" -> "Game"
 const stripParenTags = (s: string) => s.replace(/\s*\([^)]*\)/g, '').trim();

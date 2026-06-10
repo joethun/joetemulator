@@ -19,6 +19,9 @@ export class GameController {
         getVideoDimensions: CFn<number>;
         setPortDevice: CFn<void>;
         getPortInfo:   CFn<string>;
+        getDiskCount:   CFn<number>;
+        getCurrentDisk: CFn<number>;
+        setCurrentDisk: CFn<void>;
     };
 
     constructor(
@@ -40,6 +43,9 @@ export class GameController {
             getVideoDimensions: w<number>('get_video_dimensions', 'number', ['string']),
             setPortDevice: w<void>  ('ejs_set_controller_port_device', 'null',   ['number', 'number']),
             getPortInfo:   w<string>('ejs_get_controller_port_info',   'string', []),
+            getDiskCount:   w<number>('get_disk_count',   'number', []),
+            getCurrentDisk: w<number>('get_current_disk', 'number', []),
+            setCurrentDisk: w<void>  ('set_current_disk', 'null',   ['number']),
         };
     }
 
@@ -85,6 +91,19 @@ export class GameController {
     /** Raw EmulatorJS port-info dump. Lines: `port:deviceId:description`. */
     getControllerPortInfoRaw(): string {
         try { return this.fn.getPortInfo() ?? ''; } catch { return ''; }
+    }
+
+    /** Discs in the core's disk-control playlist (m3u/pbp). 0 or 1 when not multi-disc. */
+    getDiscCount(): number {
+        try { return this.fn.getDiskCount() || 0; } catch { return 0; }
+    }
+
+    getCurrentDisc(): number {
+        try { return this.fn.getCurrentDisk() || 0; } catch { return 0; }
+    }
+
+    setCurrentDisc(index: number): void {
+        try { this.fn.setCurrentDisk(index); } catch { /* core may not export */ }
     }
 
     /**

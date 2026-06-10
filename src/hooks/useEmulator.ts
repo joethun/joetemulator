@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Runtime, type RuntimeOptions } from '@/lib/ra/runtime';
+import { Runtime, type RuntimeOptions, type DiscInfo } from '@/lib/ra/runtime';
 import type { EmulatorPhase } from '@/lib/ra/types';
 import {
     isStateDuplicate, getNextSlotKey, getSlotKeys, stampSlot,
@@ -22,6 +22,7 @@ const DEFAULT_AUTOSAVE_MS = 60_000;
 // when the runtime is null.
 const EMPTY_CONTROLLER_PORTS: ControllerPort[] = [];
 const EMPTY_CORE_OPTIONS: CoreOption[] = [];
+const EMPTY_DISC_INFO: DiscInfo = { count: 0, current: 0 };
 
 const notify = (type: 'save' | 'load', source: 'manual' | 'auto'): void => {
     window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type, source } }));
@@ -69,6 +70,8 @@ interface EmulatorActions {
     resetCoreOptions: () => void;
     getControllerPorts: () => readonly ControllerPort[];
     setControllerDevice: (port: number, deviceId: number) => void;
+    getDiscInfo: () => DiscInfo;
+    setDisc: (index: number) => void;
     switchCore: (libretroName: string) => Promise<void>;
     setShader: (name: string) => void;
 }
@@ -293,6 +296,8 @@ export function useEmulator(): EmulatorSession {
         resetCoreOptions: () => runtimeRef.current?.resetCoreOptions(),
         getControllerPorts:  () => runtimeRef.current?.getControllerPorts() ?? EMPTY_CONTROLLER_PORTS,
         setControllerDevice: (port, deviceId) => runtimeRef.current?.setControllerDevice(port, deviceId),
+        getDiscInfo:      () => runtimeRef.current?.getDiscInfo() ?? EMPTY_DISC_INFO,
+        setDisc:          (index) => runtimeRef.current?.setDisc(index),
         setShader:        (name) => runtimeRef.current?.setShader(name),
     }), [saveState, loadState, switchCore, flushExitSave, patchStatus]);
 

@@ -3,11 +3,12 @@
 import { memo, useMemo } from 'react';
 import { Edit2 } from 'lucide-react';
 import { SYSTEM_PICKER } from '@/lib/constants';
+import { pendingFileNames } from '@/lib/utils';
 import { SearchBar } from '@/components/SearchBar';
 import { TextInput } from '@/components/TextInput';
 import { Modal, ModalHeader, ModalFooter, ModalButton } from '@/components/Modal';
 import { OptionButton, SectionHeader, OPTION_GRID_CLASS } from '@/components/emulator/shared';
-import { Game, ThemeColors, GradientStyle } from '@/types';
+import { Game, PendingFile, ThemeColors, GradientStyle } from '@/types';
 
 interface SystemPickerProps {
     isClosing: boolean;
@@ -15,7 +16,7 @@ interface SystemPickerProps {
     gradient: GradientStyle;
     editingGame: Game | null;
     pendingGame: Partial<Game> | null;
-    pendingFiles: Array<{ file: File }>;
+    pendingFiles: PendingFile[];
     searchQuery: string;
     onSearchChange: (q: string) => void;
     onClose: () => void;
@@ -35,11 +36,14 @@ export const SystemPickerModal = memo(function SystemPickerModal({
     const currentTitle = editingGame ? editingGame.title : (pendingGame?.title || '');
     const query = searchQuery.toLowerCase();
     const systemSelected = !!currentCore;
+    const discCount = pendingFiles[0] ? pendingFileNames(pendingFiles[0]).length : 1;
     const headerSubtitle = editingGame
         ? 'Change game system'
         : pendingFiles.length > 1
             ? `Choose system for ${pendingFiles.length} files`
-            : 'Select a system for your game';
+            : discCount > 1
+                ? `Multi-disc game detected (${discCount} files)`
+                : 'Select a system for your game';
     const headerTitle = pendingFiles.length > 1 ? `Add ${pendingFiles.length} Games` : 'Select System';
 
     const categories = useMemo(() => {

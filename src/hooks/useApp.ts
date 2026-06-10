@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ViewType, Game } from '@/types';
+import { ViewType, Game, PendingFile } from '@/types';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 
 const DUPLICATE_VISIBLE_MS = 2500;
@@ -16,7 +16,7 @@ export function useApp() {
 
     const [editingGame, setEditingGame] = useState<Game | null>(null);
     const [pendingGame, setPendingGame] = useState<Partial<Game> | null>(null);
-    const [pendingFiles, setPendingFiles] = useState<Array<{ file: File }>>([]);
+    const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const [systemSearchQuery, setSystemSearchQuery] = useState('');
     const [pendingBatchCore, setPendingBatchCore] = useState<string | null>(null);
     const [pickerOpen, setPickerOpen] = useState(false);

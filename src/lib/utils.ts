@@ -1,4 +1,4 @@
-import type { ThemeColors } from '@/types';
+import type { PendingFile, ThemeColors } from '@/types';
 
 export const stripExt = (name: string) => name.replace(/\.[^/.]+$/, '');
 
@@ -19,6 +19,16 @@ export function groupBy<T, K>(items: Iterable<T>, keyOf: (item: T) => K): Map<K,
  * call site, so derive it here rather than inlining `stripExt(fileName || title)`. */
 export const gameSaveName = (game: { fileName?: string; title?: string }): string =>
     stripExt(game.fileName || game.title || '');
+
+/** Every stored file name a game owns: all disc names for a multi-disc game
+ * (index 0 is `fileName`), else the single rom file. Duplicate checks key on
+ * this, so derive it here rather than inlining the fallback chain. */
+export const gameFileNames = (game: { fileName?: string; discNames?: string[] }): string[] =>
+    game.discNames ?? (game.fileName ? [game.fileName] : []);
+
+/** Disc/file names of a pending game in playlist order (index 0 becomes `fileName`). */
+export const pendingFileNames = (pending: PendingFile): string[] =>
+    pending.zip ? pending.discs.map(d => d.name) : pending.files.map(f => f.name);
 
 export const focusRingStyle = (active: boolean, colors: ThemeColors) => ({
     borderColor: active ? colors.highlight : colors.midDark,
