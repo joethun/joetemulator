@@ -69,9 +69,9 @@ export const EmulatorMenu = memo(function EmulatorMenu({
         <Modal isClosing={isClosing} colors={colors} onClose={onClose} z={60} ariaLabel="Emulator menu">
             <div className="flex flex-col flex-1 min-h-0">
                 {displaySection === 'saves' ? (
-                    <ModalHeader title="Manage States" subtitle={session.currentGame ?? 'Game'} colors={colors} />
+                    <ModalHeader title="Manage States" subtitle={session.currentTitle ?? 'Game'} colors={colors} />
                 ) : !tab ? (
-                    <ModalHeader title="Game Settings" subtitle={session.currentGame ?? undefined} colors={colors} />
+                    <ModalHeader title="Game Settings" subtitle={session.currentTitle ?? undefined} colors={colors} />
                 ) : (
                     <ModalHeader title={TAB_META[tab].title} subtitle={TAB_META[tab].subtitle} colors={colors} />
                 )}
@@ -81,7 +81,7 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                         <SaveStatesPanel
                             colors={colors}
                             gameName={session.currentGame}
-                            gameTitle={session.currentGame}
+                            gameTitle={session.currentTitle ?? session.currentGame}
                             onDuplicateError={onDuplicateError}
                             importRef={saveImportRef}
                             onLoad={onLoadState}

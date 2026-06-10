@@ -113,7 +113,7 @@ export default function Home() {
                 colors={settings.currentColors}
                 gradient={settings.gradientStyle}
                 onDuplicateError={app.showDuplicateError}
-                loadingTitle={loadingGame?.title ?? session.currentGame ?? undefined}
+                loadingTitle={loadingGame?.title ?? session.currentTitle ?? undefined}
                 loadingSystemName={session.currentCore ? getSystemNameByCore(session.currentCore) : undefined}
                 loadingCoverArt={loadingGame?.coverArt}
             />

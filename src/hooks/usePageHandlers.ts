@@ -52,6 +52,7 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
                 coreOverride: getCorePref(game.core),
                 roms,
                 gameBaseName: gameSaveName(game),
+                gameTitle: game.title,
                 opts: {
                     autoLoad: settings.autoLoadState,
                     autoSave: settings.autoSaveState,

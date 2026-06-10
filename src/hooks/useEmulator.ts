@@ -37,6 +37,10 @@ interface UseEmulatorOpts {
 
 type StartArgs = Omit<RuntimeOptions, 'canvas' | 'handlers' | 'onPhase'> & {
     opts?: UseEmulatorOpts;
+    /** Clean game title for display. Falls back to gameBaseName (the
+     * filename-derived save key) when omitted. Kept separate so multi-disc
+     * games show "Game", not the disc-1 filename. */
+    gameTitle?: string;
 };
 
 interface SessionStatus {
@@ -45,13 +49,14 @@ interface SessionStatus {
     paused: boolean;
     error: string | null;
     game: string | null;
+    title: string | null;
     system: string | null;
     libretroCore: string | null;
 }
 
 const IDLE_STATUS: SessionStatus = {
     phase: 'idle', message: '', paused: false, error: null,
-    game: null, system: null, libretroCore: null,
+    game: null, title: null, system: null, libretroCore: null,
 };
 
 interface EmulatorActions {
@@ -90,7 +95,10 @@ export interface EmulatorSession {
     message: string;
     paused: boolean;
     error: string | null;
+    /** Filename-derived save-state key for the running game (stable across discs). */
     currentGame: string | null;
+    /** Clean title for display; differs from currentGame for multi-disc games. */
+    currentTitle: string | null;
     currentCore: string | null;
     currentLibretroCore: string | null;
     bindings: InputBindings;
@@ -218,12 +226,13 @@ export function useEmulator(): EmulatorSession {
             });
 
             startArgsRef.current = args;
-            const { opts: userOpts = {}, ...runtimeOpts } = args;
+            const { opts: userOpts = {}, gameTitle, ...runtimeOpts } = args;
 
             setStatus({
                 ...IDLE_STATUS,
                 phase: 'loading-core',
                 game: runtimeOpts.gameBaseName,
+                title: gameTitle ?? runtimeOpts.gameBaseName,
                 system: runtimeOpts.system,
             });
 
@@ -308,6 +317,7 @@ export function useEmulator(): EmulatorSession {
         paused: status.paused,
         error: status.error,
         currentGame: status.game,
+        currentTitle: status.title,
         currentCore: status.system,
         currentLibretroCore: status.libretroCore,
         bindings,
