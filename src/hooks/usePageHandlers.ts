@@ -7,7 +7,7 @@ import type { useEmulator } from '@/hooks/useEmulator';
 import { selectFiles, prewarmDat, calculateAutoCoverArt } from '@/lib/files';
 import { getSystemNameByCore } from '@/lib/constants';
 import { getCorePref } from '@/lib/ra/cores';
-import { getGameFile, getGameDiscs } from '@/lib/storage';
+import { getGameFile, getGameDiscs } from '@/lib/rom-storage';
 import { gameFileNames, gameSaveName, pendingFileNames } from '@/lib/utils';
 
 interface Deps {

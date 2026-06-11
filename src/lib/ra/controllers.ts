@@ -1,4 +1,4 @@
-import { loadJSON, saveJSON, parseNumberRecord } from '@/lib/ra/storage';
+import { loadJSON, saveJSON, parseNumberRecord } from '@/lib/local-storage';
 
 const isNumber = (v: unknown): v is number => typeof v === 'number';
 

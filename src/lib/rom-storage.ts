@@ -1,3 +1,5 @@
+import { loadString, saveString } from '@/lib/local-storage';
+
 const GAME_DIR = 'games';
 const CHUNK_SIZE = 64 * 1024 * 1024;
 const MIGRATED_KEY = 'joet_emulator_roms_migrated';
@@ -79,7 +81,7 @@ export async function deleteGameFile(gameId: number): Promise<void> {
 }
 
 export async function migrateLegacyRoms(games: Array<{ id: number; title: string; fileName?: string; fileData?: string }>): Promise<void> {
-    if (localStorage.getItem(MIGRATED_KEY) === 'true') return;
+    if (loadString(MIGRATED_KEY) === 'true') return;
 
     for (const game of games) {
         if (!game.fileData) continue;
@@ -93,5 +95,5 @@ export async function migrateLegacyRoms(games: Array<{ id: number; title: string
             console.error(`Migration failed for ${game.title}:`, e);
         }
     }
-    localStorage.setItem(MIGRATED_KEY, 'true');
+    saveString(MIGRATED_KEY, 'true');
 }

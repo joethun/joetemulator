@@ -1,4 +1,4 @@
-import { getStringRecordEntry, setStringRecordEntry } from '@/lib/ra/storage';
+import { getStringRecordEntry, setStringRecordEntry } from '@/lib/local-storage';
 
 const SYSTEM_TO_CORES: Record<string, readonly string[]> = {
     atari2600: ['stella2014'],

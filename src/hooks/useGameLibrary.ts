@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Game } from '@/types';
-import { deleteGameFile, migrateLegacyRoms } from '@/lib/storage';
+import { deleteGameFile, migrateLegacyRoms } from '@/lib/rom-storage';
 import { deleteAllStates } from '@/lib/savestates';
 import { getSystemNameByCore } from '@/lib/constants';
 import { gameSaveName } from '@/lib/utils';

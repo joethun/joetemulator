@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { Game, PendingFile } from '@/types';
-import { saveGameFile, getGameFile } from '@/lib/storage';
+import { saveGameFile, getGameFile } from '@/lib/rom-storage';
 import { getSystemNameByCore } from '@/lib/constants';
 import { calculateAutoCoverArt } from '@/lib/files';
 import { detectDiscSet, listZippedDiscs, zippedDiscSources, type DiscSet, type DiscSource } from '@/lib/discs';

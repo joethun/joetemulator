@@ -1,20 +1,17 @@
-// Shared localStorage JSON helpers used by every ra/* persistence module.
+// Safe localStorage facade: every accessor no-ops (or returns its fallback)
+// when storage is unavailable (SSR, privacy mode, quota exceeded).
 
 const hasStorage = typeof window !== 'undefined';
 
-export function loadJSON<T>(key: string, fallback: T): T {
-    if (!hasStorage) return fallback;
-    try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return fallback;
-        const parsed = JSON.parse(raw);
-        return (parsed ?? fallback) as T;
-    } catch { return fallback; }
+export function loadString(key: string): string | null {
+    if (!hasStorage) return null;
+    try { return localStorage.getItem(key); }
+    catch { return null; }
 }
 
-export function saveJSON(key: string, value: unknown): void {
+export function saveString(key: string, value: string): void {
     if (!hasStorage) return;
-    try { localStorage.setItem(key, JSON.stringify(value)); }
+    try { localStorage.setItem(key, value); }
     catch { /* storage full / disabled */ }
 }
 
@@ -22,6 +19,18 @@ export function removeKey(key: string): void {
     if (!hasStorage) return;
     try { localStorage.removeItem(key); }
     catch { /* storage disabled */ }
+}
+
+export function loadJSON<T>(key: string, fallback: T): T {
+    const raw = loadString(key);
+    if (!raw) return fallback;
+    try { return (JSON.parse(raw) ?? fallback) as T; }
+    catch { return fallback; }
+}
+
+export function saveJSON(key: string, value: unknown): void {
+    try { saveString(key, JSON.stringify(value)); }
+    catch { /* unserializable value */ }
 }
 
 /** Read a `Record<string, string>` from localStorage, discarding non-string values. */

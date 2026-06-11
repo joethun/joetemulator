@@ -1,4 +1,4 @@
-import { loadStringRecord, removeKey, setStringRecordEntry } from '@/lib/ra/storage';
+import { loadStringRecord, removeKey, setStringRecordEntry } from '@/lib/local-storage';
 
 const STORAGE_PREFIX = 'ra_core_options_v1:';
 const DEFAULT_PREFIX = '(Default) ';

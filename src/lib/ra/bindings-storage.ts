@@ -2,7 +2,7 @@ import {
     DEFAULT_BINDINGS, sourceKey,
     type GamepadBinding, type GamepadSource, type InputBindings, type KeyMap,
 } from '@/lib/ra/input';
-import { loadJSON, saveJSON, removeKey, isObject, isPosInt, parseNumberRecord } from '@/lib/ra/storage';
+import { loadJSON, saveJSON, removeKey, isObject, isPosInt, parseNumberRecord } from '@/lib/local-storage';
 
 const STORAGE_KEY = 'ra_bindings_v2';
 

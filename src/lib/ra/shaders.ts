@@ -1,6 +1,6 @@
 import { writeFile } from '@/lib/ra/fs';
 import type { LibretroModule } from '@/lib/ra/types';
-import { loadStringRecord, saveJSON, getStringRecordEntry } from '@/lib/ra/storage';
+import { loadStringRecord, saveJSON, getStringRecordEntry } from '@/lib/local-storage';
 import { SHADER_DATA } from '@/lib/ra/shaders-data';
 import { base64ToBytes } from '@/lib/utils';
 

@@ -1,3 +1,4 @@
+import { loadJSON, saveJSON, loadString, saveString, removeKey } from '@/lib/local-storage';
 import { blobToDataUrl, dataUrlToBytes, groupBy } from '@/lib/utils';
 import { looksLikeZip } from '@/lib/files';
 import { buildZip, openZipEntry, readZipDirectory } from '@/lib/zip';
@@ -46,14 +47,11 @@ interface SlotManifest { slots: string[]; nextIndex: number; }
 
 const EMPTY_MANIFEST: SlotManifest = { slots: [], nextIndex: 0 };
 
-function getManifest(name: string): SlotManifest {
-    try { const r = localStorage.getItem(SLOT_PREFIX + name); if (r) return JSON.parse(r); } catch { /* noop */ }
-    return EMPTY_MANIFEST;
-}
+const getManifest = (name: string): SlotManifest =>
+    loadJSON(SLOT_PREFIX + name, EMPTY_MANIFEST);
 
-function saveManifest(name: string, m: SlotManifest): void {
-    try { localStorage.setItem(SLOT_PREFIX + name, JSON.stringify(m)); } catch { /* noop */ }
-}
+const saveManifest = (name: string, m: SlotManifest): void =>
+    saveJSON(SLOT_PREFIX + name, m);
 
 /**
  * Persist a new manifest and delete the data (state bytes, thumbnail, localStorage
@@ -86,7 +84,7 @@ export function getNextSlotKey(name: string): string {
 }
 
 export function stampSlot(key: string): void {
-    try { localStorage.setItem(STATE_TS_PREFIX + key, new Date().toISOString()); } catch { /* noop */ }
+    saveString(STATE_TS_PREFIX + key, new Date().toISOString());
 }
 
 function openDB(): Promise<IDBDatabase | null> {
@@ -181,26 +179,18 @@ export const DEFAULT_COVER_ASPECT = 4 / 3;
 
 export function stampCoverAspect(key: string, aspect: number): void {
     if (!(aspect > 0)) return;
-    try { localStorage.setItem(STATE_COVER_ASPECT_PREFIX + key, String(aspect)); } catch { /* noop */ }
+    saveString(STATE_COVER_ASPECT_PREFIX + key, String(aspect));
 }
 
 function getCoverAspect(key: string): number | null {
-    try {
-        const raw = localStorage.getItem(STATE_COVER_ASPECT_PREFIX + key);
-        if (!raw) return null;
-        const n = parseFloat(raw);
-        return n > 0 ? n : null;
-    } catch { return null; }
-}
-
-function clearCoverAspect(key: string): void {
-    try { localStorage.removeItem(STATE_COVER_ASPECT_PREFIX + key); } catch { /* noop */ }
+    const n = parseFloat(loadString(STATE_COVER_ASPECT_PREFIX + key) ?? '');
+    return n > 0 ? n : null;
 }
 
 /** Drop the per-slot localStorage metadata (timestamp + cover aspect) for one state key. */
 function clearSlotMeta(key: string): void {
-    try { localStorage.removeItem(STATE_TS_PREFIX + key); } catch { /* noop */ }
-    clearCoverAspect(key);
+    removeKey(STATE_TS_PREFIX + key);
+    removeKey(STATE_COVER_ASPECT_PREFIX + key);
 }
 
 function dispatchThumbnail(detail: SaveStateThumbnailDetail): void {
@@ -311,12 +301,10 @@ export async function persistStateThumbnailNow(
 }
 
 function getTimestamp(key: string): Date | null {
-    try {
-        const raw = localStorage.getItem(STATE_TS_PREFIX + key);
-        if (!raw) return null;
-        const d = new Date(raw);
-        return isNaN(d.getTime()) ? null : d;
-    } catch { return null; }
+    const raw = loadString(STATE_TS_PREFIX + key);
+    if (!raw) return null;
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
 }
 
 function hashBytes(bytes: Uint8Array): string {
@@ -333,7 +321,7 @@ function isDuplicate(incoming: Uint8Array, existing: SaveState[]): boolean {
 
 export async function deleteAllStates(gameName: string): Promise<void> {
     await commitManifest(gameName, EMPTY_MANIFEST);
-    try { localStorage.removeItem(SLOT_PREFIX + gameName); } catch { /* noop */ }
+    removeKey(SLOT_PREFIX + gameName);
 }
 
 function rowFromStore(key: string, store: Map<string, unknown>): SaveState | null {
@@ -409,9 +397,7 @@ export async function importState(gameName: string, file: File): Promise<void> {
         ...m,
         slots: m.slots.includes(key) ? m.slots : [...m.slots, key].slice(-MAX_SLOTS),
     });
-    try {
-        localStorage.setItem(STATE_TS_PREFIX + key, new Date(file.lastModified || Date.now()).toISOString());
-    } catch { /* noop */ }
+    saveString(STATE_TS_PREFIX + key, new Date(file.lastModified || Date.now()).toISOString());
     if (thumbnail) {
         const aspect = await measureDataUrlAspect(thumbnail);
         await putStateThumbnail(key, thumbnail, aspect ?? DEFAULT_COVER_ASPECT);
