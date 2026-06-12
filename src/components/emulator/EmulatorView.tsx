@@ -235,19 +235,22 @@ export const EmulatorView = memo(({
                     style={{ backgroundColor: '#000000' }}
                 >
                     {loadingCoverArt && (
-                        <div
-                            className="relative rounded-xl overflow-hidden shadow-2xl"
-                            style={{ width: 'min(280px, 40vw)', aspectRatio: '0.8' }}
-                        >
-                            <Image
-                                src={loadingCoverArt}
-                                alt=""
-                                fill
-                                sizes="280px"
-                                draggable={false}
-                                style={{ objectFit: 'contain', userSelect: 'none' }}
-                            />
-                        </div>
+                        <Image
+                            src={loadingCoverArt}
+                            alt=""
+                            width={0}
+                            height={0}
+                            sizes="280px"
+                            draggable={false}
+                            className="rounded-xl shadow-2xl"
+                            style={{
+                                width: 'auto',
+                                height: 'auto',
+                                maxWidth: 'min(280px, 40vw)',
+                                maxHeight: 'min(50vh, 350px)',
+                                userSelect: 'none',
+                            }}
+                        />
                     )}
                     <div
                         className="px-5 py-3 rounded-xl text-sm border-[0.125rem] text-center max-w-[80vw]"
