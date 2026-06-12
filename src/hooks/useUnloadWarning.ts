@@ -13,9 +13,9 @@ export function useUnloadWarning(active: boolean, shouldWarn?: () => boolean): v
         if (!active) return;
         const onBeforeUnload = (e: BeforeUnloadEvent) => {
             if (shouldWarn && !shouldWarn()) return;
+            // Calling preventDefault() triggers the prompt in all current
+            // browsers; the legacy event.returnValue is deprecated.
             e.preventDefault();
-            // Chrome requires returnValue to be set for the prompt to appear.
-            e.returnValue = '';
         };
         window.addEventListener('beforeunload', onBeforeUnload);
         return () => window.removeEventListener('beforeunload', onBeforeUnload);
