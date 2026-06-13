@@ -135,7 +135,6 @@ export default function Home() {
                     onDone={h.handlePickerDone}
                     pendingBatchCore={app.pendingBatchCore}
                     onSelectSystem={h.handleSelectSystem}
-                    onRename={h.handleRename}
                 />
             )}
 

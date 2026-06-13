@@ -105,7 +105,7 @@ export function bootPlan(names: string[]): BootPlan {
 
 // Extras that ride along in rom-site zips (readmes, art, checksums) and can be
 // dropped. A zip-internal .m3u is dropped too — the runtime generates its own.
-const IGNORABLE_EXTS = new Set([
+export const IGNORABLE_EXTS = new Set([
     'txt', 'nfo', 'diz', 'md', 'htm', 'html', 'url',
     'jpg', 'jpeg', 'png', 'gif', 'bmp', 'pdf', 'sfv', 'md5', 'sha1', 'm3u',
 ]);

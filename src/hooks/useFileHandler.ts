@@ -2,9 +2,10 @@ import { useState, useCallback, useRef } from 'react';
 import { Game, PendingFile } from '@/types';
 import { saveGameFile, getGameFile } from '@/lib/rom-storage';
 import { getSystemNameByCore } from '@/lib/constants';
-import { calculateAutoCoverArt } from '@/lib/files';
+import { calculateAutoCoverArt, prewarmDat } from '@/lib/files';
 import { detectDiscSet, listZippedDiscs, zippedDiscSources, type DiscSet, type DiscSource } from '@/lib/discs';
-import { gameFileNames, stripExt } from '@/lib/utils';
+import { detectPendingCore } from '@/lib/detect';
+import { gameFileNames, pendingFileNames, stripExt } from '@/lib/utils';
 import { useUnloadWarning } from '@/hooks/useUnloadWarning';
 
 const PROGRESS_THROTTLE_MS = 100;
@@ -139,7 +140,7 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
             [...games, ...Object.values(uploads)].flatMap(gameFileNames),
         );
 
-        const finish = <T extends { name: string }>(
+        const finish = async <T extends { name: string }>(
             incoming: T[], zipSet: DiscSet<T> | null, toPending: (group: T[]) => PendingFile,
         ) => {
             const fresh = incoming.filter(f => !existing.has(f.name));
@@ -155,10 +156,21 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
             const pending: PendingFile[] = discSet
                 ? [toPending(discSet.files)]
                 : fresh.map(f => toPending([f]));
-            const primaryName = (discSet?.files ?? fresh)[0].name;
 
-            setPendingFiles(pending);
-            setPendingGame(pending.length === 1
+            // Auto-detect a system per game from its file extension (and, for a
+            // lone zip, its contents). Anything that resolves unambiguously is
+            // added straight away; the rest fall through to the picker.
+            const cores = await Promise.all(pending.map(detectPendingCore));
+            const manual: PendingFile[] = [];
+            cores.forEach((core, i) => {
+                if (core) { prewarmDat(core); processGameFile(pending[i], core); }
+                else manual.push(pending[i]);
+            });
+            if (!manual.length) return;
+
+            const primaryName = pendingFileNames(manual[0])[0];
+            setPendingFiles(manual);
+            setPendingGame(manual.length === 1
                 ? {
                     id: Date.now(),
                     title: discSet?.title || stripExt(primaryName),
@@ -182,12 +194,12 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
             const zipSet = await listZippedDiscs(files[0]);
             if (zipSet) {
                 const zip = files[0];
-                finish(zipSet.files, zipSet, discs => ({ zip, discs }));
+                await finish(zipSet.files, zipSet, discs => ({ zip, discs }));
                 return;
             }
         }
-        finish(files, null, group => ({ files: group }));
-    }, [games, uploads, showDuplicateError, setPendingFiles, setPendingGame, setPendingBatchCore, openSystemPicker]);
+        await finish(files, null, group => ({ files: group }));
+    }, [games, uploads, showDuplicateError, setPendingFiles, setPendingGame, setPendingBatchCore, openSystemPicker, processGameFile]);
 
     return { uploads, processGameFile, handleIncomingFiles };
 }

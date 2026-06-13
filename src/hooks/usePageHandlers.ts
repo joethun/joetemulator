@@ -100,11 +100,6 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
         }
     };
 
-    const handleRename = (title: string) => {
-        if (app.editingGame) app.setEditingGame({ ...app.editingGame, title });
-        else if (app.pendingGame) app.setPendingGame({ ...app.pendingGame, title });
-    };
-
     const handlePickerDone = async () => {
         if (app.editingGame) {
             const edited = app.editingGame;
@@ -169,7 +164,6 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
         handleCoverFailed,
         handleEditGame,
         handleSelectSystem,
-        handleRename,
         handlePickerDone,
         handleUploadCover,
     };
