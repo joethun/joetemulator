@@ -126,7 +126,6 @@ export default function Home() {
                     isClosing={app.systemPickerClosing}
                     colors={settings.currentColors}
                     gradient={settings.gradientStyle}
-                    editingGame={app.editingGame}
                     pendingGame={app.pendingGame}
                     pendingFiles={app.pendingFiles}
                     searchQuery={app.systemSearchQuery}

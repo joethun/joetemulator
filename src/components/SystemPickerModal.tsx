@@ -2,7 +2,7 @@
 
 import { memo, useMemo } from 'react';
 import { SYSTEM_PICKER } from '@/lib/constants';
-import { pendingFileNames } from '@/lib/utils';
+import { pendingFileNames, stripExt } from '@/lib/utils';
 import { SearchBar } from '@/components/SearchBar';
 import { Modal, ModalHeader, ModalFooter, ModalButton } from '@/components/Modal';
 import { OptionButton, SectionHeader, OPTION_GRID_CLASS } from '@/components/emulator/shared';
@@ -12,7 +12,6 @@ interface SystemPickerProps {
     isClosing: boolean;
     colors: ThemeColors;
     gradient: GradientStyle;
-    editingGame: Game | null;
     pendingGame: Partial<Game> | null;
     pendingFiles: PendingFile[];
     searchQuery: string;
@@ -24,21 +23,17 @@ interface SystemPickerProps {
 }
 
 export const SystemPickerModal = memo(function SystemPickerModal({
-    isClosing, colors, gradient, editingGame, pendingGame, pendingFiles,
+    isClosing, colors, gradient, pendingGame, pendingFiles,
     searchQuery, onSearchChange, onClose, onDone, onSelectSystem,
     pendingBatchCore,
 }: SystemPickerProps) {
-    const currentCore = editingGame?.core || (pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core);
+    const currentCore = pendingFiles.length > 1 ? pendingBatchCore : pendingGame?.core;
     const query = searchQuery.toLowerCase();
     const systemSelected = !!currentCore;
-    const discCount = pendingFiles[0] ? pendingFileNames(pendingFiles[0]).length : 1;
-    const headerSubtitle = editingGame
-        ? editingGame.title
-        : pendingFiles.length > 1
-            ? `Choose system for ${pendingFiles.length} files`
-            : discCount > 1
-                ? `Multi-disc game detected (${discCount} files)`
-                : 'Select a system for your game';
+    const firstFileName = pendingFiles[0] ? pendingFileNames(pendingFiles[0])[0] : null;
+    const headerSubtitle = pendingFiles.length > 1
+        ? `Choose system for ${pendingFiles.length} files`
+        : `Select a system for ${pendingGame?.title || stripExt(firstFileName ?? 'your game')}`;
     const headerTitle = pendingFiles.length > 1 ? `Add ${pendingFiles.length} Games` : 'System';
 
     const categories = useMemo(() => {
@@ -82,23 +77,19 @@ export const SystemPickerModal = memo(function SystemPickerModal({
             </div>
 
             <ModalFooter colors={colors} align="end">
-                {!editingGame && (
-                    <ModalButton onClick={onClose} disabled={isClosing} colors={colors}>
-                        Cancel
-                    </ModalButton>
-                )}
-                {(editingGame || pendingFiles.length > 0) && (
-                    <ModalButton
-                        onClick={onDone}
-                        disabled={isClosing || !systemSelected}
-                        colors={colors}
-                        variant="gradient"
-                        gradient={gradient}
-                        className="flex items-center gap-2"
-                    >
-                        Done
-                    </ModalButton>
-                )}
+                <ModalButton onClick={onClose} disabled={isClosing} colors={colors}>
+                    Cancel
+                </ModalButton>
+                <ModalButton
+                    onClick={onDone}
+                    disabled={isClosing || !systemSelected}
+                    colors={colors}
+                    variant="gradient"
+                    gradient={gradient}
+                    className="flex items-center gap-2"
+                >
+                    Done
+                </ModalButton>
             </ModalFooter>
         </Modal>
     );

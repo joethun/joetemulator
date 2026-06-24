@@ -13,18 +13,19 @@ interface SaveStateManagerProps {
     gameName: string;
     onClose: () => void;
     onDuplicateError: (msg: string) => void;
+    onLoadState?: (key: string) => void;
 }
 
 export function SaveStateManager({
     isClosing, colors, gradient, gameTitle, gameName,
-    onClose, onDuplicateError,
+    onClose, onDuplicateError, onLoadState,
 }: SaveStateManagerProps) {
     const importRef = useRef<HTMLInputElement>(null);
 
     return (
         <Modal isClosing={isClosing} colors={colors} onClose={onClose} labelledBy="save-state-title">
             <div className="flex flex-col flex-1 min-h-0">
-                <ModalHeader title="Manage States" subtitle={gameTitle} colors={colors} id="save-state-title" />
+                <ModalHeader title="Manage States" subtitle={`Manage states for ${gameTitle}`} colors={colors} id="save-state-title" />
 
                 <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '2px', margin: '-2px' }}>
                     <SaveStatesPanel
@@ -33,6 +34,7 @@ export function SaveStateManager({
                         gameTitle={gameTitle}
                         onDuplicateError={onDuplicateError}
                         importRef={importRef}
+                        onLoad={onLoadState}
                     />
                 </div>
 

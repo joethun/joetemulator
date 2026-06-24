@@ -21,25 +21,26 @@ interface GameCardProps {
     priority?: boolean;
 }
 
-const CIRCUMFERENCE = 2 * Math.PI * 40; // r=40
-
-const UploadOverlay = memo(({ progress, isComplete, colors }: { progress?: number; isComplete?: boolean; colors: ThemeColors }) => (
-    <div className={`absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm transition-all duration-500 ${isComplete ? 'opacity-0' : 'opacity-100'}`}>
-        <div className="relative w-20 h-20 md:w-24 md:h-24">
-            <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="40" fill="none" stroke={colors.midDark} strokeWidth="10" className="opacity-80" />
-                <circle cx="50" cy="50" r="40" fill="none" stroke={colors.highlight} strokeWidth="10"
-                    strokeDasharray={CIRCUMFERENCE}
-                    strokeDashoffset={CIRCUMFERENCE * (1 - (progress ?? 0) / 100)}
-                    strokeLinecap="round" className="transition-all duration-200" />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-extrabold" style={{ color: colors.softLight }}>{Math.round(progress ?? 0)}%</span>
+const UploadOverlay = memo(({ progress, isComplete, colors }: { progress?: number; isComplete?: boolean; colors: ThemeColors }) => {
+    const pct = Math.round(progress ?? 0);
+    return (
+        <div className={`absolute inset-x-0 bottom-0 z-10 px-3 py-2.5 transition-opacity duration-300 ${isComplete ? 'opacity-0' : 'opacity-100'}`}
+            style={{ backgroundColor: colors.midDark }}>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: colors.highlight }}>
+                    Uploading
+                </span>
+                <span className="text-xs font-extrabold tabular-nums" style={{ color: colors.softLight }}>
+                    {pct}%
+                </span>
+            </div>
+            <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: `${colors.highlight}30` }}>
+                <div className="h-full rounded-full transition-all duration-200"
+                    style={{ width: `${pct}%`, backgroundColor: colors.highlight }} />
             </div>
         </div>
-        <p className="mt-4 text-xs font-bold uppercase tracking-[0.2em] animate-pulse" style={{ color: colors.highlight }}>Uploading</p>
-    </div>
-));
+    );
+});
 UploadOverlay.displayName = 'UploadOverlay';
 
 export const GameCard = memo(({

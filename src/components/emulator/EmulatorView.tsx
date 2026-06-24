@@ -5,9 +5,11 @@ import Image from 'next/image';
 import type { ThemeColors, GradientStyle } from '@/types';
 import type { EmulatorSession } from '@/hooks/useEmulator';
 import { EmulatorMenu } from '@/components/emulator/EmulatorMenu';
-import { EmulatorControlsBar, type EmulatorPanel } from '@/components/emulator/EmulatorControlsBar';
+import { EmulatorControlsBar } from '@/components/emulator/EmulatorControlsBar';
+import { SaveStateManager } from '@/components/SaveStateManager';
 import { useIsTouch } from '@/hooks/useIsTouch';
 import { useUnloadWarning } from '@/hooks/useUnloadWarning';
+import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 
 interface EmulatorViewProps {
     session: EmulatorSession;
@@ -34,8 +36,11 @@ export const EmulatorView = memo(({
     const isVisible = session.phase !== 'idle';
     const isLoading = session.phase === 'loading-core' || session.phase === 'booting';
 
-    const [panel, setPanel] = useState<EmulatorPanel | null>(null);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [saveStatesOpen, setSaveStatesOpen] = useState(false);
+    const saveStates = useDelayedUnmount(saveStatesOpen);
     const [userPaused, setUserPaused] = useState(false);
+    const anyPanelOpen = settingsOpen || saveStatesOpen;
     const [showBar, setShowBar] = useState(false);
     const [pointerLocked, setPointerLocked] = useState(false);
     const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,7 +66,8 @@ export const EmulatorView = memo(({
     // Reset transient UI state when the session leaves the active screen.
     useEffect(() => {
         if (isVisible) return;
-        setPanel(null);
+        setSettingsOpen(false);
+        setSaveStatesOpen(false);
         setUserPaused(false);
         setShowBar(false);
         if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
@@ -84,17 +90,17 @@ export const EmulatorView = memo(({
             setShowBar(false);
             if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
         };
-        // Force-hidden states, regardless of input type. `panel` is deliberately NOT
-        // here: the render gate (visible={showBar && !panel}) already hides the bar
-        // while a panel is open, so clearing showBar would drop the touch tap-toggle
-        // state across a panel round-trip (open Settings → Back would lose the bar).
+        // Force-hidden states, regardless of input type. `anyPanelOpen` is deliberately
+        // NOT here: the render gate (visible={showBar && !anyPanelOpen}) already hides
+        // the bar while a panel is open, so clearing showBar would drop the touch
+        // tap-toggle state across a panel round-trip (open Settings → Back would lose the bar).
         if (!isVisible || pointerLocked || isLoading) { hide(); return; }
         // Touch devices emit no mousemove, so they reveal the bar with an explicit tap
         // (handleCanvasClick); auto-hide is handled by the touch effect below. No
         // panel-driven clearing here, so closing a panel reveals the still-open bar.
         if (isTouch) return;
         // Non-touch: hide under a panel modal; the next mousemove re-reveals it.
-        if (panel) { hide(); return; }
+        if (anyPanelOpen) { hide(); return; }
 
         const onMove = () => {
             if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
@@ -106,17 +112,17 @@ export const EmulatorView = memo(({
             window.removeEventListener('mousemove', onMove);
             if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
         };
-    }, [isVisible, panel, pointerLocked, isLoading, isTouch]);
+    }, [isVisible, anyPanelOpen, pointerLocked, isLoading, isTouch]);
 
     // Touch auto-hide: the tapped-open bar fades out after an idle window (there's no
     // mousemove to drive the desktop timer). Each tap on the bar bumps barActivity,
     // restarting the countdown; a tap on the game (the touch listener below) toggles
     // it off, so tapping outside the bar dismisses it the same way.
     useEffect(() => {
-        if (!isTouch || !isVisible || !showBar || panel) return;
+        if (!isTouch || !isVisible || !showBar || anyPanelOpen) return;
         const t = setTimeout(() => setShowBar(false), TOUCH_BAR_VISIBLE_MS);
         return () => clearTimeout(t);
-    }, [isTouch, isVisible, showBar, panel, barActivity]);
+    }, [isTouch, isVisible, showBar, anyPanelOpen, barActivity]);
 
     // Touch tap → toggle the controls bar. We listen in the CAPTURE phase on the canvas
     // wrapper instead of using the canvas's onClick: the core registers its own canvas
@@ -137,7 +143,7 @@ export const EmulatorView = memo(({
         const onEnd = (e: TouchEvent) => {
             if (!tracking) return;
             tracking = false;
-            if (isLoading || panel) return;
+            if (isLoading || anyPanelOpen) return;
             const t = e.changedTouches[0];
             if (!t) return;
             // Only a quick, near-stationary tap toggles — ignore swipes and long presses.
@@ -151,24 +157,24 @@ export const EmulatorView = memo(({
             el.removeEventListener('touchstart', onStart, true);
             el.removeEventListener('touchend', onEnd, true);
         };
-    }, [isTouch, isVisible, isLoading, panel]);
+    }, [isTouch, isVisible, isLoading, anyPanelOpen]);
 
     // why: session.paused is intentionally excluded from deps — including it would loop the
     // pause/resume cycle when the user manually toggles pause from the in-game bar.
     useEffect(() => {
         if (!isVisible) return;
-        const needsPause = panel !== null || userPaused;
+        const needsPause = settingsOpen || saveStatesOpen || userPaused;
         if (needsPause) {
             if (!session.paused) session.actions.pause();
         } else if (session.phase === 'running') {
             session.actions.resume();
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [panel, userPaused, isVisible, session.phase]);
+    }, [settingsOpen, saveStatesOpen, userPaused, isVisible, session.phase]);
 
     const handleLoadState = (key?: string) => {
         session.actions.loadState(key);
-        setPanel(null);
+        setSaveStatesOpen(false);
     };
 
     const handleExit = async () => {
@@ -189,7 +195,7 @@ export const EmulatorView = memo(({
     // synthetic click (if the browser fires one) can't double-toggle the bar.
     const handleCanvasClick = () => {
         const canvas = session.canvasRef.current;
-        if (!canvas || isLoading || panel || isTouch) return;
+        if (!canvas || isLoading || settingsOpen || isTouch) return;
         if (document.pointerLockElement === canvas) return;
         // why: rejection (browser refusal, sandbox restriction) is non-fatal — keep gameplay going.
         const result = canvas.requestPointerLock();
@@ -283,27 +289,39 @@ export const EmulatorView = memo(({
             )}
 
             <EmulatorControlsBar
-                visible={showBar && !panel}
+                visible={showBar && !anyPanelOpen}
                 colors={colors}
                 paused={userPaused}
                 gameLoaded={session.phase === 'running'}
                 onTogglePause={() => setUserPaused(p => !p)}
                 onSaveState={() => session.actions.saveState('manual')}
                 onLoadState={() => handleLoadState()}
-                onOpenPanel={setPanel}
+                onOpenSettings={() => setSettingsOpen(true)}
+                onOpenSaveStates={() => setSaveStatesOpen(true)}
                 onExit={handleExit}
                 onActivity={() => setBarActivity(n => n + 1)}
             />
 
             <EmulatorMenu
-                section={panel}
-                onClose={() => setPanel(null)}
+                open={settingsOpen}
+                onClose={() => setSettingsOpen(false)}
                 colors={colors}
                 gradient={gradient}
                 session={session}
-                onDuplicateError={onDuplicateError}
-                onLoadState={handleLoadState}
             />
+
+            {saveStates.shouldRender && session.currentGame && (
+                <SaveStateManager
+                    isClosing={saveStates.isClosing}
+                    colors={colors}
+                    gradient={gradient}
+                    gameTitle={session.currentTitle ?? session.currentGame}
+                    gameName={session.currentGame}
+                    onClose={() => setSaveStatesOpen(false)}
+                    onDuplicateError={onDuplicateError}
+                    onLoadState={handleLoadState}
+                />
+            )}
         </div>
     );
 });

@@ -13,8 +13,6 @@ import {
 } from '@/lib/ra/audio';
 import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
 
-export type EmulatorPanel = 'settings' | 'saves';
-
 interface EmulatorControlsBarProps {
     visible: boolean;
     colors: ThemeColors;
@@ -23,14 +21,15 @@ interface EmulatorControlsBarProps {
     onTogglePause: () => void;
     onSaveState: () => void;
     onLoadState: () => void;
-    onOpenPanel: (panel: EmulatorPanel) => void;
+    onOpenSettings: () => void;
+    onOpenSaveStates: () => void;
     onExit: () => void;
     /** Fired on each tap within the bar so the touch auto-hide timer can restart. */
     onActivity?: () => void;
 }
 
 export const EmulatorControlsBar = memo(({
-    visible, colors, paused, gameLoaded, onTogglePause, onSaveState, onLoadState, onOpenPanel, onExit, onActivity,
+    visible, colors, paused, gameLoaded, onTogglePause, onSaveState, onLoadState, onOpenSettings, onOpenSaveStates, onExit, onActivity,
 }: EmulatorControlsBarProps) => {
     const [exiting, setExiting] = useState(false);
     const handleExit = () => {
@@ -63,8 +62,8 @@ export const EmulatorControlsBar = memo(({
                 <Divider colors={colors} />
                 <BarBtn icon={Save}     label="Save State"    onClick={onSaveState} colors={colors} />
                 {gameLoaded && <BarBtn icon={Upload}   label="Load State"    onClick={onLoadState} colors={colors} />}
-                <BarBtn icon={Folder}   label="Manage States" onClick={() => onOpenPanel('saves')}    colors={colors} />
-                <BarBtn icon={Settings} label="Game Settings" onClick={() => onOpenPanel('settings')} colors={colors} />
+                <BarBtn icon={Folder}   label="Manage States" onClick={onOpenSaveStates}    colors={colors} />
+                <BarBtn icon={Settings} label="Game Settings" onClick={onOpenSettings} colors={colors} />
                 <VolumeButton colors={colors} />
                 <FullscreenButton colors={colors} />
                 <Divider colors={colors} />

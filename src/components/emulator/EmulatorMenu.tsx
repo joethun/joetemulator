@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useRef, useState } from 'react';
+import { memo, useState } from 'react';
 import { ChevronRight, Code2, Disc3, GamepadDirectional, Monitor, Settings2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ThemeColors, GradientStyle } from '@/types';
@@ -14,19 +14,15 @@ import { CoreOptionsPanel } from '@/components/emulator/CoreOptionsPanel';
 import { DiscsPanel } from '@/components/emulator/DiscsPanel';
 import { LicensePanel } from '@/components/emulator/LicensePanel';
 import { ShaderPanel } from '@/components/emulator/ShaderPanel';
-import { SaveStatesPanel } from '@/components/emulator/SaveStatesPanel';
-import type { EmulatorPanel } from '@/components/emulator/EmulatorControlsBar';
 
 type SettingsTab = 'discs' | 'controls' | 'options' | 'shader' | 'license';
 
 interface EmulatorMenuProps {
-    section: EmulatorPanel | null;
+    open: boolean;
     onClose: () => void;
     colors: ThemeColors;
     gradient: GradientStyle;
     session: EmulatorSession;
-    onDuplicateError: (msg: string) => void;
-    onLoadState: (key: string) => void;
 }
 
 const TAB_META: Record<SettingsTab, { title: string; subtitle: string; icon: LucideIcon }> = {
@@ -38,66 +34,57 @@ const TAB_META: Record<SettingsTab, { title: string; subtitle: string; icon: Luc
 };
 
 export const EmulatorMenu = memo(function EmulatorMenu({
-    section, onClose, colors, gradient, session, onDuplicateError, onLoadState,
+    open, onClose, colors, gradient, session,
 }: EmulatorMenuProps) {
-    const { shouldRender, isClosing } = useDelayedUnmount(section !== null);
-    const [displaySection, setDisplaySection] = useState<EmulatorPanel | null>(section);
+    const { shouldRender, isClosing } = useDelayedUnmount(open);
     const [tab, setTab] = useState<SettingsTab | null>(null);
-    const [prevSection, setPrevSection] = useState(section);
     const [optionsVersion, setOptionsVersion] = useState(0);
     const [optionsActiveKey, setOptionsActiveKey] = useState<string | null>(null);
-    const saveImportRef = useRef<HTMLInputElement>(null);
-
-    // Adjust derived state when the incoming section changes. displaySection retains
-    // the last non-null value so the panel can animate out; the settings sub-tab resets
-    // whenever the menu is (re-)opened to settings from the bar.
-    if (section !== prevSection) {
-        setPrevSection(section);
-        if (section) setDisplaySection(section);
-        if (section === 'settings') setTab(null);
+    // why: useDelayedUnmount keeps the panel mounted across the close animation, so
+    // local state survives a round-trip — we reset `tab` on every open transition so
+    // the user lands on the hub instead of restoring the last sub-tab they navigated to.
+    const [prevOpen, setPrevOpen] = useState(open);
+    if (open !== prevOpen) {
+        setPrevOpen(open);
+        if (open) setTab(null);
     }
 
-    if (!shouldRender || !displaySection) return null;
+    if (!shouldRender) return null;
 
     const handleBack = () => {
         if (tab === 'options' && optionsActiveKey) { setOptionsActiveKey(null); return; }
-        if (displaySection === 'settings' && tab) { setTab(null); return; }
+        if (tab) { setTab(null); return; }
         onClose();
     };
+
+    // Per-tab reset action for the footer; null when the hub is showing.
+    const resetActions: Partial<Record<SettingsTab, () => void>> = {
+        controls: session.actions.resetBindings,
+        options: () => { session.actions.resetCoreOptions(); setOptionsVersion(v => v + 1); },
+    };
+    const onReset = tab ? resetActions[tab] : undefined;
 
     return (
         <Modal isClosing={isClosing} colors={colors} onClose={onClose} z={60} ariaLabel="Emulator menu">
             <div className="flex flex-col flex-1 min-h-0">
-                {displaySection === 'saves' ? (
-                    <ModalHeader title="Manage States" subtitle={session.currentTitle ?? 'Game'} colors={colors} />
-                ) : !tab ? (
+                {!tab ? (
                     <ModalHeader title="Game Settings" subtitle={session.currentTitle ?? undefined} colors={colors} />
                 ) : (
                     <ModalHeader title={TAB_META[tab].title} subtitle={TAB_META[tab].subtitle} colors={colors} />
                 )}
 
                 <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '2px', margin: '-2px' }}>
-                    {displaySection === 'saves' && session.currentGame && (
-                        <SaveStatesPanel
-                            colors={colors}
-                            gameName={session.currentGame}
-                            gameTitle={session.currentTitle ?? session.currentGame}
-                            onDuplicateError={onDuplicateError}
-                            importRef={saveImportRef}
-                            onLoad={onLoadState}
-                        />
-                    )}
-                    {displaySection === 'settings' && !tab && (
+                    {!tab && (
                         <SettingsHub colors={colors} onPick={setTab} getDiscInfo={session.actions.getDiscInfo} />
                     )}
-                    {displaySection === 'settings' && tab === 'discs' && (
+                    {tab === 'discs' && (
                         <DiscsPanel
                             colors={colors}
                             getDiscInfo={session.actions.getDiscInfo}
                             onSetDisc={session.actions.setDisc}
                         />
                     )}
-                    {displaySection === 'settings' && tab === 'controls' && (
+                    {tab === 'controls' && (
                         <ControlsPanel
                             bindings={session.bindings}
                             onChange={session.actions.setBindings}
@@ -107,7 +94,7 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                             onControllerDeviceChange={session.actions.setControllerDevice}
                         />
                     )}
-                    {displaySection === 'settings' && tab === 'options' && (
+                    {tab === 'options' && (
                         <CoreOptionsPanel
                             key={session.currentLibretroCore ?? 'none'}
                             colors={colors}
@@ -121,14 +108,14 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                             onActiveKeyChange={setOptionsActiveKey}
                         />
                     )}
-                    {displaySection === 'settings' && tab === 'shader' && (
+                    {tab === 'shader' && (
                         <ShaderPanel
                             colors={colors}
                             libretroCore={session.currentLibretroCore}
                             onShaderChange={session.actions.setShader}
                         />
                     )}
-                    {displaySection === 'settings' && tab === 'license' && (
+                    {tab === 'license' && (
                         <LicensePanel
                             colors={colors}
                             libretroCore={session.currentLibretroCore}
@@ -137,19 +124,7 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                 </div>
 
                 <ModalFooter colors={colors}>
-                    {displaySection === 'saves' ? (
-                        <ModalButton onClick={() => saveImportRef.current?.click()} colors={colors}>
-                            Import
-                        </ModalButton>
-                    ) : tab === 'controls' ? (
-                        <ModalButton onClick={session.actions.resetBindings} colors={colors}>
-                            Reset
-                        </ModalButton>
-                    ) : tab === 'options' ? (
-                        <ModalButton onClick={() => { session.actions.resetCoreOptions(); setOptionsVersion(v => v + 1); }} colors={colors}>
-                            Reset
-                        </ModalButton>
-                    ) : <div />}
+                    {onReset && <ModalButton onClick={onReset} colors={colors}>Reset</ModalButton>}
                     <ModalButton onClick={handleBack} colors={colors} variant="gradient" gradient={gradient}>
                         Back
                     </ModalButton>
