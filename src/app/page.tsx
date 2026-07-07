@@ -102,6 +102,7 @@ export default function Home() {
                             onCoverFailed: h.handleCoverFailed,
                             onEdit: h.handleEditGame,
                             onSaveStates: app.openSaveStateManager,
+                            onAddGame: h.handleAddGame,
                         }}
                         settings={settings}
                     />

@@ -6,7 +6,7 @@ import { GameCard } from '@/components/GameCard';
 import { ThemeGrid } from '@/components/ThemeGrid';
 import { SettingsView } from '@/components/SettingsView';
 import { SectionHeader } from '@/components/emulator/shared';
-import { Gamepad2 } from 'lucide-react';
+import { Gamepad2, Plus } from 'lucide-react';
 import type { AppSettings } from '@/hooks/useAppSettings';
 
 const GRID_CLASS = "grid gap-4 md:gap-6 w-full grid-cols-[repeat(auto-fill,minmax(min(150px,100%),1fr))] md:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]";
@@ -19,6 +19,7 @@ interface GameCardHandlers {
     onCoverFailed: (id: number) => void;
     onEdit: (game: Game) => void;
     onSaveStates: (title: string, name: string) => void;
+    onAddGame: () => void;
 }
 
 interface MainContentProps {
@@ -37,7 +38,7 @@ export const MainContent = memo(function MainContent({
     activeView, games, uploads, count, groupedGames,
     gameSearchQuery, libraryAnimationKey, handlers, settings,
 }: MainContentProps) {
-    const { currentColors: colors } = settings;
+    const { currentColors: colors, gradientStyle: gradient } = settings;
 
     if (activeView === 'themes')
         return <ThemeGrid selectedTheme={settings.selectedTheme} onSelectTheme={settings.setSelectedTheme} />;
@@ -52,7 +53,16 @@ export const MainContent = memo(function MainContent({
                     <Gamepad2 className="w-10 h-10" />
                 </div>
                 <h3 className="text-xl font-bold mb-2" style={{ color: colors.softLight }}>No games found</h3>
-                <p className="mb-8 opacity-70" style={{ color: colors.highlight }}>Use the + sidebar button or drag and drop your game files.</p>
+                <p className="mb-8 opacity-70" style={{ color: colors.highlight }}>Drag and drop your game files or click below.</p>
+                <button
+                    onClick={handlers.onAddGame}
+                    aria-label="Add game"
+                    className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 cursor-pointer inline-flex items-center gap-2"
+                    style={{ ...gradient, color: colors.darkBg }}
+                >
+                    <Plus className="w-6 h-6" />
+                    <span>Add Game</span>
+                </button>
             </div>
         );
 

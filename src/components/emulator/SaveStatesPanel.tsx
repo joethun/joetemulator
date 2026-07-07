@@ -149,7 +149,7 @@ function EmptyState({ colors }: { colors: ThemeColors }) {
                 No save states found
             </h3>
             <p className="opacity-70" style={{ color: colors.highlight }}>
-                Create a state using the hotkey or button. You can also import one.
+                Create a state with the hotkey or button, or import one.
             </p>
         </div>
     );
