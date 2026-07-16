@@ -3,6 +3,7 @@ import { ensureAudioPatch } from '@/lib/ra/audio';
 import { resolveLibretroCore } from '@/lib/ra/cores';
 import {
     parseCoreOptions, loadStoredCoreOptions, saveStoredCoreOption, clearStoredCoreOptions,
+    getForcedCoreOptions,
     type CoreOption,
 } from '@/lib/ra/core-options';
 import {
@@ -133,6 +134,13 @@ export class Runtime {
         canvas.focus();
         this.input.attach();
 
+        // Apply per-core forced defaults (e.g. ppsspp_force_lag_sync=enabled)
+        // before user overrides, so a user who hasn't picked a value yet still
+        // gets the recommended default. Saved user choices still win.
+        for (const [key, value] of Object.entries(getForcedCoreOptions(libretroName))) {
+            gc.setVariable(key, value);
+        }
+
         // Replay any persisted core option overrides now that the core is live.
         for (const [key, value] of Object.entries(loadStoredCoreOptions(libretroName))) {
             gc.setVariable(key, value);
@@ -180,10 +188,16 @@ export class Runtime {
     getCoreOptions(): CoreOption[] {
         if (!this.gc || !this.resolved) return [];
         const stored = loadStoredCoreOptions(this.resolved.libretroName);
+        const forced = getForcedCoreOptions(this.resolved.libretroName);
         // Surface the user's saved value (set live via setVariable, but the core
         // still reports its own internal current value in get_core_options).
+        // When the user hasn't picked anything, fall back to any forced default.
         return this.parsedCoreOptions()
-            .map(opt => stored[opt.key] ? { ...opt, current: stored[opt.key] } : opt);
+            .map(opt => {
+                if (stored[opt.key]) return { ...opt, current: stored[opt.key] };
+                if (forced[opt.key]) return { ...opt, current: forced[opt.key] };
+                return opt;
+            });
     }
 
     setShader(name: string): void {

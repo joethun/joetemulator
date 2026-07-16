@@ -69,3 +69,17 @@ export const saveStoredCoreOption = (libretroName: string, key: string, value: s
     setStringRecordEntry(storageKey(libretroName), key, value);
 
 export const clearStoredCoreOptions = (libretroName: string): void => removeKey(storageKey(libretroName));
+
+/**
+ * Options forced on at boot for specific cores, applied before any user-saved
+ * overrides. Users can still toggle these off in the Core Options panel; their
+ * choice is then persisted and wins on subsequent boots.
+ */
+const CORE_FORCED_DEFAULTS: Record<string, Record<string, string>> = {
+    ppsspp: {
+        ppsspp_force_lag_sync: 'enabled',
+    },
+};
+
+export const getForcedCoreOptions = (libretroName: string): Record<string, string> =>
+    CORE_FORCED_DEFAULTS[libretroName] ?? {};
