@@ -76,7 +76,7 @@ export const SystemPickerModal = memo(function SystemPickerModal({
                 )}
             </div>
 
-            <ModalFooter colors={colors} align="end">
+            <ModalFooter colors={colors}>
                 <ModalButton onClick={onClose} disabled={isClosing} colors={colors}>
                     Cancel
                 </ModalButton>

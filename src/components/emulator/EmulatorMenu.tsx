@@ -124,9 +124,11 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                 </div>
 
                 <ModalFooter colors={colors}>
-                    {onReset && <ModalButton onClick={onReset} colors={colors}>Reset</ModalButton>}
+                    <div>
+                        {onReset && <ModalButton onClick={onReset} colors={colors}>Reset</ModalButton>}
+                    </div>
                     <ModalButton onClick={handleBack} colors={colors} variant="gradient" gradient={gradient}>
-                        Back
+                        {tab ? 'Back' : 'Done'}
                     </ModalButton>
                 </ModalFooter>
             </div>
