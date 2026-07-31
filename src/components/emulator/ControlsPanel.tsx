@@ -304,10 +304,12 @@ export const ControlsPanel = memo(({
         });
     };
 
+    // Store the cleared state as '' rather than deleting the key: loadStoredBindings
+    // falls back to the default for a missing key, so a deleted hotkey would come
+    // back as F1/F2 on the next reload. No KeyboardEvent.code equals '', so an empty
+    // string reads as unbound everywhere.
     const handleClearHotkey = (key: HotkeyKey) => {
-        const next = { ...bindings };
-        delete next[key];
-        onChange(next);
+        onChange({ ...bindings, [key]: '' });
     };
 
     const handleClearHotkeyGamepad = (key: HotkeyGamepadKey) => {

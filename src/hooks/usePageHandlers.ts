@@ -100,6 +100,37 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
         }
     };
 
+    /**
+     * Re-derive the auto cover after a game's system changed — the DAT lookup is
+     * per-system, so the old match is no longer valid. A cover the user uploaded
+     * themselves is kept; only `autoCoverArt` is refreshed behind it.
+     */
+    const refreshCoverForNewCore = async (game: Game) => {
+        if (!game.core) return;
+        const userHasCustomCover = !!game.coverArt && game.coverArt !== game.autoCoverArt;
+        if (!userHasCustomCover) {
+            lib.updateGame(game.id, { coverArt: undefined, autoCoverArt: undefined, coverArtFit: undefined, coverLoading: true });
+        }
+
+        const opfs = await getGameFile(game.id).catch(() => null);
+        const cover = opfs
+            ? await calculateAutoCoverArt(game.fileName ? new File([opfs], game.fileName) : opfs, game.core, opfs).catch(() => null)
+            : null;
+
+        if (userHasCustomCover) {
+            if (opfs) lib.updateGame(game.id, { autoCoverArt: cover ?? undefined });
+        } else if (cover) {
+            lib.updateGame(game.id, {
+                coverArt: cover,
+                autoCoverArt: cover,
+                coverArtFit: game.coverArtFit || 'cover',
+                coverLoading: false,
+            });
+        } else {
+            lib.updateGame(game.id, { coverLoading: false });
+        }
+    };
+
     const handlePickerDone = async () => {
         if (app.editingGame) {
             const edited = app.editingGame;
@@ -107,30 +138,7 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
             const coreChanged = !!edited.core && original?.core !== edited.core;
             lib.updateGame(edited.id, edited);
             app.closeSystemPicker();
-
-            if (coreChanged && edited.core) {
-                const current = { ...original, ...edited };
-                const userHasCustomCover = !!current.coverArt && current.coverArt !== current.autoCoverArt;
-                if (!userHasCustomCover) {
-                    lib.updateGame(edited.id, { coverArt: undefined, autoCoverArt: undefined, coverArtFit: undefined, coverLoading: true });
-                }
-                const opfs = await getGameFile(edited.id).catch(() => null);
-                const cover = opfs
-                    ? await calculateAutoCoverArt(edited.fileName ? new File([opfs], edited.fileName) : opfs, edited.core, opfs).catch(() => null)
-                    : null;
-                if (userHasCustomCover) {
-                    if (opfs) lib.updateGame(edited.id, { autoCoverArt: cover ?? undefined });
-                } else if (cover) {
-                    lib.updateGame(edited.id, {
-                        coverArt: cover,
-                        autoCoverArt: cover,
-                        coverArtFit: current.coverArtFit || 'cover',
-                        coverLoading: false,
-                    });
-                } else {
-                    lib.updateGame(edited.id, { coverLoading: false });
-                }
-            }
+            if (coreChanged) await refreshCoverForNewCore({ ...original, ...edited });
             return;
         }
         const core = app.pendingFiles.length > 1 ? app.pendingBatchCore : app.pendingGame?.core;

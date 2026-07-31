@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { ViewType, Game, PendingFile } from '@/types';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
+import { useTimer } from '@/hooks/useTimer';
 
 const DUPLICATE_VISIBLE_MS = 2500;
 const DUPLICATE_FADE_MS = 500;
@@ -26,17 +27,12 @@ export function useApp() {
     const [saveStateOpen, setSaveStateOpen] = useState(false);
     const saveState = useDelayedUnmount(saveStateOpen);
 
-    const dupHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const dupClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const pickerResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const saveStateResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    useEffect(() => () => {
-        if (dupHideRef.current) clearTimeout(dupHideRef.current);
-        if (dupClearRef.current) clearTimeout(dupClearRef.current);
-        if (pickerResetRef.current) clearTimeout(pickerResetRef.current);
-        if (saveStateResetRef.current) clearTimeout(saveStateResetRef.current);
-    }, []);
+    const dupHide = useTimer();
+    const dupClear = useTimer();
+    // Modal contents are reset only after the exit animation, so the closing
+    // panel doesn't visibly empty out; re-opening cancels the pending reset.
+    const pickerReset = useTimer();
+    const saveStateReset = useTimer();
 
     const setActiveView = (view: ViewType) => {
         setActiveViewRaw(prev => {
@@ -48,24 +44,22 @@ export function useApp() {
     };
 
     const showDuplicateError = (msg: string) => {
-        if (dupHideRef.current) clearTimeout(dupHideRef.current);
-        if (dupClearRef.current) clearTimeout(dupClearRef.current);
+        dupClear.clear();
         setDuplicateMessage(msg);
         setShowDuplicateMessage(true);
-        dupHideRef.current = setTimeout(() => {
+        dupHide.set(() => {
             setShowDuplicateMessage(false);
-            dupClearRef.current = setTimeout(() => setDuplicateMessage(null), DUPLICATE_FADE_MS);
+            dupClear.set(() => setDuplicateMessage(null), DUPLICATE_FADE_MS);
         }, DUPLICATE_VISIBLE_MS);
     };
 
     const openSystemPicker = () => {
-        if (pickerResetRef.current) { clearTimeout(pickerResetRef.current); pickerResetRef.current = null; }
+        pickerReset.clear();
         setPickerOpen(true);
     };
     const closeSystemPicker = () => {
         setPickerOpen(false);
-        if (pickerResetRef.current) clearTimeout(pickerResetRef.current);
-        pickerResetRef.current = setTimeout(() => {
+        pickerReset.set(() => {
             setPendingFiles([]);
             setPendingGame(null);
             setEditingGame(null);
@@ -75,15 +69,14 @@ export function useApp() {
     };
 
     const openSaveStateManager = (title: string, name: string) => {
-        if (saveStateResetRef.current) { clearTimeout(saveStateResetRef.current); saveStateResetRef.current = null; }
+        saveStateReset.clear();
         setSaveStateGame({ title, name });
         setSaveStateOpen(true);
     };
 
     const closeSaveStateManager = () => {
         setSaveStateOpen(false);
-        if (saveStateResetRef.current) clearTimeout(saveStateResetRef.current);
-        saveStateResetRef.current = setTimeout(() => setSaveStateGame(null), MODAL_EXIT_MS);
+        saveStateReset.set(() => setSaveStateGame(null), MODAL_EXIT_MS);
     };
 
     return {

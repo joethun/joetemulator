@@ -1,3 +1,5 @@
+import type { ZipDirEntry } from '@/lib/zip';
+
 export interface Game {
   id: number;
   title: string;
@@ -13,8 +15,6 @@ export interface Game {
   isComplete?: boolean;
   coverLoading?: boolean;
 }
-
-import type { ZipDirEntry } from '@/lib/zip';
 
 /** A disc entry inside a zip, recorded before extraction: the zip directory
  *  record plus the flattened file name it will be stored under. */

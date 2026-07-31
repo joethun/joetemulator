@@ -5,10 +5,27 @@ import { buildZip, openZipEntry, readZipDirectory } from '@/lib/zip';
 
 const STATE_TS_PREFIX = 'ejs_state_ts_';
 const STATE_COVER_ASPECT_PREFIX = 'ejs_state_cover_aspect_';
+const STATE_HASH_PREFIX = 'ejs_state_hash_';
 const SLOT_PREFIX = 'ejs_slots_';
 const THUMB_SUFFIX = ':thumb';
 
 export const SAVE_STATE_THUMBNAIL_EVENT = 'savestate_thumbnail';
+export const EMULATOR_NOTIFICATION_EVENT = 'emulator_notification';
+
+/** A save/load that happened, for the transient on-screen icon. `source`
+ *  distinguishes user-triggered actions from the autosave/autoload timers, which
+ *  the user can silence independently in settings. */
+export interface EmulatorNotificationDetail {
+    type: 'save' | 'load';
+    source: 'manual' | 'auto';
+}
+
+export function notifyEmulator(detail: EmulatorNotificationDetail): void {
+    window.dispatchEvent(new CustomEvent(EMULATOR_NOTIFICATION_EVENT, { detail }));
+}
+
+export const parseEmulatorNotificationEvent = (e: Event): EmulatorNotificationDetail | null =>
+    (e as CustomEvent<EmulatorNotificationDetail>).detail ?? null;
 
 interface SaveStateThumbnailDetail {
     gameName: string;
@@ -167,7 +184,12 @@ export const getStateBytes = (key: string): Promise<Uint8Array | null> =>
     }, null);
 
 export const putStateBytes = (key: string, bytes: Uint8Array): Promise<void> =>
-    withDB(async db => { await idbPut(db, key, bytes); }, undefined);
+    withDB(async db => {
+        // Fingerprint only a state that actually landed: a hash left behind by a
+        // failed write would make the next identical autosave look like a
+        // duplicate and get silently skipped.
+        if (await idbPut(db, key, bytes) !== undefined) stampHash(key, bytes);
+    }, undefined);
 
 const putStateThumbnail = (key: string, dataUrl: string, aspect: number): Promise<void> => {
     stampCoverAspect(key, aspect);
@@ -187,10 +209,11 @@ function getCoverAspect(key: string): number | null {
     return n > 0 ? n : null;
 }
 
-/** Drop the per-slot localStorage metadata (timestamp + cover aspect) for one state key. */
+/** Drop the per-slot localStorage metadata (timestamp, cover aspect, content hash). */
 function clearSlotMeta(key: string): void {
     removeKey(STATE_TS_PREFIX + key);
     removeKey(STATE_COVER_ASPECT_PREFIX + key);
+    removeKey(STATE_HASH_PREFIX + key);
 }
 
 function dispatchThumbnail(detail: SaveStateThumbnailDetail): void {
@@ -307,6 +330,7 @@ function getTimestamp(key: string): Date | null {
     return isNaN(d.getTime()) ? null : d;
 }
 
+/** Cheap content fingerprint: length plus 64 evenly-spaced samples. */
 function hashBytes(bytes: Uint8Array): string {
     const step = Math.max(1, Math.floor(bytes.length / 64));
     let h = bytes.length;
@@ -314,10 +338,38 @@ function hashBytes(bytes: Uint8Array): string {
     return `${bytes.length}:${h}`;
 }
 
-function isDuplicate(incoming: Uint8Array, existing: SaveState[]): boolean {
-    const hash = hashBytes(incoming);
-    return existing.some(s => { const b = toBytes(s.rawData); return b ? hashBytes(b) === hash : false; });
+const stampHash = (key: string, bytes: Uint8Array): void =>
+    saveString(STATE_HASH_PREFIX + key, hashBytes(bytes));
+
+/**
+ * Fingerprints of every stored slot. Hashes are recorded in localStorage when a
+ * state is written, so the common case touches no IndexedDB at all — important
+ * because the autosave timer calls this on every tick and states run to tens of
+ * megabytes. Slots written before hashes were persisted are read once here and
+ * backfilled.
+ */
+async function slotHashes(gameName: string): Promise<Set<string>> {
+    const hashes = new Set<string>();
+    const missing: string[] = [];
+    for (const key of getSlotKeys(gameName)) {
+        const stored = loadString(STATE_HASH_PREFIX + key);
+        if (stored) hashes.add(stored);
+        else missing.push(key);
+    }
+    if (!missing.length) return hashes;
+
+    const store = await withDB(db => idbGetMany(db, missing), new Map<string, unknown>());
+    for (const key of missing) {
+        const bytes = toBytes(store.get(key));
+        if (!bytes) continue;
+        stampHash(key, bytes);
+        hashes.add(hashBytes(bytes));
+    }
+    return hashes;
 }
+
+export const isStateDuplicate = async (gameName: string, incoming: Uint8Array): Promise<boolean> =>
+    (await slotHashes(gameName)).has(hashBytes(incoming));
 
 export async function deleteAllStates(gameName: string): Promise<void> {
     await commitManifest(gameName, EMPTY_MANIFEST);
@@ -337,23 +389,17 @@ function rowFromStore(key: string, store: Map<string, unknown>): SaveState | nul
     };
 }
 
-const fetchStateRows = (gameName: string, withThumbnails: boolean): Promise<SaveState[]> => {
+export const fetchStates = (gameName: string): Promise<SaveState[]> => {
     const keys = getSlotKeys(gameName);
     if (!keys.length) return Promise.resolve([]);
-    const idbKeys = withThumbnails
-        ? keys.flatMap(key => [key, key + THUMB_SUFFIX])
-        : keys;
     return withDB(async db => {
-        const store = await idbGetMany(db, idbKeys);
+        const store = await idbGetMany(db, keys.flatMap(key => [key, key + THUMB_SUFFIX]));
         return keys
             .map(key => rowFromStore(key, store))
             .filter((r): r is SaveState => r !== null)
             .reverse();
     }, []);
 };
-
-export const fetchStates = (gameName: string): Promise<SaveState[]> =>
-    fetchStateRows(gameName, true);
 
 export async function removeState(key: string, gameName: string): Promise<void> {
     const m = getManifest(gameName);
@@ -385,12 +431,12 @@ async function unpackImportFile(file: File): Promise<{ state: Uint8Array; thumbn
 
 export async function importState(gameName: string, file: File): Promise<void> {
     const { state: incoming, thumbnail } = await unpackImportFile(file);
-    const existing = await fetchStateRows(gameName, false);
-    if (isDuplicate(incoming, existing)) throw new Error('duplicate');
+    if (await isStateDuplicate(gameName, incoming)) throw new Error('duplicate');
 
     const key = `${gameName}.state_imported_${Date.now()}`;
-    const ok = await withDB(async db => { await idbPut(db, key, incoming); return true; }, false);
+    const ok = await withDB(async db => await idbPut(db, key, incoming) !== undefined, false);
     if (!ok) throw new Error('IndexedDB unavailable');
+    stampHash(key, incoming);
 
     const m = getManifest(gameName);
     await commitManifest(gameName, {
@@ -415,10 +461,6 @@ function measureDataUrlAspect(dataUrl: string): Promise<number | null> {
         img.onerror = () => resolve(null);
         img.src = dataUrl;
     });
-}
-
-export async function isStateDuplicate(gameName: string, incoming: Uint8Array): Promise<boolean> {
-    return isDuplicate(incoming, await fetchStateRows(gameName, false));
 }
 
 function triggerDownload(blob: Blob, filename: string): void {

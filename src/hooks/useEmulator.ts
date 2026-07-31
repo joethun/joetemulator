@@ -6,6 +6,7 @@ import type { EmulatorPhase } from '@/lib/ra/types';
 import {
     isStateDuplicate, getNextSlotKey, getSlotKeys, stampSlot,
     getStateBytes, putStateBytes, scheduleStateThumbnail, persistStateThumbnailNow, snapshotCover,
+    notifyEmulator,
 } from '@/lib/savestates';
 import {
     loadStoredBindings, saveStoredBindings, resetStoredBindings,
@@ -23,10 +24,6 @@ const DEFAULT_AUTOSAVE_MS = 60_000;
 const EMPTY_CONTROLLER_PORTS: ControllerPort[] = [];
 const EMPTY_CORE_OPTIONS: CoreOption[] = [];
 const EMPTY_DISC_INFO: DiscInfo = { count: 0, current: 0 };
-
-const notify = (type: 'save' | 'load', source: 'manual' | 'auto'): void => {
-    window.dispatchEvent(new CustomEvent('emulator_notification', { detail: { type, source } }));
-};
 
 interface UseEmulatorOpts {
     autoSave?: boolean;
@@ -155,7 +152,7 @@ export function useEmulator(): EmulatorSession {
             const slotKey = getNextSlotKey(game);
             stampSlot(slotKey);
             await putStateBytes(slotKey, bytes);
-            if (source !== 'exit') notify('save', source);
+            if (source !== 'exit') notifyEmulator({ type: 'save', source });
             if (snapshot) {
                 // Exit-saves await the thumbnail inline — the caller is about
                 // to reload the page, so the deferred RAF/idle encode would
@@ -178,7 +175,7 @@ export function useEmulator(): EmulatorSession {
             const data = await getStateBytes(key);
             if (!data) return;
             await rt.controller.loadState(data);
-            notify('load', source);
+            notifyEmulator({ type: 'load', source });
         } catch (e) {
             console.error('load state failed:', e);
         }

@@ -1,9 +1,14 @@
 'use client';
 
-import { memo, useState, useRef, useEffect } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Save, Upload } from 'lucide-react';
 import { ThemeColors } from '@/types';
+import {
+    EMULATOR_NOTIFICATION_EVENT, parseEmulatorNotificationEvent,
+    type EmulatorNotificationDetail,
+} from '@/lib/savestates';
+import { useTimer } from '@/hooks/useTimer';
 
 interface EmulatorNotificationProps {
     colors: Pick<ThemeColors, 'highlight' | 'midDark'>;
@@ -11,21 +16,22 @@ interface EmulatorNotificationProps {
     autoLoadIcon: boolean;
 }
 
-type NotificationType = 'save' | 'load';
-
 const VISIBLE_MS = 1500;
 const FADE_MS = 300;
 
 export const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }: EmulatorNotificationProps) => {
-    const [notif, setNotif] = useState<{ type: NotificationType; visible: boolean } | null>(null);
-    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [notif, setNotif] = useState<{ type: EmulatorNotificationDetail['type']; visible: boolean } | null>(null);
+    const hideTimer = useTimer();
+    const unmountTimer = useTimer();
 
     useEffect(() => {
-        const handler = (e: CustomEvent<{ type: NotificationType; source: string }>) => {
-            const { type, source } = e.detail;
+        const handler = (e: Event) => {
+            const detail = parseEmulatorNotificationEvent(e);
+            if (!detail) return;
+            const { type, source } = detail;
             if (source === 'auto' && ((type === 'save' && !autoSaveIcon) || (type === 'load' && !autoLoadIcon))) return;
 
-            if (timer.current) clearTimeout(timer.current);
+            unmountTimer.clear();
             // Mount at visible:false, then double-rAF to guarantee the opacity:0 paint
             // has committed before flipping to true so the full transition runs.
             setNotif({ type, visible: false });
@@ -34,18 +40,15 @@ export const EmulatorNotification = memo(({ colors, autoSaveIcon, autoLoadIcon }
                     setNotif(s => s ? { ...s, visible: true } : null);
                 });
             });
-            timer.current = setTimeout(() => {
+            hideTimer.set(() => {
                 setNotif(s => s ? { ...s, visible: false } : null);
-                setTimeout(() => setNotif(null), FADE_MS);
+                unmountTimer.set(() => setNotif(null), FADE_MS);
             }, VISIBLE_MS);
         };
 
-        window.addEventListener('emulator_notification', handler as EventListener);
-        return () => {
-            window.removeEventListener('emulator_notification', handler as EventListener);
-            if (timer.current) clearTimeout(timer.current);
-        };
-    }, [autoSaveIcon, autoLoadIcon]);
+        window.addEventListener(EMULATOR_NOTIFICATION_EVENT, handler);
+        return () => window.removeEventListener(EMULATOR_NOTIFICATION_EVENT, handler);
+    }, [autoSaveIcon, autoLoadIcon, hideTimer, unmountTimer]);
 
     if (!notif) return null;
 

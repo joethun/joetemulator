@@ -10,6 +10,8 @@ import { SaveStateManager } from '@/components/SaveStateManager';
 import { useIsTouch } from '@/hooks/useIsTouch';
 import { useUnloadWarning } from '@/hooks/useUnloadWarning';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
+import { useTimer } from '@/hooks/useTimer';
+import { EMULATOR_NOTIFICATION_EVENT, parseEmulatorNotificationEvent } from '@/lib/savestates';
 
 interface EmulatorViewProps {
     session: EmulatorSession;
@@ -43,7 +45,7 @@ export const EmulatorView = memo(({
     const anyPanelOpen = settingsOpen || saveStatesOpen;
     const [showBar, setShowBar] = useState(false);
     const [pointerLocked, setPointerLocked] = useState(false);
-    const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hideTimer = useTimer();
     const isTouch = useIsTouch();
     // Bumped on each tap within the controls bar to restart the touch auto-hide timer.
     const [barActivity, setBarActivity] = useState(0);
@@ -70,16 +72,16 @@ export const EmulatorView = memo(({
         setSaveStatesOpen(false);
         setUserPaused(false);
         setShowBar(false);
-        if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
-    }, [isVisible]);
+        hideTimer.clear();
+    }, [isVisible, hideTimer]);
 
     // Any successful load (bar, menu, hotkey, external dialog) resumes gameplay.
     useEffect(() => {
         const onNotify = (e: Event) => {
-            if ((e as CustomEvent<{ type: string }>).detail?.type === 'load') setUserPaused(false);
+            if (parseEmulatorNotificationEvent(e)?.type === 'load') setUserPaused(false);
         };
-        window.addEventListener('emulator_notification', onNotify);
-        return () => window.removeEventListener('emulator_notification', onNotify);
+        window.addEventListener(EMULATOR_NOTIFICATION_EVENT, onNotify);
+        return () => window.removeEventListener(EMULATOR_NOTIFICATION_EVENT, onNotify);
     }, []);
 
     // Show the bottom bar on mouse movement, hide after idle. Suppressed while the
@@ -88,7 +90,7 @@ export const EmulatorView = memo(({
     useEffect(() => {
         const hide = () => {
             setShowBar(false);
-            if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+            hideTimer.clear();
         };
         // Force-hidden states, regardless of input type. `anyPanelOpen` is deliberately
         // NOT here: the render gate (visible={showBar && !anyPanelOpen}) already hides
@@ -103,16 +105,15 @@ export const EmulatorView = memo(({
         if (anyPanelOpen) { hide(); return; }
 
         const onMove = () => {
-            if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
             setShowBar(true);
-            hideTimerRef.current = setTimeout(() => setShowBar(false), BAR_VISIBLE_MS);
+            hideTimer.set(() => setShowBar(false), BAR_VISIBLE_MS);
         };
         window.addEventListener('mousemove', onMove);
         return () => {
             window.removeEventListener('mousemove', onMove);
-            if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+            hideTimer.clear();
         };
-    }, [isVisible, anyPanelOpen, pointerLocked, isLoading, isTouch]);
+    }, [isVisible, anyPanelOpen, pointerLocked, isLoading, isTouch, hideTimer]);
 
     // Touch auto-hide: the tapped-open bar fades out after an idle window (there's no
     // mousemove to drive the desktop timer). Each tap on the bar bumps barActivity,

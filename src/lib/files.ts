@@ -1,4 +1,5 @@
 import { getSystemNameByCore } from '@/lib/constants';
+import { computeRomCrc } from '@/lib/crc32';
 import { stripExt } from '@/lib/utils';
 import { openZipEntry, readZipDirectory } from '@/lib/zip';
 
@@ -116,7 +117,6 @@ async function getRawFileData(file: File): Promise<RawFileData> {
 async function getFileHashes(file: File, systemName: string): Promise<FileHashes> {
     const { buffer, serialId, fileSha1 } = await getRawFileData(file);
 
-    const { computeRomCrc } = await import('@/lib/crc32');
     const crc = buffer.byteLength <= 516 * 1024 * 1024
         ? computeRomCrc(new Uint8Array(buffer), systemName)
         : '';
@@ -193,23 +193,33 @@ export const normalizeTitle = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+
 // Strip parenthesized region/version tags, e.g. "Game (USA) (Rev 1)" -> "Game"
 const stripParenTags = (s: string) => s.replace(/\s*\([^)]*\)/g, '').trim();
 
-function findByName(cleanTitle: string, datMap: Record<string, string>): string | null {
-    const needle = normalizeTitle(cleanTitle);
-    let best: string | null = null;
-    let bestPriority = Infinity;
+const regionRank = (title: string): number => {
+    const i = REGION_PRIORITY.findIndex(r => title.includes(r));
+    return i === -1 ? REGION_PRIORITY.length : i;
+};
 
+// Bare title -> best-region DAT entry, built once per DAT. Keyed on the parsed
+// DAT object (stable per system via datCache), so importing a batch of roms
+// normalizes each DAT's titles once instead of once per file.
+const nameIndexCache = new WeakMap<Record<string, string>, Map<string, string>>();
+
+function nameIndex(datMap: Record<string, string>): Map<string, string> {
+    const cached = nameIndexCache.get(datMap);
+    if (cached) return cached;
+
+    const index = new Map<string, string>();
     for (const title of Object.values(datMap)) {
         // Strip region/version tags to get the bare title for comparison
         const bare = normalizeTitle(stripParenTags(title));
-        if (bare !== needle) continue;
-
-        const priority = REGION_PRIORITY.findIndex(r => title.includes(r));
-        const p = priority === -1 ? REGION_PRIORITY.length : priority;
-        if (p < bestPriority) { bestPriority = p; best = title; }
+        const best = index.get(bare);
+        if (best === undefined || regionRank(title) < regionRank(best)) index.set(bare, title);
     }
-
-    return best;
+    nameIndexCache.set(datMap, index);
+    return index;
 }
+
+const findByName = (cleanTitle: string, datMap: Record<string, string>): string | null =>
+    nameIndex(datMap).get(normalizeTitle(cleanTitle)) ?? null;
 
 export async function calculateAutoCoverArt(file: File, core: string, opfsFile?: File): Promise<string | null> {
     if (typeof window === 'undefined') return null;

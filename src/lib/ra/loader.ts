@@ -177,12 +177,21 @@ export async function loadCore(
     if (!coreJsonBytes) throw new Error(`core.json missing in ${archiveUrl}`);
     const coreInfo = JSON.parse(new TextDecoder().decode(coreJsonBytes)) as CoreInfo;
 
-    const jsName   = `${coreInfo.name}_libretro.js`;
-    const wasmName = `${coreInfo.name}_libretro.wasm`;
-    const jsBytes   = files.get(jsName);
-    const wasmBytes = files.get(wasmName);
-    if (!jsBytes)   throw new Error(`${jsName} missing in ${archiveUrl}`);
-    if (!wasmBytes) throw new Error(`${wasmName} missing in ${archiveUrl}`);
+    // The payload is usually named after coreInfo.name, but not always: the
+    // beetle_vb archives ship mednafen_vb_libretro.*. Prefer the manifest name,
+    // then fall back to whatever single *_libretro.<ext> the archive contains.
+    const payload = (ext: string): Uint8Array => {
+        const named = files.get(`${coreInfo.name}_libretro.${ext}`);
+        if (named) return named;
+        const suffix = `_libretro.${ext}`;
+        for (const [name, bytes] of files) {
+            if (name.endsWith(suffix)) return bytes;
+        }
+        throw new Error(`no *${suffix} in ${archiveUrl}`);
+    };
+
+    const jsBytes   = payload('js');
+    const wasmBytes = payload('wasm');
 
     const wasmUrl    = makeBlobUrl(wasmBytes, 'application/wasm');
     const jsBlobUrl  = makeBlobUrl(jsBytes,  'application/javascript');

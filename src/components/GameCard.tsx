@@ -7,6 +7,7 @@ import { GameContextMenu } from './GameContextMenu';
 import { getSystemAspectRatio, SHADOW_CARD } from '@/lib/constants';
 import { gameSaveName } from '@/lib/utils';
 import { TOUCH_QUERY } from '@/hooks/useIsTouch';
+import { useTimer } from '@/hooks/useTimer';
 
 interface GameCardProps {
     game: Game;
@@ -20,6 +21,9 @@ interface GameCardProps {
     colors: ThemeColors;
     priority?: boolean;
 }
+
+/** Hold duration that opens the context menu on touch. */
+const LONG_PRESS_MS = 400;
 
 const UploadOverlay = memo(({ progress, isComplete, colors }: { progress?: number; isComplete?: boolean; colors: ThemeColors }) => {
     const pct = Math.round(progress ?? 0);
@@ -46,7 +50,7 @@ UploadOverlay.displayName = 'UploadOverlay';
 export const GameCard = memo(({
     game, onPlay, onEdit, onDelete, onUploadCover, onResetCover, onCoverFailed, onSaveStates, colors, priority = false
 }: GameCardProps) => {
-    const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const longPress = useTimer();
     const didOpenMenu = useRef(false);
     const cardRef = useRef<HTMLDivElement>(null);
     const isUploading = typeof game.progress === 'number';
@@ -55,8 +59,6 @@ export const GameCard = memo(({
     const [mobileHovered, setMobileHovered] = useState(false);
     const [erroredSrc, setErroredSrc] = useState<string>();
     const imgError = !!game.coverArt && erroredSrc === game.coverArt;
-
-    useEffect(() => () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }, []);
 
     useEffect(() => {
         if (!mobileHovered) return;
@@ -76,14 +78,14 @@ export const GameCard = memo(({
     const handleTouchStart = (e: React.TouchEvent) => {
         didOpenMenu.current = false;
         const { clientX, clientY } = e.touches[0];
-        longPressTimer.current = setTimeout(() => {
+        longPress.set(() => {
             openMenu(clientX, clientY);
             didOpenMenu.current = true;
-        }, 400);
+        }, LONG_PRESS_MS);
     };
 
     const handleTouchEnd = (e: React.TouchEvent) => {
-        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+        longPress.clear();
         if (didOpenMenu.current && e.cancelable) {
             e.preventDefault();
             didOpenMenu.current = false;
