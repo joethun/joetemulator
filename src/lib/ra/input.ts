@@ -22,6 +22,14 @@ const ANALOG_DEADZONE = 0.12;
 /** Threshold for treating an axis source as "pressed" when driving a digital retropad id. */
 const AXIS_DIGITAL_THRESHOLD = 0.5;
 
+/**
+ * Value a fully-held digital source (a key) sends for a retropad id. Analog ids
+ * carry a magnitude, not a flag — sending 1 there reads as a ~0.003% stick
+ * deflection and is swallowed by the core's deadzone, so a key bound to e.g.
+ * N64 STICK UP would do nothing.
+ */
+const pressValue = (retroId: number): number => retroId >= ANALOG_BASE ? ANALOG_MAX : 1;
+
 export type KeyMap = Record<string, { player: number; button: number }>;
 
 /**
@@ -59,6 +67,17 @@ const DEFAULT_KEYMAP: KeyMap = {
     KeyR:       { player: 0, button: RetroPad.R2 },
     Enter:      { player: 0, button: RetroPad.START },
     KeyV:       { player: 0, button: RetroPad.SELECT },
+    // Sticks on TFGH / IJKL, matching EmulatorJS's own keyboard defaults. Systems
+    // without an analog stick drop these in filterBindingsToButtons, so they cost
+    // nothing there — and N64/PSX/PSP are unplayable on a keyboard without them.
+    KeyT:       { player: 0, button: ANALOG_BASE + RetroAnalog.L_UP },
+    KeyG:       { player: 0, button: ANALOG_BASE + RetroAnalog.L_DOWN },
+    KeyF:       { player: 0, button: ANALOG_BASE + RetroAnalog.L_LEFT },
+    KeyH:       { player: 0, button: ANALOG_BASE + RetroAnalog.L_RIGHT },
+    KeyI:       { player: 0, button: ANALOG_BASE + RetroAnalog.R_UP },
+    KeyK:       { player: 0, button: ANALOG_BASE + RetroAnalog.R_DOWN },
+    KeyJ:       { player: 0, button: ANALOG_BASE + RetroAnalog.R_LEFT },
+    KeyL:       { player: 0, button: ANALOG_BASE + RetroAnalog.R_RIGHT },
 };
 
 const btn = (index: number): GamepadSource => ({ kind: 'button', index });
@@ -234,7 +253,7 @@ export class InputController {
         if (!bind || this.pressed.has(code)) return;
         e.preventDefault();
         this.pressed.add(code);
-        this.gc.simulateInput(bind.player, bind.button, 1);
+        this.gc.simulateInput(bind.player, bind.button, pressValue(bind.button));
     };
 
     private onKeyUp = (e: KeyboardEvent): void => {

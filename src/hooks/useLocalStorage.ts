@@ -1,4 +1,5 @@
-import { useState, useEffect, useSyncExternalStore } from 'react';
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
+import { loadJSON, saveJSON } from '@/lib/local-storage';
 
 let hydrated = false;
 const listeners = new Set<() => void>();
@@ -19,25 +20,24 @@ export function useHydrated(): boolean {
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
     const [value, setValue] = useState<T>(initialValue);
+    const valueRef = useRef(value);
 
     // why: SSR-safe — render initialValue on server + first client paint, then read storage in an effect.
-    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
-        try {
-            const item = localStorage.getItem(key);
-            if (item !== null) setValue(JSON.parse(item));
-        } catch (e) {
-            console.error(`localStorage read error "${key}":`, e);
-        }
+        const stored = loadJSON(key, valueRef.current);
+        valueRef.current = stored;
+        setValue(stored);
         markHydrated();
     }, [key]);
-    /* eslint-enable react-hooks/set-state-in-effect */
 
-    useEffect(() => {
-        if (!hydrated) return;
-        try { localStorage.setItem(key, JSON.stringify(value)); }
-        catch (e) { console.error(`localStorage write error "${key}":`, e); }
-    }, [key, value]);
+    // why: persist from the setter, not an effect — a write effect fires on mount with
+    // initialValue and overwrites the stored value before the read above lands.
+    const store = useCallback((next: T | ((prev: T) => T)) => {
+        const resolved = typeof next === 'function' ? (next as (prev: T) => T)(valueRef.current) : next;
+        valueRef.current = resolved;
+        setValue(resolved);
+        saveJSON(key, resolved);
+    }, [key]);
 
-    return [value, setValue] as const;
+    return [value, store] as const;
 }

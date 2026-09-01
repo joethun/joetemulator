@@ -90,6 +90,7 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                             onChange={session.actions.setBindings}
                             colors={colors}
                             core={session.currentCore ?? ''}
+                            libretroCore={session.currentLibretroCore ?? undefined}
                             controllerPorts={session.actions.getControllerPorts()}
                             onControllerDeviceChange={session.actions.setControllerDevice}
                         />
