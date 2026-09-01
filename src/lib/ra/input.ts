@@ -67,17 +67,6 @@ const DEFAULT_KEYMAP: KeyMap = {
     KeyR:       { player: 0, button: RetroPad.R2 },
     Enter:      { player: 0, button: RetroPad.START },
     KeyV:       { player: 0, button: RetroPad.SELECT },
-    // Sticks on TFGH / IJKL, matching EmulatorJS's own keyboard defaults. Systems
-    // without an analog stick drop these in filterBindingsToButtons, so they cost
-    // nothing there — and N64/PSX/PSP are unplayable on a keyboard without them.
-    KeyT:       { player: 0, button: ANALOG_BASE + RetroAnalog.L_UP },
-    KeyG:       { player: 0, button: ANALOG_BASE + RetroAnalog.L_DOWN },
-    KeyF:       { player: 0, button: ANALOG_BASE + RetroAnalog.L_LEFT },
-    KeyH:       { player: 0, button: ANALOG_BASE + RetroAnalog.L_RIGHT },
-    KeyI:       { player: 0, button: ANALOG_BASE + RetroAnalog.R_UP },
-    KeyK:       { player: 0, button: ANALOG_BASE + RetroAnalog.R_DOWN },
-    KeyJ:       { player: 0, button: ANALOG_BASE + RetroAnalog.R_LEFT },
-    KeyL:       { player: 0, button: ANALOG_BASE + RetroAnalog.R_RIGHT },
 };
 
 const btn = (index: number): GamepadSource => ({ kind: 'button', index });
