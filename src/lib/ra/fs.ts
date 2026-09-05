@@ -19,8 +19,10 @@ export const RETROARCH_CFG = [
     // melonDS DS (and other newer cores) refuse to load content without a real
     // system directory ("No system directory is available").
     'system_directory = "/home/web_user/retroarch/system"',
-    // Browser microphone capture (custom driver in our RetroArch build); the
-    // built-in default is the null driver, so it must be selected explicitly.
+    // Browser microphone capture. Our RetroArch fork builds the rwebmic driver
+    // (audio/drivers_microphone/rwebmic.c + emscripten/library_rwebmic.js);
+    // RetroArch would otherwise pick the null driver and cores would get
+    // silence. microphone_enable defaults to true upstream.
     'microphone_driver = "rwebmic"',
 ].join('\n') + '\n';
 

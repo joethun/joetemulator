@@ -65,6 +65,10 @@ const DEFAULT_KEYMAP: KeyMap = {
     KeyE:       { player: 0, button: RetroPad.R },
     Tab:        { player: 0, button: RetroPad.L2 },
     KeyR:       { player: 0, button: RetroPad.R2 },
+    // melonDS DS puts the DS microphone on L3 (it was L2 up to core 1.2.0, which
+    // is why Tab used to trigger it by accident). Cores that don't use L3 drop
+    // this binding in filterBindingsToButtons, so it's inert for them.
+    KeyM:       { player: 0, button: RetroPad.L3 },
     Enter:      { player: 0, button: RetroPad.START },
     KeyV:       { player: 0, button: RetroPad.SELECT },
 };
