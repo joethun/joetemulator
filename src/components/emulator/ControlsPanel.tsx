@@ -18,8 +18,6 @@ interface ControlsPanelProps {
     onChange: (next: InputBindings) => void;
     colors: ThemeColors;
     core: string;
-    /** Resolved libretro core; picks the layout when it differs from the system default. */
-    libretroCore?: string;
     controllerPorts?: readonly ControllerPort[];
     onControllerDeviceChange?: (port: number, deviceId: number) => void;
 }
@@ -110,7 +108,7 @@ function applyAssignmentSwap(
 }
 
 export const ControlsPanel = memo(({
-    bindings, onChange, colors, core, libretroCore, controllerPorts, onControllerDeviceChange,
+    bindings, onChange, colors, core, controllerPorts, onControllerDeviceChange,
 }: ControlsPanelProps) => {
     const [selectedPlayer, setSelectedPlayer] = useState(0);
 
@@ -145,8 +143,8 @@ export const ControlsPanel = memo(({
     }, [maxPlayers, selectedPlayer]);
 
     const availableButtons = useMemo(
-        () => getButtonsForCore(core, libretroCore),
-        [core, libretroCore],
+        () => getButtonsForCore(core),
+        [core],
     );
 
     const groups = useMemo(

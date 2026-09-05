@@ -120,7 +120,7 @@ export class Runtime {
 
         const gc = new GameController(mod, canvas);
         this.gc = gc;
-        this.allowedRetroIds = getRetroIdsForCore(system, libretroName);
+        this.allowedRetroIds = getRetroIdsForCore(system);
         const merged = { ...DEFAULT_BINDINGS, ...bindings };
         this.input = new InputController(
             gc,
