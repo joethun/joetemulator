@@ -51,7 +51,7 @@
 
 1. Turn on RetroAchievements in Settings and log in with your RetroAchievements account.
 
-2. Play a game. Achievements unlock as you play, and your progress is saved with your save states.
+2. Play a game. Achievements unlock as you play.
 
 3. View a game's achievements from the Game Settings menu while playing, or by right-clicking a game in your library.
 
