@@ -68,3 +68,71 @@ export const SettingsCard = memo(({
 ));
 
 SettingsCard.displayName = 'SettingsCard';
+
+interface SettingRowProps {
+    colors: ThemeColors;
+    icon: LucideIcon;
+    label: string;
+    children: ReactNode;
+}
+
+/** An icon + label row inside an expanded SettingsCard, with a trailing control. */
+export function SettingRow({ colors, icon: Icon, label, children }: SettingRowProps) {
+    return (
+        <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+                <Icon className="w-4 h-4 shrink-0" style={{ color: colors.highlight }} />
+                <span className="text-sm font-medium truncate" style={{ color: colors.softLight }}>{label}</span>
+            </div>
+            {children}
+        </div>
+    );
+}
+
+interface SettingItemProps {
+    colors: ThemeColors;
+    gradient: GradientStyle;
+    icon: LucideIcon;
+    label: string;
+    checked: boolean;
+    onToggle: () => void;
+}
+
+/** A toggle row inside an expanded SettingsCard (e.g. "Show Save Icon"). */
+export function SettingItem({ gradient, checked, onToggle, ...row }: SettingItemProps) {
+    return (
+        <SettingRow {...row}>
+            <Switch checked={checked} onChange={onToggle} colors={row.colors} gradient={gradient} />
+        </SettingRow>
+    );
+}
+
+interface ChipButtonProps {
+    colors: ThemeColors;
+    onClick: () => void;
+    /** Highlighted (the selected option, or the primary action). */
+    active?: boolean;
+    /** Set for toggle-style choices (the Save Interval options). */
+    'aria-pressed'?: boolean;
+    /** Extra layout classes. */
+    className?: string;
+    children: ReactNode;
+}
+
+/** Small pill button used in expanded settings (Save Interval, Log In/Out). */
+export function ChipButton({ colors, onClick, active = false, className = '', children, ...aria }: ChipButtonProps) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            {...aria}
+            className={`px-3 py-1 rounded-xl h-9 text-sm font-medium flex items-center justify-center transition-all active:scale-95 cursor-pointer ${className}`}
+            style={{
+                backgroundColor: active ? colors.highlight : colors.midDark,
+                color: active ? colors.darkBg : colors.softLight,
+            }}
+        >
+            {children}
+        </button>
+    );
+}

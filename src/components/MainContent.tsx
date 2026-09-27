@@ -19,6 +19,7 @@ interface GameCardHandlers {
     onCoverFailed: (id: number) => void;
     onEdit: (game: Game) => void;
     onSaveStates: (title: string, name: string) => void;
+    onAchievements: (game: Game) => void;
     onAddGame: () => void;
 }
 
@@ -102,6 +103,7 @@ export const MainContent = memo(function MainContent({
                                         colors={colors}
                                         onEdit={handlers.onEdit}
                                         onSaveStates={handlers.onSaveStates}
+                                        onAchievements={settings.raEnabled ? handlers.onAchievements : undefined}
                                         priority={idx < 6}
                                     />
                                 </div>

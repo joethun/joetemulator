@@ -16,6 +16,7 @@
 - **30+ supported systems**
 - **Auto cover art** - Fetched from [thumbnails.libretro.com](https://thumbnails.libretro.com) based on hashing or the game title as a fallback
 - **Completely local** - All ROMs and save states stay in your browser
+- **RetroAchievements** - Earn [achievements](https://retroachievements.org) while you play, with an optional hardcore mode
 
 ## Supported Systems
 
@@ -46,4 +47,12 @@
 
 4. Play by clicking a game.
 
+## RetroAchievements
 
+1. Turn on RetroAchievements in Settings and log in with your RetroAchievements account.
+
+2. Play a game. Achievements unlock as you play, and your progress is saved with your save states.
+
+3. View a game's achievements from the Game Settings menu while playing, or by right-clicking a game in your library.
+
+Hardcore mode turns off loading save states and limits pausing.

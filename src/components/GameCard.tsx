@@ -6,6 +6,7 @@ import { Game, ThemeColors, getGradientStyle } from '@/types';
 import { GameContextMenu } from './GameContextMenu';
 import { getSystemAspectRatio, SHADOW_CARD } from '@/lib/constants';
 import { gameSaveName } from '@/lib/utils';
+import { consoleIdFor } from '@/lib/cheevos/consoles';
 import { TOUCH_QUERY } from '@/hooks/useIsTouch';
 import { useTimer } from '@/hooks/useTimer';
 
@@ -18,6 +19,8 @@ interface GameCardProps {
     onResetCover: (gameId: number) => void;
     onCoverFailed: (gameId: number) => void;
     onSaveStates: (title: string, name: string) => void;
+    /** Omitted when RetroAchievements is turned off. */
+    onAchievements?: (game: Game) => void;
     colors: ThemeColors;
     priority?: boolean;
 }
@@ -48,7 +51,7 @@ const UploadOverlay = memo(({ progress, isComplete, colors }: { progress?: numbe
 UploadOverlay.displayName = 'UploadOverlay';
 
 export const GameCard = memo(({
-    game, onPlay, onEdit, onDelete, onUploadCover, onResetCover, onCoverFailed, onSaveStates, colors, priority = false
+    game, onPlay, onEdit, onDelete, onUploadCover, onResetCover, onCoverFailed, onSaveStates, onAchievements, colors, priority = false
 }: GameCardProps) => {
     const longPress = useTimer();
     const didOpenMenu = useRef(false);
@@ -148,6 +151,9 @@ export const GameCard = memo(({
                 onUploadCover={(data) => onUploadCover(game.id, data)}
                 onResetCover={() => onResetCover(game.id)}
                 onSaveStates={() => onSaveStates(game.title, gameSaveName(game))}
+                onAchievements={onAchievements && game.core && consoleIdFor(game.core, game.fileName ?? '') != null
+                    ? () => onAchievements(game)
+                    : undefined}
                 gameTitle={game.title}
                 colors={colors}
                 hasCustomCover={!!game.autoCoverArt && !!game.coverArt && game.coverArt !== game.autoCoverArt}

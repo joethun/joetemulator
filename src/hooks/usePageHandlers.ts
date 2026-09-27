@@ -58,6 +58,7 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
                     autoSave: settings.autoSaveState,
                     autoSaveInterval: settings.autoSaveInterval * 1000,
                     saveOnExit: settings.saveOnExit,
+                    cheevos: settings.raEnabled ? { hardcore: settings.raHardcore } : undefined,
                 },
             });
         } catch (err) { console.error('launch failed:', err); }

@@ -30,3 +30,20 @@ button:focus:not(:focus-visible) {
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 .animate-fade-in { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-fade-out { animation: fadeOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+/* Browser autofill paints its own light background and dark text over
+   inputs. Repaint with the field's theme colours, which each input exposes
+   as --field-bg / --field-fg (an inset shadow is the only thing that covers
+   Chrome's autofill background; the transition delays its colour forever). */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--field-fg, currentColor);
+  -webkit-box-shadow: 0 0 0 1000px var(--field-bg, transparent) inset;
+  box-shadow: 0 0 0 1000px var(--field-bg, transparent) inset;
+  caret-color: var(--field-fg, currentColor);
+  transition: background-color 99999s ease-out 0s;
+}
+input:autofill {
+  box-shadow: 0 0 0 1000px var(--field-bg, transparent) inset;
+  -webkit-text-fill-color: var(--field-fg, currentColor);
+}

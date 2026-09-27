@@ -1,30 +1,8 @@
 import { memo } from 'react';
-import { Clock, Eye, EyeOff, Save, Upload, LogOut, LucideIcon } from 'lucide-react';
-import { SettingsCard } from '@/components/SettingsCard';
-import { Switch } from '@/components/Switch';
-import { ThemeColors, GradientStyle } from '@/types';
+import { Clock, Eye, EyeOff, Save, Upload, LogOut } from 'lucide-react';
+import { ChipButton, SettingsCard, SettingItem } from '@/components/SettingsCard';
 import type { AppSettings } from '@/hooks/useAppSettings';
-
-interface SettingItemProps {
-    colors: ThemeColors;
-    gradient: GradientStyle;
-    icon: LucideIcon;
-    label: string;
-    checked: boolean;
-    onToggle: () => void;
-}
-
-function SettingItem({ colors, gradient, icon: Icon, label, checked, onToggle }: SettingItemProps) {
-    return (
-        <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-                <Icon className="w-4 h-4" style={{ color: colors.highlight }} />
-                <span className="text-sm font-medium" style={{ color: colors.softLight }}>{label}</span>
-            </div>
-            <Switch checked={checked} onChange={onToggle} colors={colors} gradient={gradient} />
-        </div>
-    );
-}
+import { RetroAchievementsSettings } from '@/components/cheevos/RetroAchievementsSettings';
 
 const SAVE_INTERVALS = [30, 60, 120, 300, 600] as const;
 
@@ -35,6 +13,7 @@ export const SettingsView = memo(({ settings }: { settings: AppSettings }) => {
         autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval,
         autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon,
         saveOnExit, setSaveOnExit,
+        raEnabled, setRaEnabled, raHardcore, setRaHardcore,
     } = settings;
 
     return (
@@ -54,18 +33,13 @@ export const SettingsView = memo(({ settings }: { settings: AppSettings }) => {
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             {SAVE_INTERVALS.map(v => (
-                                <button
-                                    key={v}
+                                <ChipButton
+                                    key={v} colors={colors} className="flex-1 sm:flex-none"
                                     onClick={() => setAutoSaveInterval(v)}
-                                    aria-pressed={autoSaveInterval === v}
-                                    className="px-3 py-1 rounded-xl h-9 text-sm font-medium flex-1 sm:flex-none flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                                    style={{
-                                        backgroundColor: autoSaveInterval === v ? colors.highlight : colors.midDark,
-                                        color: autoSaveInterval === v ? colors.darkBg : colors.softLight,
-                                    }}
+                                    active={autoSaveInterval === v} aria-pressed={autoSaveInterval === v}
                                 >
                                     {v >= 60 ? `${v / 60}m` : `${v}s`}
-                                </button>
+                                </ChipButton>
                             ))}
                         </div>
                     </div>
@@ -94,6 +68,13 @@ export const SettingsView = memo(({ settings }: { settings: AppSettings }) => {
                 title="Save on Exit" description="Save your game state when you close a game."
                 animationDelay="0.09s"
                 checked={saveOnExit} onToggle={() => setSaveOnExit(!saveOnExit)}
+            />
+
+            <RetroAchievementsSettings
+                colors={colors} gradient={gradient}
+                animationDelay="0.12s"
+                enabled={raEnabled} onToggleEnabled={() => setRaEnabled(!raEnabled)}
+                hardcore={raHardcore} onToggleHardcore={() => setRaHardcore(!raHardcore)}
             />
     </div>
     );

@@ -52,19 +52,24 @@ export const looksLikeZip = (header: Uint8Array): boolean =>
 export const isJunkPath = (path: string) =>
     path.startsWith('__MACOSX/') || (path.split('/').pop() ?? '').startsWith('.');
 
-async function extractRomBytesFromZip(file: File): Promise<ArrayBuffer | null> {
-    const entries = (await readZipDirectory(file))?.filter(e => !isJunkPath(e.path));
-    if (!entries?.length) return null;
-
-    const candidates = entries.filter(e => fileExt(e.path) in ROM_EXT_RANK);
-    const pool = candidates.length ? candidates : entries;
-
-    pool.sort((a, b) =>
+/** Order archive members so the likeliest ROM comes first: known ROM
+ *  extensions by priority, then the largest file. */
+export function rankRomEntries<T extends { path: string; size: number }>(entries: T[]): T[] {
+    const candidates = entries.filter(e => !isJunkPath(e.path) && fileExt(e.path) in ROM_EXT_RANK);
+    const pool = candidates.length ? candidates : entries.filter(e => !isJunkPath(e.path));
+    return [...pool].sort((a, b) =>
         (ROM_EXT_RANK[fileExt(a.path)] ?? 999) - (ROM_EXT_RANK[fileExt(b.path)] ?? 999)
         || b.size - a.size);
+}
 
+/** The ROM inside a zipped cartridge dump, or null if `file` isn't a usable zip. */
+export async function extractRomFromZip(file: File): Promise<{ name: string; bytes: Uint8Array<ArrayBuffer> } | null> {
+    const entries = await readZipDirectory(file);
+    const entry = entries && rankRomEntries(entries)[0];
+    if (!entry) return null;
     try {
-        return await new Response(await openZipEntry(file, pool[0])).arrayBuffer();
+        const bytes = new Uint8Array(await new Response(await openZipEntry(file, entry)).arrayBuffer());
+        return { name: entry.path.split('/').pop() || entry.path, bytes };
     } catch (err) {
         console.warn('Zip extraction failed:', err);
         return null;
@@ -198,11 +203,10 @@ export async function calculateAutoCoverArt(rom: File, fileName: string, core: s
     const lrSys = datSystem(systemName);
 
     try {
-        const [romBytes, datMap] = await Promise.all([
-            extractRomBytesFromZip(rom).then(b => b ?? rom.arrayBuffer()),
+        const [bytes, datMap] = await Promise.all([
+            extractRomFromZip(rom).then(async r => r?.bytes ?? new Uint8Array(await rom.arrayBuffer())),
             fetchDat(lrSys).catch(() => ({} as Record<string, string>)),
         ]);
-        const bytes = new Uint8Array(romBytes);
 
         const lookup = async (): Promise<string | null> => {
             if (bytes.byteLength <= MAX_CRC_BYTES) {

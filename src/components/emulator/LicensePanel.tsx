@@ -14,6 +14,8 @@ interface LicensePanelProps {
 
 const EMULATORJS_SOURCE = 'https://github.com/EmulatorJS/EmulatorJS';
 const RETROARCH_SOURCE  = 'https://github.com/EmulatorJS/RetroArch';
+const RCHEEVOS_SOURCE   = 'https://github.com/RetroAchievements/rcheevos';
+const LIBCHDR_SOURCE    = 'https://github.com/rtissera/libchdr';
 
 export const LicensePanel = memo(({ colors, libretroCore }: LicensePanelProps) => {
     // CoreInfo is populated by the loader at boot, so by the time this panel is
@@ -42,6 +44,16 @@ export const LicensePanel = memo(({ colors, libretroCore }: LicensePanelProps) =
             label: 'EmulatorJS',
             description: 'Source for EmulatorJS.',
             href: EMULATORJS_SOURCE,
+        },
+        {
+            label: 'rcheevos',
+            description: 'RetroAchievements client library, compiled to WebAssembly.',
+            href: RCHEEVOS_SOURCE,
+        },
+        {
+            label: 'libchdr',
+            description: 'CHD disc image reader used to identify games for achievements.',
+            href: LIBCHDR_SOURCE,
         },
     ];
 

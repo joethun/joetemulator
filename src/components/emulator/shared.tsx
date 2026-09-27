@@ -131,3 +131,27 @@ export function OptionButton({ label, active, colors, idx, onClick }: OptionButt
         </button>
     );
 }
+
+interface EmptyStateProps {
+    icon: LucideIcon;
+    title: string;
+    text: string;
+    colors: ThemeColors;
+    className?: string;
+}
+
+/** Centered icon tile + title + text, for panels with nothing to list. */
+export function EmptyState({ icon: Icon, title, text, colors, className = '' }: EmptyStateProps) {
+    return (
+        <div className={`flex flex-col items-center justify-center text-center animate-fade-in ${className}`}>
+            <div
+                className="w-20 h-20 rounded-xl mb-6 flex items-center justify-center"
+                style={{ backgroundColor: colors.midDark, color: colors.highlight, boxShadow: SHADOW_CARD }}
+            >
+                <Icon className="w-10 h-10" />
+            </div>
+            <h3 className="text-xl font-bold mb-2" style={{ color: colors.softLight }}>{title}</h3>
+            <p className="opacity-70" style={{ color: colors.highlight }}>{text}</p>
+        </div>
+    );
+}

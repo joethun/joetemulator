@@ -4,7 +4,7 @@ import { stripExt } from '@/lib/utils';
 import type { ZipDiscRef } from '@/types';
 
 /** File extensions that can be part of a CD-image disc set. */
-const DISC_EXTS = new Set(['cue', 'ccd', 'toc', 'mdf', 'chd', 'pbp', 'iso', 'img', 'bin', 'sub']);
+export const DISC_EXTS = new Set(['cue', 'ccd', 'toc', 'mdf', 'chd', 'pbp', 'iso', 'img', 'bin', 'sub']);
 
 /** Descriptor files that reference companion track files (cue → bin, ccd → img/sub, …).
  *  When any are present, only descriptors belong in the playlist. */
@@ -83,12 +83,15 @@ export function detectDiscSet<T extends { name: string }>(files: T[]): DiscSet<T
     return arrange(files, entryNames, title || stripExt(entryNames[0]));
 }
 
-export interface BootPlan {
-    /** File name the core should boot from. */
-    boot: string;
-    /** Generated .m3u playlist to write alongside the discs, present when the
-     *  set has more than one playlist entry. */
-    m3u?: { name: string; content: string };
+type RomFile = { name: string; bytes: Uint8Array };
+
+export interface BootFiles {
+    /** Path the core should boot from. */
+    path: string;
+    /** Every file to write to the core's FS, including a generated .m3u. */
+    files: RomFile[];
+    /** The .m3u's entries in disc order (empty for a single disc). */
+    discs: string[];
 }
 
 /** How a core should boot a set of rom files (primary first): a single file
@@ -96,11 +99,12 @@ export interface BootPlan {
  *  (cue/chd/…; bin track files stay out of the playlist) so the core's
  *  disk-control interface can swap discs. The .m3u is named after disc 1 so
  *  the core writes the same .srm as playing that disc standalone. */
-export function bootPlan(names: string[]): BootPlan {
-    const entries = playlistEntries(names);
-    if (entries.length < 2) return { boot: names[0] };
-    const m3uName = stripExt(names[0]) + '.m3u';
-    return { boot: m3uName, m3u: { name: m3uName, content: entries.join('\n') + '\n' } };
+export function bootFiles(roms: RomFile[]): BootFiles {
+    const entries = playlistEntries(roms.map(r => r.name));
+    if (entries.length < 2) return { path: '/' + roms[0].name, files: roms, discs: [] };
+    const m3uName = stripExt(roms[0].name) + '.m3u';
+    const m3u = { name: m3uName, bytes: new TextEncoder().encode(entries.join('\n') + '\n') };
+    return { path: '/' + m3uName, files: [...roms, m3u], discs: entries };
 }
 
 // Extras that ride along in rom-site zips (readmes, art, checksums) and can be

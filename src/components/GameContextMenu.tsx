@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, Cpu, Image as ImageIcon, RefreshCw, Folder } from 'lucide-react';
+import { Trash2, Cpu, Image as ImageIcon, RefreshCw, Folder, Trophy } from 'lucide-react';
 import { ThemeColors } from '@/types';
 import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
 import { blobToDataUrl } from '@/lib/utils';
@@ -17,6 +17,8 @@ interface GameContextMenuProps {
     onUploadCover: (data: string) => void;
     onResetCover: () => void;
     onSaveStates: () => void;
+    /** Present when the game's system has RetroAchievements and it's enabled. */
+    onAchievements?: () => void;
     gameTitle: string;
     colors: ThemeColors;
     hasCustomCover: boolean;
@@ -24,6 +26,8 @@ interface GameContextMenuProps {
 
 const MENU_W = 190;
 const MENU_H = 250;
+/** Height of one menu row, for rows that are only sometimes shown. */
+const ITEM_H = 40;
 
 interface MenuButtonProps {
     onClick: () => void;
@@ -47,7 +51,7 @@ function MenuButton({ onClick, label, Icon, colors, style }: MenuButtonProps) {
 }
 
 export function GameContextMenu({
-    isOpen, position, onClose, onEdit, onDelete, onUploadCover, onResetCover, onSaveStates,
+    isOpen, position, onClose, onEdit, onDelete, onUploadCover, onResetCover, onSaveStates, onAchievements,
     gameTitle, colors, hasCustomCover,
 }: GameContextMenuProps) {
     const { shouldRender, isClosing } = useDelayedUnmount(isOpen, 300);
@@ -76,7 +80,7 @@ export function GameContextMenu({
     const closeThen = (action: () => void) => () => { onClose(); requestAnimationFrame(action); };
 
     const x = Math.min(position.x, window.innerWidth - MENU_W);
-    const y = Math.min(position.y, window.innerHeight - MENU_H);
+    const y = Math.min(position.y, window.innerHeight - MENU_H - (onAchievements ? ITEM_H : 0));
 
     return createPortal(
         <div
@@ -105,6 +109,7 @@ export function GameContextMenu({
                     }
                     <div className="h-px w-full my-1" style={{ backgroundColor: `${colors.highlight}20` }} />
                     <MenuButton onClick={closeThen(onSaveStates)} label="Manage States" Icon={Folder} colors={colors} />
+                    {onAchievements && <MenuButton onClick={closeThen(onAchievements)} label="Achievements" Icon={Trophy} colors={colors} />}
                     <MenuButton onClick={closeThen(onEdit)} label="System" Icon={Cpu} colors={colors} />
                     <MenuButton onClick={closeThen(onDelete)} label="Delete" Icon={Trash2} colors={colors} style={{ backgroundColor: DANGER_BG, color: DANGER_FG }} />
                 </div>

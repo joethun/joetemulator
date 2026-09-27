@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useState } from 'react';
-import { ChevronRight, Code2, Disc3, GamepadDirectional, Monitor, Settings2 } from 'lucide-react';
+import { ChevronRight, Code2, Disc3, GamepadDirectional, Monitor, Settings2, Trophy } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ThemeColors, GradientStyle } from '@/types';
 import type { EmulatorSession } from '@/hooks/useEmulator';
@@ -14,8 +14,11 @@ import { CoreOptionsPanel } from '@/components/emulator/CoreOptionsPanel';
 import { DiscsPanel } from '@/components/emulator/DiscsPanel';
 import { LicensePanel } from '@/components/emulator/LicensePanel';
 import { ShaderPanel } from '@/components/emulator/ShaderPanel';
+import { AchievementsPanel } from '@/components/emulator/AchievementsPanel';
+import { useCheevosSelector } from '@/lib/cheevos/store';
+import { RetroAchievementsPageButton } from '@/components/cheevos/RetroAchievementsPageButton';
 
-type SettingsTab = 'discs' | 'controls' | 'options' | 'shader' | 'license';
+type SettingsTab = 'achievements' | 'discs' | 'controls' | 'options' | 'shader' | 'license';
 
 interface EmulatorMenuProps {
     open: boolean;
@@ -26,17 +29,19 @@ interface EmulatorMenuProps {
 }
 
 const TAB_META: Record<SettingsTab, { title: string; subtitle: string; icon: LucideIcon }> = {
+    achievements: { title: 'Achievements', subtitle: 'RetroAchievements progress for this game.', icon: Trophy },
     discs:    { title: 'Discs',        subtitle: 'Swap which disc is in the drive.',                        icon: Disc3 },
     controls: { title: 'Controls',     subtitle: 'Click a binding to change it. Right-click to clear.',     icon: GamepadDirectional },
     options:  { title: 'Core Options', subtitle: 'RetroArch core settings. Some may need a restart to apply.', icon: Settings2 },
     shader:   { title: 'Shader',       subtitle: 'Apply a visual filter to the game output.',               icon: Monitor },
-    license:  { title: 'Credits',      subtitle: 'Repos for the emulation core, RetroArch, and EmulatorJS.', icon: Code2 },
+    license:  { title: 'Credits',      subtitle: 'Repos for the emulation core, RetroArch, EmulatorJS, and more.', icon: Code2 },
 };
 
 export const EmulatorMenu = memo(function EmulatorMenu({
     open, onClose, colors, gradient, session,
 }: EmulatorMenuProps) {
     const { shouldRender, isClosing } = useDelayedUnmount(open);
+    const raGameId = useCheevosSelector(s => s.game?.id);
     const [tab, setTab] = useState<SettingsTab | null>(null);
     const [optionsVersion, setOptionsVersion] = useState(0);
     const [optionsActiveKey, setOptionsActiveKey] = useState<string | null>(null);
@@ -77,6 +82,7 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                     {!tab && (
                         <SettingsHub colors={colors} onPick={setTab} getDiscInfo={session.actions.getDiscInfo} />
                     )}
+                    {tab === 'achievements' && <AchievementsPanel colors={colors} />}
                     {tab === 'discs' && (
                         <DiscsPanel
                             colors={colors}
@@ -127,6 +133,7 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                 <ModalFooter colors={colors}>
                     <div>
                         {onReset && <ModalButton onClick={onReset} colors={colors}>Reset</ModalButton>}
+                        {tab === 'achievements' && raGameId ? <RetroAchievementsPageButton gameId={raGameId} colors={colors} /> : null}
                     </div>
                     <ModalButton onClick={handleBack} colors={colors} variant="gradient" gradient={gradient}>
                         {tab ? 'Back' : 'Done'}
@@ -143,7 +150,14 @@ function SettingsHub({ colors, onPick, getDiscInfo }: { colors: ThemeColors; onP
     // The disc count is fixed for the session — read it once per mount instead
     // of calling into the running core on every render.
     const [discCount] = useState(() => getDiscInfo().count);
-    const tabs: SettingsTab[] = discCount > 1 ? ['discs', ...SETTINGS_TABS] : SETTINGS_TABS;
+    // Shown whenever a RetroAchievements session exists, so the panel can
+    // explain why achievements are unavailable (unknown game, unsupported…).
+    const cheevosActive = useCheevosSelector(s => s.status !== 'idle');
+    const tabs: SettingsTab[] = [
+        ...(cheevosActive ? ['achievements' as const] : []),
+        ...(discCount > 1 ? ['discs' as const] : []),
+        ...SETTINGS_TABS,
+    ];
     return (
         <div className="grid gap-4">
             {tabs.map((key, idx) => {

@@ -8,6 +8,8 @@ const STATE_COVER_ASPECT_PREFIX = 'ejs_state_cover_aspect_';
 const STATE_HASH_PREFIX = 'ejs_state_hash_';
 const SLOT_PREFIX = 'ejs_slots_';
 const THUMB_SUFFIX = ':thumb';
+/** RetroAchievements progress captured with a state (rc_client_serialize_progress). */
+const CHEEVOS_SUFFIX = ':rc';
 
 export const SAVE_STATE_THUMBNAIL_EVENT = 'savestate_thumbnail';
 export const EMULATOR_NOTIFICATION_EVENT = 'emulator_notification';
@@ -83,7 +85,7 @@ function commitManifest(name: string, next: SlotManifest): Promise<void> {
     if (!evicted.length) return Promise.resolve();
     for (const key of evicted) clearSlotMeta(key);
     return withDB(
-        db => idbDeleteMany(db, evicted.flatMap(key => [key, key + THUMB_SUFFIX])),
+        db => idbDeleteMany(db, evicted.flatMap(key => [key, key + THUMB_SUFFIX, key + CHEEVOS_SUFFIX])),
         undefined,
     );
 }
@@ -197,6 +199,20 @@ export const putStateBytes = (key: string, bytes: Uint8Array): Promise<boolean> 
         stampHash(key, bytes);
         return true;
     }, false);
+
+export const getStateCheevosProgress = (key: string): Promise<Uint8Array | null> =>
+    withDB(async db => {
+        const raw = await idbGet<unknown>(db, key + CHEEVOS_SUFFIX);
+        return raw == null ? null : toBytes(raw);
+    }, null);
+
+/** Store (or, with null, clear) the achievement progress for a slot. Always
+ *  written alongside the state so a reused slot never keeps stale progress. */
+export const putStateCheevosProgress = (key: string, progress: Uint8Array | null): Promise<void> =>
+    withDB(async db => {
+        if (progress) await idbPut(db, key + CHEEVOS_SUFFIX, progress);
+        else await idbDeleteMany(db, [key + CHEEVOS_SUFFIX]);
+    }, undefined);
 
 const putStateThumbnail = (key: string, dataUrl: string, aspect: number): Promise<void> => {
     stampCoverAspect(key, aspect);

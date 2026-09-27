@@ -18,6 +18,8 @@ interface EmulatorControlsBarProps {
     colors: ThemeColors;
     paused: boolean;
     gameLoaded: boolean;
+    /** False while hardcore achievements forbid loading states. */
+    canLoadState?: boolean;
     onTogglePause: () => void;
     onSaveState: () => void;
     onLoadState: () => void;
@@ -29,7 +31,7 @@ interface EmulatorControlsBarProps {
 }
 
 export const EmulatorControlsBar = memo(({
-    visible, colors, paused, gameLoaded, onTogglePause, onSaveState, onLoadState, onOpenSettings, onOpenSaveStates, onExit, onActivity,
+    visible, colors, paused, gameLoaded, canLoadState = true, onTogglePause, onSaveState, onLoadState, onOpenSettings, onOpenSaveStates, onExit, onActivity,
 }: EmulatorControlsBarProps) => {
     const [exiting, setExiting] = useState(false);
     const handleExit = () => {
@@ -61,7 +63,7 @@ export const EmulatorControlsBar = memo(({
                 />
                 <Divider colors={colors} />
                 <BarBtn icon={Save}     label="Save State"    onClick={onSaveState} colors={colors} />
-                {gameLoaded && <BarBtn icon={Upload}   label="Load State"    onClick={onLoadState} colors={colors} />}
+                {gameLoaded && canLoadState && <BarBtn icon={Upload}   label="Load State"    onClick={onLoadState} colors={colors} />}
                 <BarBtn icon={Folder}   label="Manage States" onClick={onOpenSaveStates}    colors={colors} />
                 <BarBtn icon={Settings} label="Game Settings" onClick={onOpenSettings} colors={colors} />
                 <VolumeButton colors={colors} />

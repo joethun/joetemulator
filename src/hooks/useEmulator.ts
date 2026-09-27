@@ -6,8 +6,10 @@ import type { EmulatorPhase } from '@/lib/ra/types';
 import {
     isStateDuplicate, getNextSlotKey, getSlotKeys, stampSlot,
     getStateBytes, putStateBytes, scheduleStateThumbnail, persistStateThumbnailNow, snapshotCover,
-    notifyEmulator,
+    notifyEmulator, getStateCheevosProgress, putStateCheevosProgress,
 } from '@/lib/savestates';
+import { CheevosSession } from '@/lib/cheevos/session';
+import { loadCredentials, pushHardcoreToast, type RACredentials } from '@/lib/cheevos/store';
 import {
     loadStoredBindings, saveStoredBindings, resetStoredBindings,
 } from '@/lib/ra/bindings-storage';
@@ -30,6 +32,8 @@ interface UseEmulatorOpts {
     autoLoad?: boolean;
     autoSaveInterval?: number;     // ms
     saveOnExit?: boolean;
+    /** Run RetroAchievements for this game (requires a stored login). */
+    cheevos?: { hardcore: boolean };
 }
 
 type StartArgs = Omit<RuntimeOptions, 'canvas' | 'handlers' | 'onPhase'> & {
@@ -68,6 +72,7 @@ interface EmulatorActions {
     setBindings: (b: InputBindings) => void;
     resetBindings: () => void;
     getCoreOptions: () => CoreOption[];
+    /** Refused (with a toast) when the value is banned in hardcore. */
     setCoreOption: (key: string, value: string) => void;
     resetCoreOptions: () => void;
     getControllerPorts: () => readonly ControllerPort[];
@@ -76,6 +81,10 @@ interface EmulatorActions {
     setDisc: (index: number) => void;
     switchCore: (libretroName: string) => Promise<void>;
     setShader: (name: string) => void;
+    /** Whether the player may pause now. Hardcore throttles pausing
+     *  (rc_client_can_pause) so pause-buffering can't be used to react
+     *  frame-perfectly; a refusal is explained in a toast. */
+    requestPause: () => boolean;
 }
 
 export interface EmulatorSession {
@@ -101,6 +110,31 @@ export interface EmulatorSession {
     bindings: InputBindings;
 }
 
+/** Wire a RetroAchievements session to a freshly started runtime. */
+function startCheevos(rt: Runtime, system: string, hardcore: boolean, credentials: RACredentials): CheevosSession | null {
+    const boot = rt.bootInfo;
+    const libretroName = rt.libretroName;
+    if (!boot || !libretroName) return null;
+    return new CheevosSession({
+        host: {
+            heap: () => rt.controller?.heap ?? new Uint8Array(0),
+            memoryInfo: id => rt.controller?.getMemoryInfo(id) ?? [0, 0],
+            memoryMap: () => rt.controller?.getMemoryMapRaw() ?? null,
+            frameCount: () => rt.controller?.frameCount() ?? 0,
+            restart: () => rt.controller?.restart(),
+            setFrameHook: fn => rt.setFrameHook(fn),
+            coreOptions: () => rt.getCoreOptions(),
+        },
+        system,
+        libretroName,
+        files: boot.files,
+        bootPath: boot.path,
+        discs: boot.discs,
+        hardcore,
+        credentials,
+    });
+}
+
 export function useEmulator(): EmulatorSession {
     const runtimeRef = useRef<Runtime | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -111,6 +145,7 @@ export function useEmulator(): EmulatorSession {
     const bindingsRef = useRef<InputBindings | null>(null);
     const pausedRef = useRef(false);
     const startingRef = useRef(false);
+    const cheevosRef = useRef<CheevosSession | null>(null);
 
     const [status, setStatus] = useState<SessionStatus>(IDLE_STATUS);
     const [canvasEpoch, setCanvasEpoch] = useState(0);
@@ -145,13 +180,15 @@ export function useEmulator(): EmulatorSession {
         try {
             const bytes = await gc.saveState();
             if (!bytes) return;
+            // Captured with the state so loading it restores achievement progress.
+            const progress = cheevosRef.current?.serializeProgress() ?? null;
             if (source === 'auto' && await isStateDuplicate(game, bytes)) return;
             // Capture now — save-on-exit tears the canvas down before any async work.
             const snapshot = snapshotCover(gc.videoCanvas, gc.getDisplayAspect());
 
             const slotKey = getNextSlotKey(game);
             stampSlot(slotKey);
-            await putStateBytes(slotKey, bytes);
+            await Promise.all([putStateBytes(slotKey, bytes), putStateCheevosProgress(slotKey, progress)]);
             if (source !== 'exit') notifyEmulator({ type: 'save', source });
             if (snapshot) {
                 // Exit-saves await the thumbnail inline — the caller is about
@@ -169,12 +206,26 @@ export function useEmulator(): EmulatorSession {
         const rt = runtimeRef.current;
         const game = startArgsRef.current?.gameBaseName;
         if (!rt?.controller || !game) return;
+        const ra = cheevosRef.current;
+        if (ra?.hardcoreLocked) {
+            // Identification may still lift the lock (a game without achievements).
+            await ra.ready;
+            if (runtimeRef.current !== rt) return;
+            if (ra.hardcoreLocked) {
+                if (source === 'manual') pushHardcoreToast('Loading save states is disabled while hardcore is on.');
+                return;
+            }
+        }
         try {
             const key = specificKey ?? getSlotKeys(game).at(-1);
             if (!key) return;
-            const data = await getStateBytes(key);
+            const [data, progress] = await Promise.all([
+                getStateBytes(key),
+                ra ? getStateCheevosProgress(key) : null,
+            ]);
             if (!data) return;
             await rt.controller.loadState(data);
+            ra?.onStateLoaded(progress);
             notifyEmulator({ type: 'load', source });
         } catch (e) {
             console.error('load state failed:', e);
@@ -198,6 +249,8 @@ export function useEmulator(): EmulatorSession {
         canvasReadyResolvers.current = [];
         if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
         autoSaveTimerRef.current = null;
+        cheevosRef.current?.dispose();
+        cheevosRef.current = null;
         runtimeRef.current?.destroy();
         runtimeRef.current = null;
         saveOnExitRef.current = false;
@@ -251,6 +304,13 @@ export function useEmulator(): EmulatorSession {
                 patchStatus({ phase: 'running', paused: false, libretroCore: rt.libretroName });
 
                 saveOnExitRef.current = userOpts.saveOnExit ?? false;
+
+                const { cheevos } = userOpts;
+                const credentials = cheevos ? loadCredentials() : null;
+                cheevosRef.current = cheevos && credentials
+                    ? startCheevos(rt, runtimeOpts.system, cheevos.hardcore, credentials)
+                    : null;
+
                 if (userOpts.autoLoad) loadState(undefined, 'auto');
                 if (userOpts.autoSave) {
                     const ms = Math.max(MIN_AUTOSAVE_MS, userOpts.autoSaveInterval ?? DEFAULT_AUTOSAVE_MS);
@@ -294,14 +354,26 @@ export function useEmulator(): EmulatorSession {
         setBindings: (b) => { saveStoredBindings(b); applyBindings(b); },
         resetBindings: () => applyBindings(resetStoredBindings()),
         getCoreOptions:   () => runtimeRef.current?.getCoreOptions() ?? EMPTY_CORE_OPTIONS,
-        setCoreOption:    (key, value) => runtimeRef.current?.setCoreOption(key, value),
+        setCoreOption:    (key, value) => {
+            const reason = cheevosRef.current?.checkCoreOption(key, value);
+            if (reason) pushHardcoreToast(reason);
+            else runtimeRef.current?.setCoreOption(key, value);
+        },
         resetCoreOptions: () => runtimeRef.current?.resetCoreOptions(),
         getControllerPorts:  () => runtimeRef.current?.getControllerPorts() ?? EMPTY_CONTROLLER_PORTS,
         setControllerDevice: (port, deviceId) => runtimeRef.current?.setControllerDevice(port, deviceId),
         getDiscInfo:      () => runtimeRef.current?.getDiscInfo() ?? EMPTY_DISC_INFO,
-        setDisc:          (index) => runtimeRef.current?.setDisc(index),
+        setDisc:          (index) => {
+            runtimeRef.current?.setDisc(index);
+            void cheevosRef.current?.changeDisc(index);
+        },
         setShader:        (name) => {
             runtimeRef.current?.setShader(name).catch(e => console.error('shader load failed:', e));
+        },
+        requestPause: () => {
+            const frames = cheevosRef.current?.pauseFramesRemaining() ?? 0;
+            if (frames) pushHardcoreToast(`You can pause again in ${Math.max(1, Math.ceil(frames / 60))}s.`);
+            return !frames;
         },
     }), [saveState, loadState, switchCore, flushExitSave, patchStatus, applyBindings]);
 

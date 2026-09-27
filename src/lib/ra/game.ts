@@ -3,6 +3,11 @@ import type { CwrapPrimitive, LibretroModule } from '@/lib/ra/types';
 
 const STATE_FILE = '/game.state';
 
+/** Key strings the fork's get_memory_data accepts, indexed by RETRO_MEMORY_* id. */
+const MEMORY_KEYS = [
+    'RETRO_MEMORY_SAVE_RAM', 'RETRO_MEMORY_RTC', 'RETRO_MEMORY_SYSTEM_RAM', 'RETRO_MEMORY_VIDEO_RAM',
+];
+
 type CFn<R> = (...args: unknown[]) => R;
 
 export class GameController {
@@ -22,6 +27,9 @@ export class GameController {
         getDiskCount:   CFn<number>;
         getCurrentDisk: CFn<number>;
         setCurrentDisk: CFn<void>;
+        getMemoryData:  CFn<string>;
+        frameCount:     CFn<number>;
+        restart:        CFn<void>;
     };
 
     constructor(
@@ -47,6 +55,9 @@ export class GameController {
             getDiskCount:   w<number>('get_disk_count',   'number', []),
             getCurrentDisk: w<number>('get_current_disk', 'number', []),
             setCurrentDisk: w<void>  ('set_current_disk', 'null',   ['number']),
+            getMemoryData:  w<string>('get_memory_data',  'string', ['string']),
+            frameCount:     w<number>('get_current_frame_count', 'number', []),
+            restart:        w<void>  ('system_restart',   'null',   []),
         };
     }
 
@@ -106,6 +117,57 @@ export class GameController {
     setCurrentDisc(index: number): void {
         try { this.fn.setCurrentDisk(index); } catch { /* core may not export */ }
     }
+
+    /**
+     * [core-heap pointer, size] of a libretro memory block (RETRO_MEMORY_* id),
+     * or [0, 0] if the core doesn't expose it.
+     *
+     * Deliberately not EmulatorJS's `EmulatorJSGetMemoryData` wrapper: the C
+     * side returns a pointer into its own (already popped) stack frame and
+     * the wrapper then free()s it. cwrap's 'string' return copies the text
+     * out immediately and never frees.
+     */
+    getMemoryInfo(id: number): [number, number] {
+        const key = MEMORY_KEYS[id];
+        if (!key) return [0, 0];
+        try {
+            const [size, ptr] = (this.fn.getMemoryData(key) ?? '').split('|').map(Number);
+            return Number.isFinite(size) && Number.isFinite(ptr) && ptr > 0 && size > 0 ? [ptr, size] : [0, 0];
+        } catch {
+            // e.g. mGBA traps before content is loaded
+            return [0, 0];
+        }
+    }
+
+    /**
+     * The memory map the core registered (RETRO_ENVIRONMENT_SET_MEMORY_MAPS),
+     * as the raw "flags|ptr|offset|start|select|disconnect|len;…" string from
+     * the ejs_get_memory_map export (scripts/cores/retroarch-memory-map.patch).
+     * null when the core predates the export; "" when it registered no map.
+     */
+    getMemoryMapRaw(): string | null {
+        const fn = (this.mod as unknown as { _ejs_get_memory_map?: () => number })._ejs_get_memory_map;
+        if (typeof fn !== 'function') return null;
+        try {
+            const ptr = fn();
+            // Static buffer owned by RetroArch: read, never free.
+            return ptr ? (this.mod as unknown as { UTF8ToString(p: number): string }).UTF8ToString(ptr) : '';
+        } catch {
+            return null;
+        }
+    }
+
+    /** RetroArch main-loop iterations so far (advances once per emulated frame). */
+    frameCount(): number {
+        try { return this.fn.frameCount() || 0; } catch { return 0; }
+    }
+
+    /** Hard-reset the emulated system. */
+    restart(): void {
+        try { this.fn.restart(); } catch { /* core may not export */ }
+    }
+
+    get heap(): Uint8Array { return this.mod.HEAPU8; }
 
     /**
      * Core-reported DAR for the running game (e.g. ~4/3 for SNES, despite the 256×224

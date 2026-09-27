@@ -12,6 +12,8 @@ import { useUnloadWarning } from '@/hooks/useUnloadWarning';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 import { useTimer } from '@/hooks/useTimer';
 import { EMULATOR_NOTIFICATION_EVENT, parseEmulatorNotificationEvent } from '@/lib/savestates';
+import { CheevosOverlay } from '@/components/cheevos/CheevosOverlay';
+import { isHardcoreLocked, useCheevosSelector } from '@/lib/cheevos/store';
 
 interface EmulatorViewProps {
     session: EmulatorSession;
@@ -52,6 +54,9 @@ export const EmulatorView = memo(({
     const canvasWrapRef = useRef<HTMLDivElement>(null);
     // Set by handleExit so its intentional reload skips the close-page prompt.
     const exitingRef = useRef(false);
+    const hardcoreLocked = useCheevosSelector(isHardcoreLocked);
+    // Menus pause the game too, so they share the hardcore pause throttle.
+    const { requestPause } = session.actions;
 
     // Warn before the tab closes/refreshes while a game is active so progress
     // isn't lost by accident.
@@ -294,14 +299,17 @@ export const EmulatorView = memo(({
                 colors={colors}
                 paused={userPaused}
                 gameLoaded={session.phase === 'running'}
-                onTogglePause={() => setUserPaused(p => !p)}
+                canLoadState={!hardcoreLocked}
+                onTogglePause={() => { if (userPaused || requestPause()) setUserPaused(p => !p); }}
                 onSaveState={() => session.actions.saveState('manual')}
                 onLoadState={() => handleLoadState()}
-                onOpenSettings={() => setSettingsOpen(true)}
-                onOpenSaveStates={() => setSaveStatesOpen(true)}
+                onOpenSettings={() => { if (requestPause()) setSettingsOpen(true); }}
+                onOpenSaveStates={() => { if (requestPause()) setSaveStatesOpen(true); }}
                 onExit={handleExit}
                 onActivity={() => setBarActivity(n => n + 1)}
             />
+
+            {isVisible && !isLoading && <CheevosOverlay colors={colors} />}
 
             <EmulatorMenu
                 open={settingsOpen}

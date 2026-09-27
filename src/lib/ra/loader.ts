@@ -75,18 +75,22 @@ function pickVariant(libretroName: string): CoreVariant {
 let sevenZipFactoryPromise: Promise<SevenZipFactory> | null = null;
 let sevenZipBinaryPromise:  Promise<ArrayBuffer>    | null = null;
 
-const get7zFactory = (): Promise<SevenZipFactory> => {
-    sevenZipFactoryPromise ??= new Promise<SevenZipFactory>((resolve, reject) => {
-        if (window.SevenZip) { resolve(window.SevenZip); return; }
+/** Side-load a classic script (once per page) and resolve with the global it defines. */
+export function loadGlobalScript<K extends keyof Window>(src: string, name: K): Promise<NonNullable<Window[K]>> {
+    return new Promise((resolve, reject) => {
+        if (window[name]) { resolve(window[name]); return; }
         const script = document.createElement('script');
-        script.src = '/lib/7zz.js';
-        script.onload = () => {
-            if (window.SevenZip) resolve(window.SevenZip);
-            else reject(new Error('7zz.js loaded but did not expose SevenZip'));
-        };
-        script.onerror = () => reject(new Error('Failed to load /lib/7zz.js'));
+        script.src = src;
+        script.onload = () => window[name]
+            ? resolve(window[name])
+            : reject(new Error(`${src} loaded but did not expose ${String(name)}`));
+        script.onerror = () => reject(new Error(`Failed to load ${src}`));
         document.head.appendChild(script);
     });
+}
+
+const get7zFactory = (): Promise<SevenZipFactory> => {
+    sevenZipFactoryPromise ??= loadGlobalScript('/lib/7zz.js', 'SevenZip');
     return sevenZipFactoryPromise;
 };
 
@@ -98,7 +102,8 @@ const get7zBinary = (): Promise<ArrayBuffer> => {
     return sevenZipBinaryPromise;
 };
 
-async function extractArchive(archive: Uint8Array): Promise<Map<string, Uint8Array>> {
+/** Extract a 7z (or any format 7zz reads) archive's top-level files in memory. */
+export async function extractArchive(archive: Uint8Array): Promise<Map<string, Uint8Array>> {
     const [factory, wasmBinary] = await Promise.all([get7zFactory(), get7zBinary()]);
     const sevenZip = await factory({
         wasmBinary,

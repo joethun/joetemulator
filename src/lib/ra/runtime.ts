@@ -1,4 +1,4 @@
-import { bootPlan } from '@/lib/discs';
+import { bootFiles, type BootFiles } from '@/lib/discs';
 import { ensureAudioPatch } from '@/lib/ra/audio';
 import { resolveLibretroCore } from '@/lib/ra/cores';
 import {
@@ -67,10 +67,18 @@ export class Runtime {
     private controllerPorts: ControllerPort[] = [];
     private allowedRetroIds: ReadonlySet<number> | null = null;
     private gameBaseName: string | null = null;
+    private frameHook: (() => void) | null = null;
+    private boot: BootFiles | null = null;
 
     get controller(): GameController | null { return this.gc; }
     get libretroName(): string | null { return this.resolved?.libretroName ?? null; }
     getControllerPorts(): readonly ControllerPort[] { return this.controllerPorts; }
+    /** Path the core booted and every file written for it (incl. a generated .m3u). */
+    get bootInfo(): BootFiles | null { return this.boot; }
+
+    /** Called after every main-loop iteration (i.e. after each retro_run).
+     *  Used by RetroAchievements to evaluate achievements once per frame. */
+    setFrameHook(fn: (() => void) | null): void { this.frameHook = fn; }
 
     async start(opts: RuntimeOptions): Promise<void> {
         const { canvas, system, coreOverride, roms, gameBaseName, bindings, handlers, onPhase } = opts;
@@ -106,16 +114,18 @@ export class Runtime {
             },
             getSavExt: () => coreInfo.save ? `.${coreInfo.save}` : '.srm',
             noInitialRun: true,
+            // MainLoop.init() registers this once, when the factory runs, so
+            // it must be in the config — assigning it later has no effect.
+            postMainLoop: () => this.frameHook?.(),
         });
         this.mod = mod;
 
         await mountSaveFS(mod);
         writeFile(mod, RA_CFG_PATH, RETROARCH_CFG);
         writeCoreOptionsFile(mod, coreInfo);
-        for (const f of roms) writeFile(mod, '/' + f.name, f.bytes);
-        const plan = bootPlan(roms.map(f => f.name));
-        if (plan.m3u) writeFile(mod, '/' + plan.m3u.name, plan.m3u.content);
-        const romPath = '/' + plan.boot;
+        const boot = bootFiles(roms);
+        for (const f of boot.files) writeFile(mod, '/' + f.name, f.bytes);
+        this.boot = boot;
 
         const gc = new GameController(mod, canvas);
         this.gc = gc;
@@ -128,7 +138,7 @@ export class Runtime {
         );
 
         onPhase?.('running');
-        mod.callMain([romPath]);
+        mod.callMain([boot.path]);
         mod.resumeMainLoop();
         canvas.focus();
         this.input.attach();
@@ -242,6 +252,8 @@ export class Runtime {
         this.controllerPorts = [];
         this.allowedRetroIds = null;
         this.gameBaseName = null;
+        this.frameHook = null;
+        this.boot = null;
         disposeCoreScripts();
     }
 }

@@ -1,0 +1,66 @@
+diff --git a/Makefile.emulatorjs b/Makefile.emulatorjs
+index c8da6a7924..a04f505f96 100644
+--- a/Makefile.emulatorjs
++++ b/Makefile.emulatorjs
+@@ -126,7 +126,7 @@ EXPORTED_FUNCTIONS = _main,_malloc,_free,_load_state, \
+                      _system_restart,_cmd_savefiles,_get_core_options,_cmd_save_state,_supports_states,_reset_cheat,_toggleMainLoop, \
+                      _save_file_path,_get_disk_count,_set_current_disk,_get_current_disk,_refresh_save_files,_toggle_fastforward,_set_ff_ratio, \
+                      _toggle_slow_motion,_set_sm_ratio,_toggle_rewind,_set_rewind_granularity,_get_current_frame_count,_ejs_set_keyboard_enabled, \
+-                     _set_vsync,_set_video_rotation,_get_video_dimensions,EmscriptenSendCommand,EmscriptenReceiveCommandReply,_get_memory_data, \
++                     _set_vsync,_set_video_rotation,_get_video_dimensions,EmscriptenSendCommand,EmscriptenReceiveCommandReply,_get_memory_data,_ejs_get_memory_map, \
+                      _ejs_set_controller_port_device,_ejs_get_controller_port_info
+ 
+ EXPORTS := Browser,callMain,cwrap,getValue,HEAPU8,FS,PATH,ERRNO_CODES,AL,abort,ENV,stringToNewUTF8,UTF8ToString,Browser,EmscriptenSendCommand,EmscriptenReceiveCommandReply,EmulatorJSGetState,EmulatorJSGetMemoryData
+diff --git a/retroarch.c b/retroarch.c
+index 17ec9fb99a..b37c3f403c 100644
+--- a/retroarch.c
++++ b/retroarch.c
+@@ -6238,6 +6238,48 @@ char* get_memory_data(char* key) {
+    return state_data; // This must be freed by the JavaScript side!
+ }
+ 
++/* The memory map the core registered with RETRO_ENVIRONMENT_SET_MEMORY_MAPS,
++ * after RetroArch's preprocessing -- the same descriptors RetroArch's own
++ * cheevos integration hands to rc_libretro. Frontends that run rcheevos in JS
++ * need it to see the core's whole address space (get_memory_data only
++ * exposes the SYSTEM/SAVE/VIDEO RAM blocks).
++ *
++ * One "flags|ptr|offset|start|select|disconnect|len" record per descriptor,
++ * ';'-separated; "" when the core registered no map. The buffer is owned
++ * here and reused between calls -- do not free it. */
++char* ejs_get_memory_map(void) {
++   static char *buf = NULL;
++   static size_t cap = 0;
++   runloop_state_t *runloop_st      = runloop_state_get_ptr();
++   const rarch_memory_map_t *mmaps  = &runloop_st->system.mmaps;
++   size_t need = (size_t)mmaps->num_descriptors * 128 + 1;
++   size_t len  = 0;
++   unsigned i;
++
++   if (need > cap) {
++      char *grown = (char*)realloc(buf, need);
++      if (!grown)
++         return (char*)"";
++      buf = grown;
++      cap = need;
++   }
++   buf[0] = '\0';
++
++   for (i = 0; i < mmaps->num_descriptors && len < cap; i++) {
++      const struct retro_memory_descriptor *d = &mmaps->descriptors[i].core;
++      len += snprintf(buf + len, cap - len, "%s%llu|%lu|%lu|%lu|%lu|%lu|%lu",
++            i ? ";" : "",
++            (unsigned long long)d->flags,
++            (unsigned long)(uintptr_t)d->ptr,
++            (unsigned long)d->offset,
++            (unsigned long)d->start,
++            (unsigned long)d->select,
++            (unsigned long)d->disconnect,
++            (unsigned long)d->len);
++   }
++   return buf;
++}
++
+ bool ejs_is_paused(void) {
+    return EJS_PAUSED;
+ }

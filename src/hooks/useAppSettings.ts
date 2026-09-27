@@ -11,6 +11,8 @@ export function useAppSettings() {
     const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 300);
     const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
     const [saveOnExit, setSaveOnExit] = useLocalStorage('saveOnExit', true);
+    const [raEnabled, setRaEnabled] = useLocalStorage('raEnabled', false);
+    const [raHardcore, setRaHardcore] = useLocalStorage('raHardcore', false);
 
     const currentColors = THEMES[selectedTheme] || THEMES.blue;
     const gradientStyle = getGradientStyle(currentColors);
@@ -23,6 +25,8 @@ export function useAppSettings() {
         autoSaveInterval, setAutoSaveInterval,
         autoSaveIcon, setAutoSaveIcon,
         saveOnExit, setSaveOnExit,
+        raEnabled, setRaEnabled,
+        raHardcore, setRaHardcore,
         currentColors, gradientStyle,
         isHydrated: useHydrated(),
     };

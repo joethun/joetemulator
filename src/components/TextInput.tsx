@@ -15,17 +15,19 @@ interface TextInputProps {
     ariaLabel?: string;
     id?: string;
     onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+    type?: 'text' | 'password';
+    autoComplete?: string;
 }
 
 export function TextInput({
     colors, value, onChange, onClear, leftIcon,
-    placeholder, ariaLabel, id, onKeyDown,
+    placeholder, ariaLabel, id, onKeyDown, type = 'text', autoComplete,
 }: TextInputProps) {
     const [isFocused, setIsFocused] = useState(false);
 
     return (
         <div
-            className="flex items-center rounded-xl border-[0.125rem] w-full min-w-0 shrink-0 transition-all h-12"
+            className="flex items-center rounded-xl border-[0.125rem] w-full min-w-0 shrink-0 transition-all h-12 overflow-hidden"
             style={{
                 backgroundColor: colors.darkBg,
                 ...focusRingStyle(isFocused, colors),
@@ -41,7 +43,8 @@ export function TextInput({
             )}
             <input
                 id={id}
-                type="text"
+                type={type}
+                autoComplete={autoComplete}
                 placeholder={placeholder}
                 value={value}
                 onChange={e => onChange(e.target.value)}
@@ -50,7 +53,12 @@ export function TextInput({
                 onKeyDown={onKeyDown}
                 aria-label={ariaLabel}
                 className="bg-transparent h-full flex-1 min-w-0 pr-2 focus:outline-none text-sm"
-                style={{ color: colors.softLight }}
+                style={{
+                    color: colors.softLight,
+                    // Read by the autofill override in globals.css.
+                    '--field-bg': colors.darkBg,
+                    '--field-fg': colors.softLight,
+                } as React.CSSProperties}
             />
             {onClear && value && (
                 <button

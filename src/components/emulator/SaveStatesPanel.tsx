@@ -10,7 +10,7 @@ import {
     type SaveState,
 } from '@/lib/savestates';
 import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
-import { SectionHeader } from '@/components/emulator/shared';
+import { EmptyState, SectionHeader } from '@/components/emulator/shared';
 import { SaveStateCover } from '@/components/emulator/SaveStateCover';
 
 interface SaveStatesPanelProps {
@@ -101,7 +101,10 @@ export const SaveStatesPanel = memo(({
             <div className="flex flex-col min-w-0 h-full" style={{ minHeight: '320px' }}>
                 {loading ? null : states.length === 0 ? (
                     <div className="flex-1 flex items-center justify-center">
-                        <EmptyState colors={colors} />
+                        <EmptyState
+                            icon={Save} colors={colors} title="No save states found"
+                            text="Create a state with the hotkey or button, or import one."
+                        />
                     </div>
                 ) : (
                     <div className="flex flex-col gap-6">
@@ -133,25 +136,6 @@ export const SaveStatesPanel = memo(({
 });
 
 SaveStatesPanel.displayName = 'SaveStatesPanel';
-
-function EmptyState({ colors }: { colors: ThemeColors }) {
-    return (
-        <div className="flex flex-col items-center justify-center text-center animate-fade-in">
-            <div
-                className="w-20 h-20 rounded-xl mb-6 flex items-center justify-center"
-                style={{ backgroundColor: colors.midDark, color: colors.highlight, boxShadow: SHADOW_CARD }}
-            >
-                <Save className="w-10 h-10" />
-            </div>
-            <h3 className="text-xl font-bold mb-2" style={{ color: colors.softLight }}>
-                No save states found
-            </h3>
-            <p className="opacity-70" style={{ color: colors.highlight }}>
-                Create a state with the hotkey or button, or import one.
-            </p>
-        </div>
-    );
-}
 
 interface StateCardProps {
     s: SaveState;

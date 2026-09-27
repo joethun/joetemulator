@@ -15,11 +15,14 @@ interface ModalProps {
     labelledBy?: string;
     /** z-index. 50 by default; bump to 60 for menus over the emulator overlay. */
     z?: number;
+    /** Size to the content (capped at 90vh) instead of the fixed 90vh used by
+     *  list modals — for short forms like the RetroAchievements login. */
+    fit?: boolean;
 }
 
 export function Modal({
     isClosing, colors, onClose, children,
-    ariaLabel, labelledBy, z = 50,
+    ariaLabel, labelledBy, z = 50, fit = false,
 }: ModalProps) {
     const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +51,8 @@ export function Modal({
                     borderColor: colors.midDark,
                     boxShadow: SHADOW_MODAL,
                     animation: anim,
-                    height: '90vh',
+                    height: fit ? 'auto' : '90vh',
+                    maxHeight: '90vh',
                 }}
             >
                 {children}

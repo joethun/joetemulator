@@ -27,12 +27,17 @@ export function useApp() {
     const [saveStateOpen, setSaveStateOpen] = useState(false);
     const saveState = useDelayedUnmount(saveStateOpen);
 
+    const [achievementsGame, setAchievementsGame] = useState<Game | null>(null);
+    const [achievementsOpen, setAchievementsOpen] = useState(false);
+    const achievements = useDelayedUnmount(achievementsOpen);
+
     const dupHide = useTimer();
     const dupClear = useTimer();
     // Modal contents are reset only after the exit animation, so the closing
     // panel doesn't visibly empty out; re-opening cancels the pending reset.
     const pickerReset = useTimer();
     const saveStateReset = useTimer();
+    const achievementsReset = useTimer();
 
     const setActiveView = (view: ViewType) => {
         setActiveViewRaw(prev => {
@@ -79,6 +84,17 @@ export function useApp() {
         saveStateReset.set(() => setSaveStateGame(null), MODAL_EXIT_MS);
     };
 
+    const openAchievements = (game: Game) => {
+        achievementsReset.clear();
+        setAchievementsGame(game);
+        setAchievementsOpen(true);
+    };
+
+    const closeAchievements = () => {
+        setAchievementsOpen(false);
+        achievementsReset.set(() => setAchievementsGame(null), MODAL_EXIT_MS);
+    };
+
     return {
         activeView, setActiveView,
         gameSearchQuery, setGameSearchQuery,
@@ -98,5 +114,10 @@ export function useApp() {
         saveStateOpen: saveState.shouldRender,
         saveStateClosing: saveState.isClosing,
         openSaveStateManager, closeSaveStateManager,
+
+        achievementsGame,
+        achievementsOpen: achievements.shouldRender,
+        achievementsClosing: achievements.isClosing,
+        openAchievements, closeAchievements,
     };
 }

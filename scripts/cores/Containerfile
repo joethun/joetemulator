@@ -1,0 +1,10 @@
+# Build image for scripts/cores/build.sh: the official emsdk image plus the
+# packages EmulatorJS/build's CI installs. EMSDK_VERSION must match the
+# Emscripten the stock cores were built with (see build.sh).
+ARG EMSDK_VERSION=4.0.23
+FROM docker.io/emscripten/emsdk:${EMSDK_VERSION}
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        wget curl gpg p7zip-full binutils-mips-linux-gnu build-essential \
+        pkgconf python3 git zip unzip libsdl2-dev jq ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /work

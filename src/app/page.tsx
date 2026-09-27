@@ -18,6 +18,7 @@ import { SystemPickerModal } from '@/components/SystemPickerModal';
 import { SaveStateManager } from '@/components/SaveStateManager';
 import { MainContent } from '@/components/MainContent';
 import { EmulatorView } from '@/components/emulator/EmulatorView';
+import { GameAchievementsModal } from '@/components/cheevos/GameAchievementsModal';
 
 export default function Home() {
     const lib = useGameLibrary();
@@ -101,6 +102,7 @@ export default function Home() {
                             onCoverFailed: h.handleCoverFailed,
                             onEdit: h.handleEditGame,
                             onSaveStates: app.openSaveStateManager,
+                            onAchievements: app.openAchievements,
                             onAddGame: h.handleAddGame,
                         }}
                         settings={settings}
@@ -146,6 +148,18 @@ export default function Home() {
                     gameName={app.saveStateGame.name}
                     onClose={app.closeSaveStateManager}
                     onDuplicateError={app.showDuplicateError}
+                />
+            )}
+
+            {app.achievementsOpen && app.achievementsGame && (
+                <GameAchievementsModal
+                    key={app.achievementsGame.id}
+                    isClosing={app.achievementsClosing}
+                    colors={settings.currentColors}
+                    gradient={settings.gradientStyle}
+                    game={app.achievementsGame}
+                    hardcore={settings.raHardcore}
+                    onClose={app.closeAchievements}
                 />
             )}
         </div>

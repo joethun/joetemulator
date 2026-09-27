@@ -74,10 +74,11 @@ export const CoreOptionsPanel = memo(({
         if (entryKey === CORE_KEY) {
             onSwitchCore(value);
         } else {
-            setOptions(prev => prev.map(o => o.key === entryKey ? { ...o, current: value } : o));
+            // Re-read rather than assume: a change can be refused (hardcore).
             onChange(entryKey, value);
+            setOptions(getOptions());
         }
-    }, [onChange, onSwitchCore]);
+    }, [onChange, onSwitchCore, getOptions]);
 
     if (!coreEntry && optionEntries.length === 0) {
         return (
