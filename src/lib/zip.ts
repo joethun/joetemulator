@@ -140,16 +140,14 @@ function readZip64Extra(
         if (id === 0x0001) {
             let r = q + 4;
             const fieldEnd = r + len;
-            const next = () => {
+            const fields = [size, compressedSize, headerOffset];
+            for (let i = 0; i < fields.length; i++) {
+                if (fields[i] !== 0xFFFFFFFF) continue;
                 if (r + 8 > fieldEnd) return null;
-                const v = Number(cd.getBigUint64(r, true));
+                fields[i] = Number(cd.getBigUint64(r, true));
                 r += 8;
-                return v;
-            };
-            if (size === 0xFFFFFFFF) { const v = next(); if (v === null) return null; size = v; }
-            if (compressedSize === 0xFFFFFFFF) { const v = next(); if (v === null) return null; compressedSize = v; }
-            if (headerOffset === 0xFFFFFFFF) { const v = next(); if (v === null) return null; headerOffset = v; }
-            return { size, compressedSize, headerOffset };
+            }
+            return { size: fields[0], compressedSize: fields[1], headerOffset: fields[2] };
         }
         q += 4 + len;
     }

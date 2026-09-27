@@ -43,7 +43,7 @@ const EXT_TO_CORE: Record<string, string> = {
 
 /** Detect a system core from a file name's extension, or null if the
  *  extension is unknown or shared across systems. */
-export const detectCoreFromName = (name: string): string | null =>
+const detectCoreFromName = (name: string): string | null =>
     EXT_TO_CORE[fileExt(name)] ?? null;
 
 /**
@@ -53,7 +53,7 @@ export const detectCoreFromName = (name: string): string | null =>
  * romsets, DOS games, disc images) returns null so the user picks. Only the
  * zip's central directory is read — a few KB regardless of the zip's size.
  */
-export async function detectCoreFromZip(file: File): Promise<string | null> {
+async function detectCoreFromZip(file: File): Promise<string | null> {
     const entries = (await readZipDirectory(file))?.filter(e => !isJunkPath(e.path));
     if (!entries?.length) return null;
 

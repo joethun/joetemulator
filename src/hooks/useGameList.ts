@@ -34,6 +34,6 @@ export function useGameList(
             (groups[key] ??= []).push(g);
         }
 
-        return { count: filtered.length, groupedGames: groups };
+        return { total: all.length, count: filtered.length, groupedGames: groups };
     }, [games, uploads, searchQuery]);
 }

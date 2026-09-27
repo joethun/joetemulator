@@ -88,8 +88,7 @@ export default function Home() {
 
                     <MainContent
                         activeView={app.activeView}
-                        games={lib.games}
-                        uploads={files.uploads}
+                        total={view.total}
                         count={view.count}
                         groupedGames={view.groupedGames}
                         gameSearchQuery={app.gameSearchQuery}

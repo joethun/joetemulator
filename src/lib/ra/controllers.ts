@@ -4,7 +4,7 @@ const isNumber = (v: unknown): v is number => typeof v === 'number';
 
 const STORAGE_KEY = 'ra_controller_devices_v1';
 
-export interface ControllerDevice {
+interface ControllerDevice {
     id: number;
     name: string;
 }

@@ -13,7 +13,7 @@ export function useAppSettings() {
     const [saveOnExit, setSaveOnExit] = useLocalStorage('saveOnExit', true);
 
     const currentColors = THEMES[selectedTheme] || THEMES.blue;
-    const gradientStyle = getGradientStyle(currentColors.gradientFrom, currentColors.gradientTo);
+    const gradientStyle = getGradientStyle(currentColors);
 
     return {
         selectedTheme, setSelectedTheme,

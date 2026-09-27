@@ -86,6 +86,7 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                     )}
                     {tab === 'controls' && (
                         <ControlsPanel
+                            key={session.currentCore ?? 'none'}
                             bindings={session.bindings}
                             onChange={session.actions.setBindings}
                             colors={colors}

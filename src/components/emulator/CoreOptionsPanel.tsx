@@ -24,7 +24,7 @@ interface Entry {
     key: string;
     label: string;
     value: string;
-    choices: string[];
+    choices: readonly string[];
     disabled?: boolean;
 }
 
@@ -48,7 +48,7 @@ export const CoreOptionsPanel = memo(({
             key: CORE_KEY,
             label: 'Core',
             value: libretroCore,
-            choices: availableCores as string[],
+            choices: availableCores,
             disabled: availableCores.length < 2,
         };
     }, [system, libretroCore]);

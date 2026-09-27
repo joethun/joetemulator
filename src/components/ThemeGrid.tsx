@@ -38,7 +38,7 @@ export const ThemeGrid = memo(({ selectedTheme, onSelectTheme }: ThemeGridProps)
                         {[theme.midDark, theme.highlight].map((color, j) => (
                             <div key={j} className="flex-1 h-10 rounded-xl" style={{ backgroundColor: color }} />
                         ))}
-                        <div className="flex-1 h-10 rounded-xl" style={getGradientStyle(theme.gradientFrom, theme.gradientTo)} />
+                        <div className="flex-1 h-10 rounded-xl" style={getGradientStyle(theme)} />
                     </div>
                 </button>
             );

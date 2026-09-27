@@ -92,13 +92,12 @@ interface ModalButtonProps {
     variant?: 'solid' | 'gradient';
     gradient?: GradientStyle;
     disabled?: boolean;
-    className?: string;
     children: React.ReactNode;
 }
 
 /** The standard h-12 footer action button used across all modals. */
 export function ModalButton({
-    onClick, colors, variant = 'solid', gradient, disabled, className, children,
+    onClick, colors, variant = 'solid', gradient, disabled, children,
 }: ModalButtonProps) {
     const style = variant === 'gradient' && gradient
         ? { ...gradient, color: colors.darkBg }
@@ -107,7 +106,7 @@ export function ModalButton({
         <button
             onClick={onClick}
             disabled={disabled}
-            className={`h-12 px-8 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer${className ? ` ${className}` : ''}`}
+            className="h-12 px-8 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
             style={style}
         >
             {children}

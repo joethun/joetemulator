@@ -61,6 +61,25 @@ function findKeyForButton(keyMap: KeyMap, retroId: number, player: number): stri
     return null;
 }
 
+/** keyMap without the key bound to (player, retroId), and without `alsoCode`. */
+function unbindKey(keyMap: KeyMap, player: number, retroId: number, alsoCode?: string): KeyMap {
+    const next = { ...keyMap };
+    for (const [c, bind] of Object.entries(next)) {
+        if (c === alsoCode || (bind.player === player && bind.button === retroId)) delete next[c];
+    }
+    return next;
+}
+
+/** Bindings with player's gamepad sources for retroId replaced (or cleared when null). */
+function withGamepadSources(
+    bindings: InputBindings, player: number, retroId: number, sources: GamepadSource[] | null,
+): InputBindings {
+    const inner = { ...(bindings.gamepadBindings?.[player] ?? {}) };
+    if (sources) inner[retroId] = sources;
+    else delete inner[retroId];
+    return { ...bindings, gamepadBindings: { ...(bindings.gamepadBindings ?? {}), [player]: inner } };
+}
+
 function groupForButton(button: { id: number; group?: string }): string {
     if (button.group) return button.group;
     const id = button.id;
@@ -133,14 +152,12 @@ export const ControlsPanel = memo(({
         | null
     >(null);
 
-    useEffect(() => { setListening(null); }, [selectedPlayer]);
+    const selectPlayer = (p: number) => {
+        setSelectedPlayer(p);
+        setListening(null);
+    };
 
     const maxPlayers = getMaxPlayers(core);
-
-    // If the system shrinks below the selected slot (e.g. switching games), snap back to P1.
-    useEffect(() => {
-        if (selectedPlayer >= maxPlayers) setSelectedPlayer(0);
-    }, [maxPlayers, selectedPlayer]);
 
     const availableButtons = useMemo(
         () => getButtonsForCore(core),
@@ -179,14 +196,9 @@ export const ControlsPanel = memo(({
             e.stopPropagation();
 
             if (target.kind === 'pad') {
-                const nextKeyMap = { ...bindings.keyMap };
-                for (const [c, bind] of Object.entries(nextKeyMap)) {
-                    if (c === code || (bind.player === target.player && bind.button === target.retroId)) {
-                        delete nextKeyMap[c];
-                    }
-                }
-                nextKeyMap[code] = { player: target.player, button: target.retroId };
-                onChange({ ...bindings, keyMap: nextKeyMap });
+                const keyMap = unbindKey(bindings.keyMap, target.player, target.retroId, code);
+                keyMap[code] = { player: target.player, button: target.retroId };
+                onChange({ ...bindings, keyMap });
             } else {
                 onChange({ ...bindings, [target.key]: code });
             }
@@ -272,12 +284,7 @@ export const ControlsPanel = memo(({
                 const pad = pads[chord.pad];
                 const stillHeld = !!pad && Array.from(chord.sources.values()).some(s => sourceActive(pad, s));
                 if (!stillHeld) {
-                    const inner = { ...(bindings.gamepadBindings?.[target.player] ?? {}) };
-                    inner[target.retroId] = Array.from(chord.sources.values());
-                    onChange({
-                        ...bindings,
-                        gamepadBindings: { ...(bindings.gamepadBindings ?? {}), [target.player]: inner },
-                    });
+                    onChange(withGamepadSources(bindings, target.player, target.retroId, [...chord.sources.values()]));
                     setListening(null);
                     return;
                 }
@@ -290,35 +297,6 @@ export const ControlsPanel = memo(({
         return () => cancelAnimationFrame(raf);
     }, [listening, bindings, onChange]);
 
-    const handleClearPad = (retroId: number, player: number) => {
-        const nextKeyMap = { ...bindings.keyMap };
-        for (const [c, bind] of Object.entries(nextKeyMap)) {
-            if (bind.player === player && bind.button === retroId) delete nextKeyMap[c];
-        }
-        onChange({ ...bindings, keyMap: nextKeyMap });
-    };
-
-    const handleClearGamepad = (retroId: number, player: number) => {
-        const inner = { ...(bindings.gamepadBindings?.[player] ?? {}) };
-        delete inner[retroId];
-        onChange({
-            ...bindings,
-            gamepadBindings: { ...(bindings.gamepadBindings ?? {}), [player]: inner },
-        });
-    };
-
-    // Store the cleared state as '' rather than deleting the key: loadStoredBindings
-    // falls back to the default for a missing key, so a deleted hotkey would come
-    // back as F1/F2 on the next reload. No KeyboardEvent.code equals '', so an empty
-    // string reads as unbound everywhere.
-    const handleClearHotkey = (key: HotkeyKey) => {
-        onChange({ ...bindings, [key]: '' });
-    };
-
-    const handleClearHotkeyGamepad = (key: HotkeyGamepadKey) => {
-        onChange({ ...bindings, [key]: -1 });
-    };
-
     const assignListening = listening?.kind === 'assign' && listening.player === selectedPlayer;
 
     const portForPlayer = controllerPorts?.find(p => p.port === selectedPlayer);
@@ -326,7 +304,6 @@ export const ControlsPanel = memo(({
     // immediately on click — the runtime stores the choice but doesn't push
     // back into React state.
     const [deviceOverride, setDeviceOverride] = useState<Record<number, number>>({});
-    useEffect(() => { setDeviceOverride({}); }, [core]);
     const currentDeviceId = portForPlayer
         ? deviceOverride[portForPlayer.port] ?? portForPlayer.currentDevice
         : null;
@@ -349,7 +326,7 @@ export const ControlsPanel = memo(({
                     {Array.from({ length: maxPlayers }, (_, p) => (
                         <button
                             key={p}
-                            onClick={() => setSelectedPlayer(p)}
+                            onClick={() => selectPlayer(p)}
                             aria-pressed={selectedPlayer === p}
                             className="px-4 py-1 rounded-xl h-9 text-sm font-medium flex-1 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
                             style={{
@@ -406,35 +383,27 @@ export const ControlsPanel = memo(({
                             const gpListening = listening?.kind === 'gamepad'
                                 && listening.retroId === item.id
                                 && listening.player === selectedPlayer;
-                            const gpLabel = gpListening
-                                ? 'Press button or move stick…'
-                                : sources.length
-                                    ? sources.map(formatSource).join(' + ')
-                                    : 'Unbound';
                             return (
-                                <BindingRow
+                                <DualBindingRow
                                     key={item.id}
                                     label={item.label}
-                                    active={kbListening || gpListening}
                                     colors={colors}
                                     idx={idx}
-                                >
-                                    <BindingChip
-                                        label={kbListening ? 'Press key…' : (code ? formatKeyCode(code) : 'Unbound')}
-                                        active={kbListening}
-                                        colors={colors}
-                                        onClick={() => setListening({ kind: 'pad', retroId: item.id, player: selectedPlayer })}
-                                        onContextMenu={e => { e.preventDefault(); handleClearPad(item.id, selectedPlayer); }}
-                                    />
-                                    <span style={{ color: colors.highlight, opacity: 0.6 }}>/</span>
-                                    <BindingChip
-                                        label={gpLabel}
-                                        active={gpListening}
-                                        colors={colors}
-                                        onClick={() => setListening({ kind: 'gamepad', retroId: item.id, player: selectedPlayer })}
-                                        onContextMenu={e => { e.preventDefault(); handleClearGamepad(item.id, selectedPlayer); }}
-                                    />
-                                </BindingRow>
+                                    keyboard={{
+                                        label: kbListening ? 'Press key…' : (code ? formatKeyCode(code) : 'Unbound'),
+                                        active: kbListening,
+                                        onListen: () => setListening({ kind: 'pad', retroId: item.id, player: selectedPlayer }),
+                                        onClear: () => onChange({ ...bindings, keyMap: unbindKey(bindings.keyMap, selectedPlayer, item.id) }),
+                                    }}
+                                    gamepad={{
+                                        label: gpListening
+                                            ? 'Press button or move stick…'
+                                            : sources.length ? sources.map(formatSource).join(' + ') : 'Unbound',
+                                        active: gpListening,
+                                        onListen: () => setListening({ kind: 'gamepad', retroId: item.id, player: selectedPlayer }),
+                                        onClear: () => onChange(withGamepadSources(bindings, selectedPlayer, item.id, null)),
+                                    }}
+                                />
                             );
                         })}
                     </div>
@@ -447,37 +416,33 @@ export const ControlsPanel = memo(({
                     {SYSTEM_HOTKEYS.map((hk, idx) => {
                         const kbActive = listening?.kind === 'hotkey' && listening.key === hk.keyboard;
                         const gpActive = listening?.kind === 'hotkey-gamepad' && listening.key === hk.gamepad;
+                        const kbCode = bindings[hk.keyboard];
                         const gpBtn = bindings[hk.gamepad];
-                        const gpLabel = gpActive
-                            ? 'Press button…'
-                            : (typeof gpBtn === 'number' && gpBtn >= 0 ? `Button ${gpBtn}` : 'Unbound');
-                        const kbLabel = kbActive
-                            ? 'Press key…'
-                            : (bindings[hk.keyboard] ? formatKeyCode(bindings[hk.keyboard]!) : 'Unbound');
                         return (
-                            <BindingRow
+                            <DualBindingRow
                                 key={hk.keyboard}
                                 label={hk.label}
-                                active={kbActive || gpActive}
                                 colors={colors}
                                 idx={idx}
-                            >
-                                <BindingChip
-                                    label={kbLabel}
-                                    active={kbActive}
-                                    colors={colors}
-                                    onClick={() => setListening({ kind: 'hotkey', key: hk.keyboard })}
-                                    onContextMenu={e => { e.preventDefault(); handleClearHotkey(hk.keyboard); }}
-                                />
-                                <span style={{ color: colors.highlight, opacity: 0.6 }}>/</span>
-                                <BindingChip
-                                    label={gpLabel}
-                                    active={gpActive}
-                                    colors={colors}
-                                    onClick={() => setListening({ kind: 'hotkey-gamepad', key: hk.gamepad })}
-                                    onContextMenu={e => { e.preventDefault(); handleClearHotkeyGamepad(hk.gamepad); }}
-                                />
-                            </BindingRow>
+                                keyboard={{
+                                    label: kbActive ? 'Press key…' : (kbCode ? formatKeyCode(kbCode) : 'Unbound'),
+                                    active: kbActive,
+                                    onListen: () => setListening({ kind: 'hotkey', key: hk.keyboard }),
+                                    // Store the cleared state as '' rather than deleting the key:
+                                    // loadStoredBindings falls back to the default for a missing key,
+                                    // so a deleted hotkey would come back as F1/F2 on the next reload.
+                                    // No KeyboardEvent.code equals '', so '' reads as unbound everywhere.
+                                    onClear: () => onChange({ ...bindings, [hk.keyboard]: '' }),
+                                }}
+                                gamepad={{
+                                    label: gpActive
+                                        ? 'Press button…'
+                                        : (typeof gpBtn === 'number' && gpBtn >= 0 ? `Button ${gpBtn}` : 'Unbound'),
+                                    active: gpActive,
+                                    onListen: () => setListening({ kind: 'hotkey-gamepad', key: hk.gamepad }),
+                                    onClear: () => onChange({ ...bindings, [hk.gamepad]: -1 }),
+                                }}
+                            />
                         );
                     })}
                 </div>
@@ -487,3 +452,32 @@ export const ControlsPanel = memo(({
 });
 
 ControlsPanel.displayName = 'ControlsPanel';
+
+interface ChipSpec {
+    label: string;
+    active: boolean;
+    onListen: () => void;
+    onClear: () => void;
+}
+
+/** A binding row with a keyboard chip and a gamepad chip. Click listens, right-click clears. */
+function DualBindingRow({ label, colors, idx, keyboard, gamepad }: {
+    label: string; colors: ThemeColors; idx: number; keyboard: ChipSpec; gamepad: ChipSpec;
+}) {
+    const chip = (spec: ChipSpec) => (
+        <BindingChip
+            label={spec.label}
+            active={spec.active}
+            colors={colors}
+            onClick={spec.onListen}
+            onContextMenu={e => { e.preventDefault(); spec.onClear(); }}
+        />
+    );
+    return (
+        <BindingRow label={label} active={keyboard.active || gamepad.active} colors={colors} idx={idx}>
+            {chip(keyboard)}
+            <span style={{ color: colors.highlight, opacity: 0.6 }}>/</span>
+            {chip(gamepad)}
+        </BindingRow>
+    );
+}

@@ -95,6 +95,6 @@ export const THEMES: Record<string, ThemeColors> = {
   },
 };
 
-export const getGradientStyle = (from: string, to: string): GradientStyle => ({
-  backgroundImage: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`
+export const getGradientStyle = ({ gradientFrom, gradientTo }: ThemeColors): GradientStyle => ({
+  backgroundImage: `linear-gradient(135deg, ${gradientFrom} 0%, ${gradientTo} 100%)`
 });

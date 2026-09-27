@@ -25,8 +25,9 @@ export class GameController {
     };
 
     constructor(
-        public readonly mod: LibretroModule,
-        private readonly canvas: HTMLCanvasElement,
+        private readonly mod: LibretroModule,
+        /** The GL canvas the core renders into. Read directly to grab cover snapshots. */
+        public readonly videoCanvas: HTMLCanvasElement,
     ) {
         const w = <R>(name: string, ret: CwrapPrimitive, args: CwrapPrimitive[]): CFn<R> =>
             mod.cwrap<R>(name, ret, args);
@@ -117,7 +118,4 @@ export class GameController {
         } catch { /* core may not export this */ }
         return DEFAULT_COVER_ASPECT;
     }
-
-    /** The GL canvas the core renders into. Read directly to grab cover snapshots. */
-    get videoCanvas(): HTMLCanvasElement { return this.canvas; }
 }

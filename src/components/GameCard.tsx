@@ -114,7 +114,7 @@ export const GameCard = memo(({
             {isUploading && <UploadOverlay progress={game.progress} isComplete={game.isComplete} colors={colors} />}
 
             <div className="h-full w-full relative flex items-center justify-center transition-transform duration-500 overflow-hidden"
-                style={!game.coverLoading && (!game.coverArt || imgError) ? getGradientStyle(colors.gradientFrom, colors.gradientTo) : undefined}>
+                style={!game.coverLoading && (!game.coverArt || imgError) ? getGradientStyle(colors) : undefined}>
                 {game.coverLoading ? null : game.coverArt && !imgError ? (
                     <Image
                         src={game.coverArt}

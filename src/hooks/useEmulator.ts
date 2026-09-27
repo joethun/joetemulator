@@ -281,22 +281,18 @@ export function useEmulator(): EmulatorSession {
 
     useEffect(() => () => { void stop(); }, [stop]);
 
+    const applyBindings = useCallback((b: InputBindings) => {
+        bindingsRef.current = b;
+        setBindingsState(b);
+        runtimeRef.current?.setInputBindings(b);
+    }, []);
+
     const actions = useMemo<EmulatorActions>(() => ({
         saveState, loadState, switchCore, flushExitSave,
         pause:  () => { runtimeRef.current?.pause();  pausedRef.current = true;  patchStatus({ paused: true  }); },
         resume: () => { runtimeRef.current?.resume(); pausedRef.current = false; patchStatus({ paused: false }); },
-        setBindings: (b) => {
-            bindingsRef.current = b;
-            setBindingsState(b);
-            saveStoredBindings(b);
-            runtimeRef.current?.setInputBindings(b);
-        },
-        resetBindings: () => {
-            const defaults = resetStoredBindings();
-            bindingsRef.current = defaults;
-            setBindingsState(defaults);
-            runtimeRef.current?.setInputBindings(defaults);
-        },
+        setBindings: (b) => { saveStoredBindings(b); applyBindings(b); },
+        resetBindings: () => applyBindings(resetStoredBindings()),
         getCoreOptions:   () => runtimeRef.current?.getCoreOptions() ?? EMPTY_CORE_OPTIONS,
         setCoreOption:    (key, value) => runtimeRef.current?.setCoreOption(key, value),
         resetCoreOptions: () => runtimeRef.current?.resetCoreOptions(),
@@ -304,8 +300,10 @@ export function useEmulator(): EmulatorSession {
         setControllerDevice: (port, deviceId) => runtimeRef.current?.setControllerDevice(port, deviceId),
         getDiscInfo:      () => runtimeRef.current?.getDiscInfo() ?? EMPTY_DISC_INFO,
         setDisc:          (index) => runtimeRef.current?.setDisc(index),
-        setShader:        (name) => runtimeRef.current?.setShader(name),
-    }), [saveState, loadState, switchCore, flushExitSave, patchStatus]);
+        setShader:        (name) => {
+            runtimeRef.current?.setShader(name).catch(e => console.error('shader load failed:', e));
+        },
+    }), [saveState, loadState, switchCore, flushExitSave, patchStatus, applyBindings]);
 
     return useMemo<EmulatorSession>(() => ({
         start, canvasRef, setCanvas, canvasEpoch, actions,

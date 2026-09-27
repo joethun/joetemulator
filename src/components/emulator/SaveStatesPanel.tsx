@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useState, useEffect, useCallback } from 'react';
-import { Trash2, Download, Upload, Save } from 'lucide-react';
+import { Trash2, Download, Upload, Save, type LucideIcon } from 'lucide-react';
 import type { ThemeColors } from '@/types';
 import {
     fetchStates, removeState, importState, downloadState,
@@ -12,8 +12,6 @@ import {
 import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
 import { SectionHeader } from '@/components/emulator/shared';
 import { SaveStateCover } from '@/components/emulator/SaveStateCover';
-
-const BTN_BASE = 'w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 cursor-pointer';
 
 interface SaveStatesPanelProps {
     colors: ThemeColors;
@@ -195,25 +193,27 @@ const StateCard = memo(({
                 {fmtTime(s.savedAt)}
             </span>
             <div className="flex items-center gap-1.5 shrink-0">
-                {onLoad && (
-                    <button onClick={() => onLoad(s.key)} aria-label="Load"
-                        className={BTN_BASE}
-                        style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
-                        <Upload className="w-4 h-4" />
-                    </button>
-                )}
-                <button onClick={() => downloadState(gameName, s.savedAt, s.rawData, s.thumbnail)} aria-label="Download"
-                    className={BTN_BASE}
-                    style={{ backgroundColor: colors.midDark, color: colors.softLight }}>
-                    <Download className="w-4 h-4" />
-                </button>
-                <button onClick={() => onDelete(s.key, s.savedAt)} aria-label="Delete"
-                    className={BTN_BASE}
-                    style={{ backgroundColor: DANGER_BG, color: DANGER_FG }}>
-                    <Trash2 className="w-4 h-4" />
-                </button>
+                {onLoad && <IconButton icon={Upload} label="Load" colors={colors} onClick={() => onLoad(s.key)} />}
+                <IconButton icon={Download} label="Download" colors={colors}
+                    onClick={() => downloadState(gameName, s.savedAt, s.rawData, s.thumbnail)} />
+                <IconButton icon={Trash2} label="Delete" colors={colors} danger
+                    onClick={() => onDelete(s.key, s.savedAt)} />
             </div>
         </div>
     </article>
 ));
 StateCard.displayName = 'StateCard';
+
+function IconButton({ icon: Icon, label, colors, danger, onClick }: {
+    icon: LucideIcon; label: string; colors: ThemeColors; danger?: boolean; onClick: () => void;
+}) {
+    return (
+        <button onClick={onClick} aria-label={label}
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+            style={danger
+                ? { backgroundColor: DANGER_BG, color: DANGER_FG }
+                : { backgroundColor: colors.midDark, color: colors.softLight }}>
+            <Icon className="w-4 h-4" />
+        </button>
+    );
+}

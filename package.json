@@ -9,20 +9,20 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "lucide-react": "^1.46.0",
-    "next": "^16.3.5",
+    "lucide-react": "^1.48.0",
+    "next": "^16.3.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "^5.15.13",
+    "@netlify/plugin-nextjs": "^5.16.0",
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^26.6.1",
+    "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.3.5",
+    "eslint-config-next": "^16.3.6",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3"
   }

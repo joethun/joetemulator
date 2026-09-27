@@ -4,6 +4,7 @@ import { deleteGameFile, migrateLegacyRoms } from '@/lib/rom-storage';
 import { deleteAllStates } from '@/lib/savestates';
 import { getSystemNameByCore } from '@/lib/constants';
 import { gameSaveName } from '@/lib/utils';
+import { loadJSON } from '@/lib/local-storage';
 
 const GAMES_KEY = 'games';
 
@@ -18,9 +19,8 @@ export function useGameLibrary() {
     useEffect(() => {
         (async () => {
             try {
-                const raw = localStorage.getItem(GAMES_KEY);
-                if (!raw) return;
-                const parsed: Array<Game & { fileData?: string; filePath?: string }> = JSON.parse(raw);
+                const parsed = loadJSON<Array<Game & { fileData?: string; filePath?: string }> | null>(GAMES_KEY, null);
+                if (!parsed) return;
                 await migrateLegacyRoms(parsed);
                 const cleaned: Game[] = parsed.map(g => ({
                     ...g,

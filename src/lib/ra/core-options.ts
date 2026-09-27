@@ -62,7 +62,7 @@ export function parseCoreOptions(raw: string, libretroName?: string): CoreOption
 
 const storageKey = (libretroName: string) => `${STORAGE_PREFIX}${libretroName}`;
 
-export const loadStoredCoreOptions = (libretroName: string): Record<string, string> =>
+const loadStoredCoreOptions = (libretroName: string): Record<string, string> =>
     loadStringRecord(storageKey(libretroName));
 
 export const saveStoredCoreOption = (libretroName: string, key: string, value: string): void =>
@@ -81,5 +81,9 @@ const CORE_FORCED_DEFAULTS: Record<string, Record<string, string>> = {
     },
 };
 
-export const getForcedCoreOptions = (libretroName: string): Record<string, string> =>
-    CORE_FORCED_DEFAULTS[libretroName] ?? {};
+/** Option values to apply over the core's defaults: forced defaults, then the
+ *  user's saved choices (which win). */
+export const getCoreOptionOverrides = (libretroName: string): Record<string, string> => ({
+    ...CORE_FORCED_DEFAULTS[libretroName],
+    ...loadStoredCoreOptions(libretroName),
+});

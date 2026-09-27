@@ -95,14 +95,10 @@ export function useFileHandler(games: Game[], addGame: (game: Game) => void, ops
 
             // Save done — progress sits at 100% while we hash.
             // Hash the OPFS copy to avoid read contention with the original File;
-            // for a zipped set it also stands in for the never-materialized
-            // primary, renamed so name-based cover matching still works.
+            // for a zipped set it also stands in for the never-materialized primary.
             patchUpload(gameId, { progress: 100 });
-            const opfsFile = await getGameFile(gameId).catch(() => null);
-            const hashSource = item.files?.[0] ?? (opfsFile ? new File([opfsFile], primaryName) : null);
-            const cover = hashSource
-                ? await calculateAutoCoverArt(hashSource, core, opfsFile ?? undefined).catch(() => null)
-                : null;
+            const rom = await getGameFile(gameId).catch(() => null) ?? item.files?.[0];
+            const cover = rom ? await calculateAutoCoverArt(rom, primaryName, core) : null;
 
             // Apply cover before the overlay fades out so it's visible immediately
             if (cover && active.current.has(gameId)) {

@@ -71,57 +71,23 @@ async function extractRomBytesFromZip(file: File): Promise<ArrayBuffer | null> {
     }
 }
 
-type FileHashes = {
-    crc: string;
-    serialId: string | null;
-    fileSha1: string | null;
-};
+// CRC matching is skipped for roms larger than this.
+const MAX_CRC_BYTES = 516 * 1024 * 1024;
 
-// Raw buffer work that is system-agnostic — cached independently of system
-type RawFileData = {
-    buffer: ArrayBuffer;
-    serialId: string | null;
-    fileSha1: string | null;
-};
-
-const rawDataCache = new WeakMap<File, Promise<RawFileData>>();
-
-async function getRawFileData(file: File): Promise<RawFileData> {
-    if (rawDataCache.has(file)) return rawDataCache.get(file)!;
-
-    const promise = (async (): Promise<RawFileData> => {
-        const zipBytes = await extractRomBytesFromZip(file);
-        const buffer = zipBytes ?? await file.arrayBuffer();
-
-        let fileSha1: string | null = null;
-        try {
-            fileSha1 = toHex(await crypto.subtle.digest('SHA-1', buffer));
-        } catch (e) {
-            console.warn('SHA-1 hash failed (proceeding without it):', e);
-        }
-
-        const scanLen = Math.min(buffer.byteLength, 512 * 1024);
-        const headStr = new TextDecoder('ascii').decode(new Uint8Array(buffer, 0, scanLen)).replace(/\0/g, ' ');
-        const psMatch = headStr.match(/[ST][LCB][UEPKA][SPMEJ][-_]?\d{3}\.?\d{2}/i);
-        const serialId = psMatch ? psMatch[0].replace(/[-_.]/g, '').toLowerCase() : null;
-
-        return { buffer, serialId, fileSha1 };
-    })();
-
-    // Evict on failure so the next call retries rather than getting a cached rejection
-    promise.catch(() => { if (rawDataCache.get(file) === promise) rawDataCache.delete(file); });
-    rawDataCache.set(file, promise);
-    return promise;
+async function sha1Hex(bytes: Uint8Array<ArrayBuffer>): Promise<string | null> {
+    try {
+        return toHex(await crypto.subtle.digest('SHA-1', bytes));
+    } catch (e) {
+        console.warn('SHA-1 hash failed (proceeding without it):', e);
+        return null;
+    }
 }
 
-async function getFileHashes(file: File, systemName: string): Promise<FileHashes> {
-    const { buffer, serialId, fileSha1 } = await getRawFileData(file);
-
-    const crc = buffer.byteLength <= 516 * 1024 * 1024
-        ? computeRomCrc(new Uint8Array(buffer), systemName)
-        : '';
-
-    return { crc, serialId, fileSha1 };
+/** PlayStation-family disc serial (e.g. SLUS-012.34 → slus01234) from the image header. */
+function findSerial(bytes: Uint8Array): string | null {
+    const head = new TextDecoder('ascii').decode(bytes.subarray(0, 512 * 1024)).replace(/\0/g, ' ');
+    const m = head.match(/[ST][LCB][UEPKA][SPMEJ][-_]?\d{3}\.?\d{2}/i);
+    return m ? m[0].replace(/[-_.]/g, '').toLowerCase() : null;
 }
 
 const LR_MAP: Record<string, string> = {
@@ -162,6 +128,9 @@ const LR_MAP: Record<string, string> = {
     'Bandai WonderSwan': 'Bandai - WonderSwan',
 };
 
+/** Libretro database/thumbnail system name for one of our system names. */
+const datSystem = (systemName: string) => LR_MAP[systemName] ?? systemName;
+
 // Cache DAT JSON in memory — same system's DAT is only fetched once per session
 const datCache = new Map<string, Promise<Record<string, string>>>();
 
@@ -179,9 +148,7 @@ function fetchDat(lrSys: string): Promise<Record<string, string>> {
  * in the picker), so it's cached by the time calculateAutoCoverArt is called.
  */
 export function prewarmDat(core: string): void {
-    const systemName = getSystemNameByCore(core);
-    const lrSys = LR_MAP[systemName] ?? systemName;
-    fetchDat(lrSys);
+    fetchDat(datSystem(getSystemNameByCore(core)));
 }
 
 // Region preference order for name-based fallback
@@ -221,28 +188,35 @@ function nameIndex(datMap: Record<string, string>): Map<string, string> {
 const findByName = (cleanTitle: string, datMap: Record<string, string>): string | null =>
     nameIndex(datMap).get(normalizeTitle(cleanTitle)) ?? null;
 
-export async function calculateAutoCoverArt(file: File, core: string, opfsFile?: File): Promise<string | null> {
-    if (typeof window === 'undefined') return null;
-
+/**
+ * Box-art URL for a rom, matched against the system's DAT by CRC, then SHA-1,
+ * then disc serial, then `fileName`'s bare title. Each hash is computed only
+ * if the previous lookup missed.
+ */
+export async function calculateAutoCoverArt(rom: File, fileName: string, core: string): Promise<string | null> {
     const systemName = getSystemNameByCore(core);
-    const lrSys = LR_MAP[systemName] ?? systemName;
-    const hashFile = opfsFile ?? file;
+    const lrSys = datSystem(systemName);
 
     try {
-        const [hashes, datMap] = await Promise.all([
-            getFileHashes(hashFile, systemName),
+        const [romBytes, datMap] = await Promise.all([
+            extractRomBytesFromZip(rom).then(b => b ?? rom.arrayBuffer()),
             fetchDat(lrSys).catch(() => ({} as Record<string, string>)),
         ]);
+        const bytes = new Uint8Array(romBytes);
 
-        const { crc, serialId, fileSha1 } = hashes;
+        const lookup = async (): Promise<string | null> => {
+            if (bytes.byteLength <= MAX_CRC_BYTES) {
+                const hit = datMap[computeRomCrc(bytes, systemName)];
+                if (hit) return hit;
+            }
+            const sha1 = await sha1Hex(bytes);
+            if (sha1 && datMap[sha1]) return datMap[sha1];
+            const serial = findSerial(bytes);
+            if (serial && datMap[serial]) return datMap[serial];
+            return findByName(stripParenTags(stripExt(fileName)), datMap);
+        };
 
-        const hashName =
-            datMap[crc] ??
-            (fileSha1 && datMap[fileSha1]) ??
-            (serialId && datMap[serialId]) ??
-            findByName(stripParenTags(stripExt(file.name)), datMap) ??
-            null;
-
+        const hashName = await lookup();
         if (!hashName) return null;
         return `https://thumbnails.libretro.com/${encodeURIComponent(lrSys)}/Named_Boxarts/${encodeURIComponent(hashName)}.png`;
     } catch {

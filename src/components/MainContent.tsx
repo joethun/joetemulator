@@ -24,8 +24,9 @@ interface GameCardHandlers {
 
 interface MainContentProps {
     activeView: ViewType;
-    games: Game[];
-    uploads: Record<number, Game>;
+    /** Games in the library, including in-flight uploads. */
+    total: number;
+    /** Games matching the search. */
     count: number;
     groupedGames: Record<string, Game[]>;
     gameSearchQuery: string;
@@ -35,7 +36,7 @@ interface MainContentProps {
 }
 
 export const MainContent = memo(function MainContent({
-    activeView, games, uploads, count, groupedGames,
+    activeView, total, count, groupedGames,
     gameSearchQuery, libraryAnimationKey, handlers, settings,
 }: MainContentProps) {
     const { currentColors: colors, gradientStyle: gradient } = settings;
@@ -46,7 +47,7 @@ export const MainContent = memo(function MainContent({
     if (activeView === 'settings')
         return <SettingsView settings={settings} />;
 
-    if (!games.length && !Object.keys(uploads).length)
+    if (!total)
         return (
             <div className="flex flex-col items-center justify-center py-20 animate-fade-in text-center">
                 <div className="w-20 h-20 rounded-xl mb-6 flex items-center justify-center shadow-lg" style={{ backgroundColor: colors.midDark, color: colors.highlight }}>

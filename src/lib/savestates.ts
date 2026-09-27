@@ -90,18 +90,22 @@ function commitManifest(name: string, next: SlotManifest): Promise<void> {
 
 export const getSlotKeys = (name: string) => getManifest(name).slots;
 
+/** Slot list with `key` moved/added to the newest position, capped at MAX_SLOTS. */
+const withSlot = (m: SlotManifest, key: string): string[] =>
+    [...m.slots.filter(s => s !== key), key].slice(-MAX_SLOTS);
+
 export function getNextSlotKey(name: string): string {
     const m = getManifest(name);
     const key = `${name}.state${m.nextIndex}`;
     void commitManifest(name, {
-        slots: [...m.slots.filter(s => s !== key), key].slice(-MAX_SLOTS),
+        slots: withSlot(m, key),
         nextIndex: (m.nextIndex + 1) % MAX_SLOTS,
     });
     return key;
 }
 
-export function stampSlot(key: string): void {
-    saveString(STATE_TS_PREFIX + key, new Date().toISOString());
+export function stampSlot(key: string, at = new Date()): void {
+    saveString(STATE_TS_PREFIX + key, at.toISOString());
 }
 
 function openDB(): Promise<IDBDatabase | null> {
@@ -183,13 +187,16 @@ export const getStateBytes = (key: string): Promise<Uint8Array | null> =>
         return raw == null ? null : toBytes(raw);
     }, null);
 
-export const putStateBytes = (key: string, bytes: Uint8Array): Promise<void> =>
+/** Store a state's bytes. Resolves false if the write didn't land. */
+export const putStateBytes = (key: string, bytes: Uint8Array): Promise<boolean> =>
     withDB(async db => {
+        if (await idbPut(db, key, bytes) === undefined) return false;
         // Fingerprint only a state that actually landed: a hash left behind by a
         // failed write would make the next identical autosave look like a
         // duplicate and get silently skipped.
-        if (await idbPut(db, key, bytes) !== undefined) stampHash(key, bytes);
-    }, undefined);
+        stampHash(key, bytes);
+        return true;
+    }, false);
 
 const putStateThumbnail = (key: string, dataUrl: string, aspect: number): Promise<void> => {
     stampCoverAspect(key, aspect);
@@ -434,16 +441,11 @@ export async function importState(gameName: string, file: File): Promise<void> {
     if (await isStateDuplicate(gameName, incoming)) throw new Error('duplicate');
 
     const key = `${gameName}.state_imported_${Date.now()}`;
-    const ok = await withDB(async db => await idbPut(db, key, incoming) !== undefined, false);
-    if (!ok) throw new Error('IndexedDB unavailable');
-    stampHash(key, incoming);
+    if (!await putStateBytes(key, incoming)) throw new Error('IndexedDB unavailable');
 
     const m = getManifest(gameName);
-    await commitManifest(gameName, {
-        ...m,
-        slots: m.slots.includes(key) ? m.slots : [...m.slots, key].slice(-MAX_SLOTS),
-    });
-    saveString(STATE_TS_PREFIX + key, new Date(file.lastModified || Date.now()).toISOString());
+    await commitManifest(gameName, { ...m, slots: withSlot(m, key) });
+    stampSlot(key, new Date(file.lastModified || Date.now()));
     if (thumbnail) {
         const aspect = await measureDataUrlAspect(thumbnail);
         await putStateThumbnail(key, thumbnail, aspect ?? DEFAULT_COVER_ASPECT);

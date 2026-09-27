@@ -113,9 +113,7 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
         }
 
         const opfs = await getGameFile(game.id).catch(() => null);
-        const cover = opfs
-            ? await calculateAutoCoverArt(game.fileName ? new File([opfs], game.fileName) : opfs, game.core, opfs).catch(() => null)
-            : null;
+        const cover = opfs ? await calculateAutoCoverArt(opfs, game.fileName || opfs.name, game.core) : null;
 
         if (userHasCustomCover) {
             if (opfs) lib.updateGame(game.id, { autoCoverArt: cover ?? undefined });

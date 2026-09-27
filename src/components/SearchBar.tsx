@@ -23,7 +23,6 @@ export const SearchBar = memo(({ colors, value, onChange, id }: SearchBarProps) 
             if (e.key === 'Escape' && value) { e.preventDefault(); onChange(''); }
         }}
         leftIcon={<Search className="w-4 h-4" />}
-        size="md"
         placeholder="Search..."
         ariaLabel="Search games"
     />

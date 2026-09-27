@@ -1,7 +1,6 @@
 import { writeFile } from '@/lib/ra/fs';
 import type { LibretroModule } from '@/lib/ra/types';
 import { loadStringRecord, saveJSON, getStringRecordEntry } from '@/lib/local-storage';
-import { SHADER_DATA } from '@/lib/ra/shaders-data';
 import { base64ToBytes } from '@/lib/utils';
 
 const STORAGE_KEY = 'ra_shader_pref_v1';
@@ -42,8 +41,11 @@ const CATALOGUE: ShaderOption[] = [
 export const getShaderOptions = (): ShaderOption[] => CATALOGUE;
 
 /** Write the shader files into the core's FS. Returns true if a shader was written. */
-export function writeShaderFiles(mod: LibretroModule, name: string): boolean {
+export async function writeShaderFiles(mod: LibretroModule, name: string): Promise<boolean> {
     try { mod.FS.unlink(SHADER_PATH); } catch { /* not present */ }
+    if (name === SHADER_DISABLED) return false;
+    // ~136 KB of shader source — loaded on first use, not with the page.
+    const { SHADER_DATA } = await import('@/lib/ra/shaders-data');
     const entry = SHADER_DATA[name];
     if (!entry) return false;
     writeFile(mod, SHADER_PATH, entry.glslp);

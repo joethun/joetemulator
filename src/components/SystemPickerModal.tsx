@@ -36,14 +36,11 @@ export const SystemPickerModal = memo(function SystemPickerModal({
         : `Select a system for ${pendingGame?.title || stripExt(firstFileName ?? 'your game')}`;
     const headerTitle = pendingFiles.length > 1 ? `Add ${pendingFiles.length} Games` : 'System';
 
-    const categories = useMemo(() => {
-        const result: Record<string, Array<[string, string]>> = {};
-        for (const [cat, systems] of Object.entries(SYSTEM_PICKER)) {
-            const matches = Object.entries(systems).filter(([name]) => name.toLowerCase().includes(query));
-            if (matches.length) result[cat] = matches;
-        }
-        return result;
-    }, [query]);
+    const categories = useMemo(() =>
+        Object.entries(SYSTEM_PICKER)
+            .map(([cat, systems]) => [cat, Object.entries(systems).filter(([name]) => name.toLowerCase().includes(query))] as const)
+            .filter(([, matches]) => matches.length > 0),
+    [query]);
 
     return (
         <Modal isClosing={isClosing} colors={colors} onClose={onClose} labelledBy="system-picker-title">
@@ -51,12 +48,12 @@ export const SystemPickerModal = memo(function SystemPickerModal({
 
             <SearchBar colors={colors} value={searchQuery} onChange={onSearchChange} />
             <div className="flex-1 min-h-0 min-w-0 overflow-y-auto pr-2 mt-4">
-                {Object.keys(categories).length === 0 ? (
+                {categories.length === 0 ? (
                     <div className="text-center py-20 opacity-60">
                         <p style={{ color: colors.softLight }}>No systems found matching &quot;{searchQuery}&quot;</p>
                     </div>
                 ) : (
-                    Object.entries(categories).map(([cat, systems]) => (
+                    categories.map(([cat, systems]) => (
                         <div key={cat} className="mb-8 last:mb-0">
                             <SectionHeader title={cat} colors={colors} />
                             <div className={OPTION_GRID_CLASS}>
@@ -86,7 +83,6 @@ export const SystemPickerModal = memo(function SystemPickerModal({
                     colors={colors}
                     variant="gradient"
                     gradient={gradient}
-                    className="flex items-center gap-2"
                 >
                     Done
                 </ModalButton>

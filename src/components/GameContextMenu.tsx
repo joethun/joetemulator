@@ -71,6 +71,10 @@ export function GameContextMenu({
 
     if (!shouldRender) return null;
 
+    // Close first, then act on the next frame so the menu's exit doesn't fight
+    // whatever the action opens.
+    const closeThen = (action: () => void) => () => { onClose(); requestAnimationFrame(action); };
+
     const x = Math.min(position.x, window.innerWidth - MENU_W);
     const y = Math.min(position.y, window.innerHeight - MENU_H);
 
@@ -100,9 +104,9 @@ export function GameContextMenu({
                         : <MenuButton onClick={() => fileInputRef.current?.click()} label="Upload Cover" Icon={ImageIcon} colors={colors} />
                     }
                     <div className="h-px w-full my-1" style={{ backgroundColor: `${colors.highlight}20` }} />
-                    <MenuButton onClick={() => { onClose(); requestAnimationFrame(onSaveStates); }} label="Manage States" Icon={Folder} colors={colors} />
-                    <MenuButton onClick={() => { onClose(); requestAnimationFrame(onEdit); }} label="System" Icon={Cpu} colors={colors} />
-                    <MenuButton onClick={() => { onClose(); requestAnimationFrame(onDelete); }} label="Delete" Icon={Trash2} colors={colors} style={{ backgroundColor: DANGER_BG, color: DANGER_FG }} />
+                    <MenuButton onClick={closeThen(onSaveStates)} label="Manage States" Icon={Folder} colors={colors} />
+                    <MenuButton onClick={closeThen(onEdit)} label="System" Icon={Cpu} colors={colors} />
+                    <MenuButton onClick={closeThen(onDelete)} label="Delete" Icon={Trash2} colors={colors} style={{ backgroundColor: DANGER_BG, color: DANGER_FG }} />
                 </div>
             </div>
         </div>,

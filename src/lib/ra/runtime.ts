@@ -2,8 +2,7 @@ import { bootPlan } from '@/lib/discs';
 import { ensureAudioPatch } from '@/lib/ra/audio';
 import { resolveLibretroCore } from '@/lib/ra/cores';
 import {
-    parseCoreOptions, loadStoredCoreOptions, saveStoredCoreOption, clearStoredCoreOptions,
-    getForcedCoreOptions,
+    parseCoreOptions, getCoreOptionOverrides, saveStoredCoreOption, clearStoredCoreOptions,
     type CoreOption,
 } from '@/lib/ra/core-options';
 import {
@@ -134,15 +133,8 @@ export class Runtime {
         canvas.focus();
         this.input.attach();
 
-        // Apply per-core forced defaults (e.g. ppsspp_force_lag_sync=enabled)
-        // before user overrides, so a user who hasn't picked a value yet still
-        // gets the recommended default. Saved user choices still win.
-        for (const [key, value] of Object.entries(getForcedCoreOptions(libretroName))) {
-            gc.setVariable(key, value);
-        }
-
-        // Replay any persisted core option overrides now that the core is live.
-        for (const [key, value] of Object.entries(loadStoredCoreOptions(libretroName))) {
+        // Replay persisted core option overrides now that the core is live.
+        for (const [key, value] of Object.entries(getCoreOptionOverrides(libretroName))) {
             gc.setVariable(key, value);
         }
 
@@ -169,7 +161,7 @@ export class Runtime {
         // shader doesn't break the boot — the core just runs without one.
         const storedShader = getStoredShader(libretroName);
         if (storedShader !== SHADER_DISABLED) {
-            try { this.setShader(storedShader); } catch { /* shader unavailable */ }
+            this.setShader(storedShader).catch(() => { /* shader unavailable */ });
         }
     }
 
@@ -187,23 +179,20 @@ export class Runtime {
 
     getCoreOptions(): CoreOption[] {
         if (!this.gc || !this.resolved) return [];
-        const stored = loadStoredCoreOptions(this.resolved.libretroName);
-        const forced = getForcedCoreOptions(this.resolved.libretroName);
-        // Surface the user's saved value (set live via setVariable, but the core
+        // Surface the overriding value (set live via setVariable, but the core
         // still reports its own internal current value in get_core_options).
-        // When the user hasn't picked anything, fall back to any forced default.
+        const overrides = getCoreOptionOverrides(this.resolved.libretroName);
         return this.parsedCoreOptions()
-            .map(opt => {
-                if (stored[opt.key]) return { ...opt, current: stored[opt.key] };
-                if (forced[opt.key]) return { ...opt, current: forced[opt.key] };
-                return opt;
-            });
+            .map(opt => overrides[opt.key] ? { ...opt, current: overrides[opt.key] } : opt);
     }
 
-    setShader(name: string): void {
-        if (!this.mod || !this.gc || !this.resolved) return;
-        this.gc.toggleShader(writeShaderFiles(this.mod, name));
-        setStoredShader(this.resolved.libretroName, name);
+    async setShader(name: string): Promise<void> {
+        const { mod, gc, resolved } = this;
+        if (!mod || !gc || !resolved) return;
+        setStoredShader(resolved.libretroName, name);
+        const enabled = await writeShaderFiles(mod, name);
+        // The session may have been torn down while the shader data loaded.
+        if (this.gc === gc) gc.toggleShader(enabled);
     }
 
     setCoreOption(key: string, value: string): void {

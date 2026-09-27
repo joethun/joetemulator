@@ -17,7 +17,7 @@ const DISC_TAG = /(?:^|[\s._([-])(?:dis[ck]|cd)\s*[#._-]?\s*(\d+)(?:\s*of\s*\d+)
 // "(Track 01)" — redump-style cue sheets split each disc into per-track .bin files.
 const TRACK_TAG = /(?:^|[\s._([-])track\s*[#._-]?\s*\d+[)\]]?/i;
 
-export function discNumber(name: string): number | null {
+function discNumber(name: string): number | null {
     const m = stripExt(name).match(DISC_TAG);
     return m ? parseInt(m[1], 10) : null;
 }
@@ -28,7 +28,7 @@ const baseKey = (name: string) =>
 
 /** The file names that belong in an .m3u playlist (descriptors when present,
  *  raw disc images otherwise), sorted by disc number. */
-export function playlistEntries(names: string[]): string[] {
+function playlistEntries(names: string[]): string[] {
     const descriptors = names.filter(n => DESCRIPTOR_EXTS.has(fileExt(n)));
     const entries = descriptors.length
         ? descriptors
