@@ -20,7 +20,7 @@ interface Props {
     onLoggedIn: (username: string) => void;
 }
 
-const SIGN_UP_URL = 'https://retroachievements.org/createaccount';
+const SIGN_UP_URL = 'https://retroachievements.org/createaccount.php';
 
 /** RetroAchievements login, laid out like the site's other modals. */
 export function RetroAchievementsLoginModal({ isClosing, colors, gradient, onClose, onLoggedIn }: Props) {
