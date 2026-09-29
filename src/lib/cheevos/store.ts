@@ -65,6 +65,8 @@ export interface CheevosToast {
     description?: string;
     badgeUrl?: string | null;
     points?: number;
+    /** Clicking the toast opens this achievement in the Achievements tab. */
+    achievementId?: number;
 }
 
 export interface CheevosState {

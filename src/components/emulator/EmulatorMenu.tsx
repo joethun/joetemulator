@@ -26,6 +26,8 @@ interface EmulatorMenuProps {
     colors: ThemeColors;
     gradient: GradientStyle;
     session: EmulatorSession;
+    /** Opens straight to the Achievements tab, highlighting this achievement. */
+    focusAchievementId?: number | null;
 }
 
 const TAB_META: Record<SettingsTab, { title: string; subtitle: string; icon: LucideIcon }> = {
@@ -38,7 +40,7 @@ const TAB_META: Record<SettingsTab, { title: string; subtitle: string; icon: Luc
 };
 
 export const EmulatorMenu = memo(function EmulatorMenu({
-    open, onClose, colors, gradient, session,
+    open, onClose, colors, gradient, session, focusAchievementId = null,
 }: EmulatorMenuProps) {
     const { shouldRender, isClosing } = useDelayedUnmount(open);
     const raGameId = useCheevosSelector(s => s.game?.id);
@@ -47,11 +49,12 @@ export const EmulatorMenu = memo(function EmulatorMenu({
     const [optionsActiveKey, setOptionsActiveKey] = useState<string | null>(null);
     // why: useDelayedUnmount keeps the panel mounted across the close animation, so
     // local state survives a round-trip — we reset `tab` on every open transition so
-    // the user lands on the hub instead of restoring the last sub-tab they navigated to.
+    // the user lands on the hub instead of restoring the last sub-tab they navigated to
+    // (or on Achievements, when a toast opened the menu).
     const [prevOpen, setPrevOpen] = useState(open);
     if (open !== prevOpen) {
         setPrevOpen(open);
-        if (open) setTab(null);
+        if (open) setTab(focusAchievementId != null ? 'achievements' : null);
     }
 
     if (!shouldRender) return null;
@@ -78,11 +81,12 @@ export const EmulatorMenu = memo(function EmulatorMenu({
                     <ModalHeader title={TAB_META[tab].title} subtitle={TAB_META[tab].subtitle} colors={colors} />
                 )}
 
-                <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '2px', margin: '-2px' }}>
+                {/* Padding (cancelled by the margin) leaves room for focus outlines. */}
+                <div className="flex-1 overflow-y-auto min-h-0" style={{ padding: '4px', margin: '-4px' }}>
                     {!tab && (
                         <SettingsHub colors={colors} onPick={setTab} getDiscInfo={session.actions.getDiscInfo} />
                     )}
-                    {tab === 'achievements' && <AchievementsPanel colors={colors} />}
+                    {tab === 'achievements' && <AchievementsPanel colors={colors} focusId={focusAchievementId} />}
                     {tab === 'discs' && (
                         <DiscsPanel
                             colors={colors}

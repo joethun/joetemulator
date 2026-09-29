@@ -33,6 +33,11 @@ export interface RAAchievement {
     measuredPercent: number;
     /** RC_CLIENT_ACHIEVEMENT_UNLOCKED_* bit flags; 0 when locked. */
     unlocked: number;
+    /** Unix seconds; 0 when locked or unknown. */
+    unlockTime: number;
+    /** % of players who've unlocked it (softcore / hardcore); null when unknown. */
+    rarity: number | null;
+    rarityHardcore: number | null;
 }
 
 export interface RAAchievementBucket {

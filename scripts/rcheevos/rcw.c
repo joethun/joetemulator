@@ -166,6 +166,9 @@ static void json_achievement(sb_t* sb, const rc_client_achievement_t* a) {
   KV_STR("measuredProgress", a->measured_progress);
   KV_NUM("measuredPercent", a->measured_percent);
   KV_NUM("unlocked", a->unlocked);
+  KV_NUM("unlockTime", a->unlock_time);
+  KV_NUM("rarity", a->rarity);
+  KV_NUM("rarityHardcore", a->rarity_hardcore);
   sb_raw(sb, "}");
 }
 

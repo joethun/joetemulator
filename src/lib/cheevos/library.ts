@@ -49,6 +49,8 @@ interface SetAchievement {
     Flags: number;
     BadgeURL?: string;
     BadgeLockedURL?: string;
+    Rarity?: number;
+    RarityHardcore?: number;
 }
 
 async function raRequest<T>(params: Record<string, string>): Promise<T> {
@@ -95,6 +97,11 @@ function toAchievement(a: SetAchievement, unlocked: boolean): RAAchievement {
         measuredProgress: '',
         measuredPercent: 0,
         unlocked: unlocked ? 1 : 0,
+        // r=unlocks only lists ids; unlock times come with startsession,
+        // which this read-only view avoids.
+        unlockTime: 0,
+        rarity: a.Rarity ?? null,
+        rarityHardcore: a.RarityHardcore ?? null,
     };
 }
 

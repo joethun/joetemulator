@@ -39,7 +39,7 @@ export function GameAchievementsModal({ isClosing, colors, gradient, game, hardc
                     {!current ? (
                         <AchievementsEmptyState colors={colors} kind="loading" text={CHEEVOS_MESSAGE.identifying} />
                     ) : current.kind === 'ok' ? (
-                        <AchievementsView colors={colors} summary={current.summary} buckets={current.buckets} />
+                        <AchievementsView colors={colors} summary={current.summary} buckets={current.buckets} hardcore={hardcore} />
                     ) : (
                         <AchievementsEmptyState colors={colors} kind={current.kind} text={current.message} />
                     )}

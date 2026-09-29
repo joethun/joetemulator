@@ -26,11 +26,12 @@ const EMPTY_TEXT: Partial<Record<CheevosStatus, string>> = {
     'no-achievements': CHEEVOS_MESSAGE.noAchievements,
 };
 
-export const AchievementsPanel = memo(({ colors }: { colors: ThemeColors }) => {
+export const AchievementsPanel = memo(({ colors, focusId }: { colors: ThemeColors; focusId?: number | null }) => {
     const status = useCheevosSelector(s => s.status);
     const message = useCheevosSelector(s => s.message);
     const game = useCheevosSelector(s => s.game);
     const listVersion = useCheevosSelector(s => s.listVersion);
+    const hardcore = useCheevosSelector(s => s.hardcore);
     const active = status === 'active';
     // The game is paused while this panel is open, so rc_client's list only
     // changes with the session status or an unlock (listVersion). Re-read it
@@ -55,6 +56,8 @@ export const AchievementsPanel = memo(({ colors }: { colors: ThemeColors }) => {
         <AchievementsView
             colors={colors}
             buckets={snapshot.buckets}
+            focusId={focusId}
+            hardcore={hardcore}
             summary={{
                 title: game.title,
                 badgeUrl: game.badgeUrl,

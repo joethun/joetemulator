@@ -274,7 +274,7 @@ export class CheevosSession {
                 if (!a) return;
                 pushCheevosToast({
                     kind: 'achievement', title: a.title, description: a.description,
-                    badgeUrl: a.badgeUrl, points: a.points,
+                    badgeUrl: a.badgeUrl, points: a.points, achievementId: a.id,
                 });
                 patchCheevosState(s => ({ game: cheevos.getGame(), listVersion: s.listVersion + 1 }));
                 return;

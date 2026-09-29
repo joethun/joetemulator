@@ -41,6 +41,8 @@ export const EmulatorView = memo(({
     const isLoading = session.phase === 'loading-core' || session.phase === 'booting';
 
     const [settingsOpen, setSettingsOpen] = useState(false);
+    // Achievement a toast opened the menu to; null for a plain open.
+    const [focusAchievementId, setFocusAchievementId] = useState<number | null>(null);
     const [saveStatesOpen, setSaveStatesOpen] = useState(false);
     const saveStates = useDelayedUnmount(saveStatesOpen);
     const [userPaused, setUserPaused] = useState(false);
@@ -303,13 +305,18 @@ export const EmulatorView = memo(({
                 onTogglePause={() => { if (userPaused || requestPause()) setUserPaused(p => !p); }}
                 onSaveState={() => session.actions.saveState('manual')}
                 onLoadState={() => handleLoadState()}
-                onOpenSettings={() => { if (requestPause()) setSettingsOpen(true); }}
+                onOpenSettings={() => { if (requestPause()) { setFocusAchievementId(null); setSettingsOpen(true); } }}
                 onOpenSaveStates={() => { if (requestPause()) setSaveStatesOpen(true); }}
                 onExit={handleExit}
                 onActivity={() => setBarActivity(n => n + 1)}
             />
 
-            {isVisible && !isLoading && <CheevosOverlay colors={colors} />}
+            {isVisible && !isLoading && (
+                <CheevosOverlay
+                    colors={colors}
+                    onOpenAchievement={id => { if (requestPause()) { setFocusAchievementId(id); setSettingsOpen(true); } }}
+                />
+            )}
 
             <EmulatorMenu
                 open={settingsOpen}
@@ -317,6 +324,7 @@ export const EmulatorView = memo(({
                 colors={colors}
                 gradient={gradient}
                 session={session}
+                focusAchievementId={focusAchievementId}
             />
 
             {saveStates.shouldRender && session.currentGame && (
