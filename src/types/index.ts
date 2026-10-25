@@ -49,14 +49,14 @@ export type GradientStyle = {
 
 export const THEMES: Record<string, ThemeColors> = {
   red: {
-    highlight: '#ffb3b3', darkBg: '#120406', midDark: '#280a0e',
-    softLight: '#fff0f0', sidebarHover: '#3d0f14',
-    gradientFrom: '#f87171', gradientTo: '#dc2626'
+    highlight: '#ffa9aa', darkBg: '#120406', midDark: '#2c050c',
+    softLight: '#fff0f0', sidebarHover: '#430510',
+    gradientFrom: '#f87171', gradientTo: '#d10013'
   },
   orange: {
     highlight: '#ffc97a', darkBg: '#110700', midDark: '#271400',
     softLight: '#fff7ed', sidebarHover: '#3d2000',
-    gradientFrom: '#fb923c', gradientTo: '#ea580c'
+    gradientFrom: '#fb923c', gradientTo: '#d04b00'
   },
   yellow: {
     highlight: '#ffe566', darkBg: '#0f0c00', midDark: '#231a00',
@@ -64,19 +64,19 @@ export const THEMES: Record<string, ThemeColors> = {
     gradientFrom: '#fbbf24', gradientTo: '#d97706'
   },
   green: {
-    highlight: '#b7ffd0', darkBg: '#04120a', midDark: '#0d2416',
-    softLight: '#ecfdf5', sidebarHover: '#123b24',
-    gradientFrom: '#34d399', gradientTo: '#10b981'
+    highlight: '#b2ffcd', darkBg: '#04120a', midDark: '#002611',
+    softLight: '#ecfdf5', sidebarHover: '#003d20',
+    gradientFrom: '#28d498', gradientTo: '#029969'
   },
   teal: {
-    highlight: '#7ffff0', darkBg: '#021012', midDark: '#082028',
-    softLight: '#ecfeff', sidebarHover: '#0d3340',
-    gradientFrom: '#2dd4bf', gradientTo: '#0891b2'
+    highlight: '#7ffff0', darkBg: '#001013', midDark: '#00212c',
+    softLight: '#ecfeff', sidebarHover: '#003444',
+    gradientFrom: '#06d5bf', gradientTo: '#0293b5'
   },
   blue: {
-    highlight: '#a9b7ff', darkBg: '#070a14', midDark: '#121a2d',
-    softLight: '#eef4ff', sidebarHover: '#182447',
-    gradientFrom: '#60a5fa', gradientTo: '#3b82f6'
+    highlight: '#93c5fd', darkBg: '#050a16', midDark: '#091938',
+    softLight: '#eef4ff', sidebarHover: '#0b2352',
+    gradientFrom: '#60a5fa', gradientTo: '#2563eb'
   },
   indigo: {
     highlight: '#c4b5fd', darkBg: '#060612', midDark: '#0f0d2e',
@@ -84,14 +84,14 @@ export const THEMES: Record<string, ThemeColors> = {
     gradientFrom: '#818cf8', gradientTo: '#4f46e5'
   },
   purple: {
-    highlight: '#e3d7ff', darkBg: '#0d0714', midDark: '#1c1030',
+    highlight: '#ceb7fe', darkBg: '#0d0714', midDark: '#1c1030',
     softLight: '#faf5ff', sidebarHover: '#2e1a52',
-    gradientFrom: '#d946ef', gradientTo: '#a855f7'
+    gradientFrom: '#d946ef', gradientTo: '#8124ca'
   },
   pink: {
     highlight: '#ffb3e6', darkBg: '#130412', midDark: '#280828',
     softLight: '#fdf2f8', sidebarHover: '#3d0d3a',
-    gradientFrom: '#f472b6', gradientTo: '#be185d'
+    gradientFrom: '#f472b6', gradientTo: '#d20064'
   },
 };
 

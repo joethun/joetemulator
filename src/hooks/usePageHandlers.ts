@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type { Game } from '@/types';
 import type { useGameLibrary } from '@/hooks/useGameLibrary';
 import type { useApp } from '@/hooks/useApp';
@@ -19,6 +20,8 @@ interface Deps {
 }
 
 export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
+    const launchingRef = useRef(false);
+
     const handleAddGame = async () => {
         try { await files.handleIncomingFiles(await selectFiles()); }
         catch (err) {
@@ -42,7 +45,14 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
         if (fs.length) files.handleIncomingFiles(fs);
     };
 
+    // why: the ROM read below runs before session.start()'s own re-entry guard,
+    // while the emulator overlay is still hidden and the library stays clickable.
+    // A second click during a slow read (large disc images) would otherwise
+    // launch once the first game booted, stopping it in-place and swapping in
+    // another instance.
     const handlePlay = async (game: Game) => {
+        if (launchingRef.current) return;
+        launchingRef.current = true;
         try {
             const roms = await getGameDiscs(game.id, game.discNames ?? [game.fileName ?? '']);
             if (!roms.length || !game.core) { console.error('missing file or core:', game); return; }
@@ -62,6 +72,7 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
                 },
             });
         } catch (err) { console.error('launch failed:', err); }
+        finally { launchingRef.current = false; }
     };
 
     const handleDeleteGame = async (game: Game) => {

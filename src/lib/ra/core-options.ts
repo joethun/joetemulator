@@ -74,12 +74,14 @@ export const clearStoredCoreOptions = (libretroName: string): void => removeKey(
  * Options forced on at boot for specific cores, applied before any user-saved
  * overrides. Users can still toggle these off in the Core Options panel; their
  * choice is then persisted and wins on subsequent boots.
+ *
+ * why: don't force ppsspp_force_lag_sync on. It makes PPSSPP's emu thread
+ * sleep to track real time, while the browser main thread busy-waits for each
+ * frame (Emscripten can't block the main thread). How long it spins depends on
+ * the lag-sync clock's phase, which every save state save/load resets, so
+ * sessions randomly flip into ~2x main-thread blocking and lag.
  */
-const CORE_FORCED_DEFAULTS: Record<string, Record<string, string>> = {
-    ppsspp: {
-        ppsspp_force_lag_sync: 'enabled',
-    },
-};
+const CORE_FORCED_DEFAULTS: Record<string, Record<string, string>> = {};
 
 /** Option values to apply over the core's defaults: forced defaults, then the
  *  user's saved choices (which win). */
