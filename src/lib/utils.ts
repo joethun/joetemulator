@@ -49,11 +49,15 @@ export function dataUrlToBytes(dataUrl: string): Uint8Array | null {
     catch { return null; }
 }
 
-export function blobToDataUrl(blob: Blob): Promise<string | null> {
-    return new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(blob);
+/** Open an IndexedDB database if it exists, without creating it: resolves null
+ *  when there is no such database (or no IndexedDB at all). */
+export function openExistingDB(name: string): Promise<IDBDatabase | null> {
+    return new Promise((resolve, reject) => {
+        if (typeof indexedDB === 'undefined') return resolve(null);
+        const req = indexedDB.open(name);
+        // Only fires when the database doesn't exist yet.
+        req.onupgradeneeded = () => req.transaction?.abort();
+        req.onerror = () => req.error?.name === 'AbortError' ? resolve(null) : reject(req.error);
+        req.onsuccess = () => resolve(req.result);
     });
 }

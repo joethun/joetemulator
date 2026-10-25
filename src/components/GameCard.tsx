@@ -9,13 +9,14 @@ import { gameSaveName } from '@/lib/utils';
 import { consoleIdFor } from '@/lib/cheevos/consoles';
 import { TOUCH_QUERY } from '@/hooks/useIsTouch';
 import { useTimer } from '@/hooks/useTimer';
+import { useCoverSrc } from '@/lib/cover-storage';
 
 interface GameCardProps {
     game: Game;
     onPlay: (game: Game) => void;
     onEdit: (game: Game) => void;
     onDelete: (game: Game) => void;
-    onUploadCover: (gameId: number, data: string) => void;
+    onUploadCover: (gameId: number, image: File) => void;
     onResetCover: (gameId: number) => void;
     onCoverFailed: (gameId: number) => void;
     onSaveStates: (title: string, name: string) => void;
@@ -61,7 +62,11 @@ export const GameCard = memo(({
     const [menuOpen, setMenuOpen] = useState(false);
     const [mobileHovered, setMobileHovered] = useState(false);
     const [erroredSrc, setErroredSrc] = useState<string>();
-    const imgError = !!game.coverArt && erroredSrc === game.coverArt;
+    const coverSrc = useCoverSrc(game.coverArt);
+    // A custom cover's object URL resolves asynchronously; render nothing until
+    // it does, as while an auto cover is loading.
+    const coverPending = game.coverLoading || coverSrc === undefined;
+    const imgError = !!coverSrc && erroredSrc === coverSrc;
 
     useEffect(() => {
         if (!mobileHovered) return;
@@ -117,10 +122,10 @@ export const GameCard = memo(({
             {isUploading && <UploadOverlay progress={game.progress} isComplete={game.isComplete} colors={colors} />}
 
             <div className="h-full w-full relative flex items-center justify-center transition-transform duration-500 overflow-hidden"
-                style={!game.coverLoading && (!game.coverArt || imgError) ? getGradientStyle(colors) : undefined}>
-                {game.coverLoading ? null : game.coverArt && !imgError ? (
+                style={!coverPending && (!coverSrc || imgError) ? getGradientStyle(colors) : undefined}>
+                {coverPending ? null : coverSrc && !imgError ? (
                     <Image
-                        src={game.coverArt}
+                        src={coverSrc}
                         alt={game.title}
                         fill
                         sizes="320px"
@@ -128,7 +133,7 @@ export const GameCard = memo(({
                         priority={priority}
                         draggable={false}
                         onError={() => {
-                            setErroredSrc(game.coverArt);
+                            setErroredSrc(coverSrc);
                             onCoverFailed(game.id);
                         }}
                         style={{ objectFit: game.coverArtFit || 'cover', objectPosition: 'center', userSelect: 'none' }}
@@ -148,7 +153,7 @@ export const GameCard = memo(({
                 onClose={() => setMenuOpen(false)}
                 onEdit={() => onEdit(game)}
                 onDelete={() => onDelete(game)}
-                onUploadCover={(data) => onUploadCover(game.id, data)}
+                onUploadCover={(image) => onUploadCover(game.id, image)}
                 onResetCover={() => onResetCover(game.id)}
                 onSaveStates={() => onSaveStates(game.title, gameSaveName(game))}
                 onAchievements={onAchievements && game.core && consoleIdFor(game.core, game.fileName ?? '') != null

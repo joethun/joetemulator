@@ -14,7 +14,7 @@ const GRID_CLASS = "grid gap-4 md:gap-6 w-full grid-cols-[repeat(auto-fill,minma
 interface GameCardHandlers {
     onPlay: (game: Game) => void;
     onDelete: (game: Game) => void;
-    onUploadCover: (id: number, data: string) => void;
+    onUploadCover: (id: number, image: File) => void;
     onResetCover: (id: number) => void;
     onCoverFailed: (id: number) => void;
     onEdit: (game: Game) => void;

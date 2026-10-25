@@ -1,22 +1,14 @@
 import { loadString, saveString } from '@/lib/local-storage';
+import { opfsDir, readFile, removeByPrefix } from '@/lib/opfs';
 
 const GAME_DIR = 'games';
 const CHUNK_SIZE = 64 * 1024 * 1024;
 const MIGRATED_KEY = 'joet_emulator_roms_migrated';
 
-let dirHandle: FileSystemDirectoryHandle | null = null;
-
-async function getDir(): Promise<FileSystemDirectoryHandle> {
-    if (!dirHandle) {
-        const root = await navigator.storage.getDirectory();
-        dirHandle = await root.getDirectoryHandle(GAME_DIR, { create: true });
-    }
-    return dirHandle;
-}
+const getDir = () => opfsDir(GAME_DIR);
 
 // Disc 0 keeps the legacy `${id}.rom` name so existing libraries stay valid.
 const romName = (id: number, disc = 0) => disc ? `${id}.disc${disc}.rom` : `${id}.rom`;
-const isNotFound = (e: unknown) => e instanceof DOMException && e.name === 'NotFoundError';
 
 export async function saveGameFile(gameId: number, data: Blob | ReadableStream<Uint8Array>, onProgress?: (percent: number) => void, disc = 0): Promise<void> {
     const dir = await getDir();
@@ -43,12 +35,7 @@ export async function saveGameFile(gameId: number, data: Blob | ReadableStream<U
 }
 
 export async function getGameFile(gameId: number, disc = 0): Promise<File | null> {
-    try {
-        return await (await (await getDir()).getFileHandle(romName(gameId, disc))).getFile();
-    } catch (e) {
-        if (isNotFound(e)) return null;
-        throw e;
-    }
+    return readFile(await getDir(), romName(gameId, disc));
 }
 
 /** Load every stored disc of a game, pairing disc slot `i` with `discNames[i]`
@@ -64,20 +51,8 @@ export async function getGameDiscs(gameId: number, discNames: string[]): Promise
 }
 
 export async function deleteGameFile(gameId: number): Promise<void> {
-    const dir = await getDir();
     // `${id}.` prefix scan removes every disc of a multi-disc game in one pass.
-    const prefix = `${gameId}.`;
-    const names: string[] = [];
-    for await (const name of dir.keys()) {
-        if (name.startsWith(prefix)) names.push(name);
-    }
-    await Promise.all(names.map(async name => {
-        try {
-            await dir.removeEntry(name);
-        } catch (e) {
-            if (!isNotFound(e)) throw e;
-        }
-    }));
+    await removeByPrefix(await getDir(), `${gameId}.`);
 }
 
 export async function migrateLegacyRoms(games: Array<{ id: number; title: string; fileName?: string; fileData?: string }>): Promise<void> {

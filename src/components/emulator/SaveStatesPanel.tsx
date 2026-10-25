@@ -179,7 +179,7 @@ const StateCard = memo(({
             <div className="flex items-center gap-1.5 shrink-0">
                 {onLoad && <IconButton icon={Upload} label="Load" colors={colors} onClick={() => onLoad(s.key)} />}
                 <IconButton icon={Download} label="Download" colors={colors}
-                    onClick={() => downloadState(gameName, s.savedAt, s.rawData, s.thumbnail)} />
+                    onClick={() => void downloadState(gameName, s.key, s.savedAt)} />
                 <IconButton icon={Trash2} label="Delete" colors={colors} danger
                     onClick={() => onDelete(s.key, s.savedAt)} />
             </div>

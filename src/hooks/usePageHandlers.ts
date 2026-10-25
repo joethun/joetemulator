@@ -9,6 +9,7 @@ import { selectFiles, prewarmDat, calculateAutoCoverArt } from '@/lib/files';
 import { getSystemNameByCore } from '@/lib/constants';
 import { getCorePref } from '@/lib/ra/cores';
 import { getGameFile, getGameDiscs } from '@/lib/rom-storage';
+import { saveCustomCover } from '@/lib/cover-storage';
 import { gameFileNames, gameSaveName, pendingFileNames } from '@/lib/utils';
 
 interface Deps {
@@ -77,7 +78,7 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
 
     const handleDeleteGame = async (game: Game) => {
         if (!confirm(`Delete "${game.title}"?`)) return;
-        await lib.deleteGame(game.id, game.fileName, game.title);
+        await lib.deleteGame(game);
     };
 
     const handleResetCover = (id: number) => {
@@ -170,7 +171,13 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
         } catch (err) { console.error('batch processing error:', err); }
     };
 
-    const handleUploadCover = (id: number, data: string) => lib.updateGame(id, { coverArt: data });
+    const handleUploadCover = async (id: number, image: File) => {
+        try { lib.updateGame(id, { coverArt: await saveCustomCover(id, image) }); }
+        catch (e) {
+            console.error('Failed to save cover:', e);
+            app.showDuplicateError('Could not save cover image');
+        }
+    };
 
     return {
         handleAddGame,

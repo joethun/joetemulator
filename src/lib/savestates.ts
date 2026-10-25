@@ -1,5 +1,6 @@
 import { loadJSON, saveJSON, loadString, saveString, removeKey } from '@/lib/local-storage';
-import { blobToDataUrl, dataUrlToBytes, groupBy } from '@/lib/utils';
+import { dataUrlToBytes, groupBy, openExistingDB } from '@/lib/utils';
+import { opfsDir, readFile, removeFiles, writeFile } from '@/lib/opfs';
 import { looksLikeZip } from '@/lib/files';
 import { buildZip, openZipEntry, readZipDirectory } from '@/lib/zip';
 
@@ -7,9 +8,6 @@ const STATE_TS_PREFIX = 'ejs_state_ts_';
 const STATE_COVER_ASPECT_PREFIX = 'ejs_state_cover_aspect_';
 const STATE_HASH_PREFIX = 'ejs_state_hash_';
 const SLOT_PREFIX = 'ejs_slots_';
-const THUMB_SUFFIX = ':thumb';
-/** RetroAchievements progress captured with a state (rc_client_serialize_progress). */
-const CHEEVOS_SUFFIX = ':rc';
 
 export const SAVE_STATE_THUMBNAIL_EVENT = 'savestate_thumbnail';
 export const EMULATOR_NOTIFICATION_EVENT = 'emulator_notification';
@@ -50,13 +48,28 @@ const MAX_SLOTS = 10;
 /** Stored covers are normalized to this width; height scales with the canvas aspect. */
 const COVER_TARGET_WIDTH = 512;
 const COVER_MAX_WIDTH = 768;
-const DB_NAME = 'EmulatorJS-states';
-const STORE_NAME = 'states';
+
+// State bytes, thumbnails and achievement progress are files in OPFS, one set
+// per slot key. The per-slot metadata (slot manifest, timestamp, hash, cover
+// aspect) stays in localStorage: it's tiny, and the autosave duplicate check
+// reads it every tick without touching the state files.
+const STATES_DIR = 'states';
+const STATE_EXT = '.state';
+const THUMB_EXT = '.thumb.png';
+/** RetroAchievements progress captured with a state (rc_client_serialize_progress). */
+const CHEEVOS_EXT = '.rc';
+const SLOT_EXTS = [STATE_EXT, THUMB_EXT, CHEEVOS_EXT];
+
+/** IndexedDB store that held states before OPFS; read once to migrate. */
+const LEGACY_DB_NAME = 'EmulatorJS-states';
+const LEGACY_STORE_NAME = 'states';
+const LEGACY_THUMB_SUFFIX = ':thumb';
+const LEGACY_CHEEVOS_SUFFIX = ':rc';
 
 export interface SaveState {
     key: string;
     savedAt: Date | null;
-    rawData: unknown;
+    /** Object URL of the cover thumbnail. */
     thumbnail: string | null;
     /** Width / height of the cover image, for placeholders before a thumb exists. */
     coverAspect: number | null;
@@ -73,21 +86,22 @@ const saveManifest = (name: string, m: SlotManifest): void =>
     saveJSON(SLOT_PREFIX + name, m);
 
 /**
- * Persist a new manifest and delete the data (state bytes, thumbnail, localStorage
- * meta) of every slot that fell out of it — otherwise evicted slots would orphan
- * their IndexedDB entries forever. All slot-list mutations must go through here.
+ * Persist a new manifest and delete the data (state files, localStorage meta) of
+ * every slot that fell out of it — otherwise evicted slots would orphan their
+ * files forever. All slot-list mutations must go through here.
  */
-function commitManifest(name: string, next: SlotManifest): Promise<void> {
+async function commitManifest(name: string, next: SlotManifest): Promise<void> {
     const prev = getManifest(name);
     saveManifest(name, next);
     const kept = new Set(next.slots);
     const evicted = prev.slots.filter(k => !kept.has(k));
-    if (!evicted.length) return Promise.resolve();
-    for (const key of evicted) clearSlotMeta(key);
-    return withDB(
-        db => idbDeleteMany(db, evicted.flatMap(key => [key, key + THUMB_SUFFIX, key + CHEEVOS_SUFFIX])),
-        undefined,
-    );
+    if (!evicted.length) return;
+    for (const key of evicted) {
+        clearSlotMeta(key);
+        forgetThumbnail(key);
+    }
+    try { await removeFiles(await getDir(), evicted.flatMap(key => SLOT_EXTS.map(ext => slotFile(key, ext)))); }
+    catch (e) { console.error('failed to delete evicted states:', e); }
 }
 
 export const getSlotKeys = (name: string) => getManifest(name).slots;
@@ -110,65 +124,35 @@ export function stampSlot(key: string, at = new Date()): void {
     saveString(STATE_TS_PREFIX + key, at.toISOString());
 }
 
-function openDB(): Promise<IDBDatabase | null> {
-    return new Promise(resolve => {
-        if (typeof window === 'undefined' || !window.indexedDB) return resolve(null);
-        const req = indexedDB.open(DB_NAME, 1);
-        req.onerror = () => resolve(null);
+// ─── OPFS files ──────────────────────────────────────────────────────────────
+
+// Keys come from ROM file names; encoding keeps any character OPFS rejects
+// (path separators) out of the file name.
+const slotFile = (key: string, ext: string) => encodeURIComponent(key) + ext;
+
+let dirPromise: Promise<FileSystemDirectoryHandle> | null = null;
+
+/** The states directory, after any pending IndexedDB migration has run. */
+function getDir(): Promise<FileSystemDirectoryHandle> {
+    dirPromise ??= opfsDir(STATES_DIR)
+        .then(async dir => { await migrateFromIndexedDB(dir); return dir; })
+        .catch(e => { dirPromise = null; throw e; });
+    return dirPromise;
+}
+
+const readSlotFile = async (key: string, ext: string) => readFile(await getDir(), slotFile(key, ext));
+
+async function readSlotBytes(key: string, ext: string): Promise<Uint8Array | null> {
+    const file = await readSlotFile(key, ext);
+    return file ? new Uint8Array(await file.arrayBuffer()) : null;
+}
+
+// ─── IndexedDB migration ─────────────────────────────────────────────────────
+
+function idbReq<T>(req: IDBRequest<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
         req.onsuccess = () => resolve(req.result);
-        req.onupgradeneeded = () => {
-            if (!req.result.objectStoreNames.contains(STORE_NAME))
-                req.result.createObjectStore(STORE_NAME);
-        };
-    });
-}
-
-async function withDB<T>(fn: (db: IDBDatabase) => Promise<T>, fallback: T): Promise<T> {
-    const db = await openDB();
-    if (!db) return fallback;
-    try { return await fn(db); }
-    finally { db.close(); }
-}
-
-function idbReq<T>(req: IDBRequest<T>): Promise<T | undefined> {
-    return new Promise(resolve => {
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve(undefined);
-    });
-}
-
-const idbGet = <T>(db: IDBDatabase, key: string) =>
-    idbReq<T>(db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key) as IDBRequest<T>);
-
-const idbPut = (db: IDBDatabase, key: string, value: unknown) =>
-    idbReq(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(value, key));
-
-function idbGetMany(db: IDBDatabase, keys: string[]): Promise<Map<string, unknown>> {
-    if (!keys.length) return Promise.resolve(new Map());
-    return new Promise(resolve => {
-        const store = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME);
-        const map = new Map<string, unknown>();
-        let pending = keys.length;
-        const done = () => { if (--pending === 0) resolve(map); };
-        for (const key of keys) {
-            const req = store.get(key);
-            req.onsuccess = () => {
-                if (req.result !== undefined) map.set(key, req.result);
-                done();
-            };
-            req.onerror = done;
-        }
-    });
-}
-
-function idbDeleteMany(db: IDBDatabase, keys: string[]): Promise<void> {
-    if (!keys.length) return Promise.resolve();
-    return new Promise(resolve => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        for (const key of keys) store.delete(key);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
+        req.onerror = () => reject(req.error);
     });
 }
 
@@ -183,41 +167,124 @@ function toBytes(data: unknown): Uint8Array | null {
     return null;
 }
 
-export const getStateBytes = (key: string): Promise<Uint8Array | null> =>
-    withDB(async db => {
-        const raw = await idbGet<unknown>(db, key);
-        return raw == null ? null : toBytes(raw);
-    }, null);
+/** OPFS file name and contents for a legacy IndexedDB entry, or null if unusable. */
+function legacyEntryToFile(key: string, value: unknown): { name: string; data: Blob | Uint8Array } | null {
+    if (key.endsWith(LEGACY_THUMB_SUFFIX)) {
+        // Thumbnails were PNG data URLs.
+        const bytes = typeof value === 'string' ? dataUrlToBytes(value) : null;
+        if (!bytes) return null;
+        return {
+            name: slotFile(key.slice(0, -LEGACY_THUMB_SUFFIX.length), THUMB_EXT),
+            data: new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'image/png' }),
+        };
+    }
+    const bytes = toBytes(value);
+    if (!bytes) return null;
+    return key.endsWith(LEGACY_CHEEVOS_SUFFIX)
+        ? { name: slotFile(key.slice(0, -LEGACY_CHEEVOS_SUFFIX.length), CHEEVOS_EXT), data: bytes }
+        : { name: slotFile(key, STATE_EXT), data: bytes };
+}
+
+/**
+ * Move states saved before OPFS out of IndexedDB. Each entry is deleted as soon
+ * as its copy lands, so the two stores never both hold a large state; whatever
+ * fails stays put and is retried on the next page load.
+ */
+async function migrateFromIndexedDB(dir: FileSystemDirectoryHandle): Promise<void> {
+    const db = await openExistingDB(LEGACY_DB_NAME).catch(() => null);
+    if (!db) return;
+    let failed = false;
+    try {
+        if (db.objectStoreNames.contains(LEGACY_STORE_NAME)) {
+            const store = () => db.transaction(LEGACY_STORE_NAME, 'readwrite').objectStore(LEGACY_STORE_NAME);
+            const keys = await idbReq(store().getAllKeys());
+            for (const key of keys) {
+                try {
+                    // One entry in memory at a time; the OPFS write ends the
+                    // transaction, so each step opens its own.
+                    const file = legacyEntryToFile(String(key), await idbReq(store().get(key)));
+                    if (file) await writeFile(dir, file.name, file.data);
+                    await idbReq(store().delete(key));
+                } catch (e) {
+                    failed = true;
+                    console.error('save state migration failed:', key, e);
+                }
+            }
+        }
+    } catch (e) {
+        failed = true;
+        console.error('save state migration failed:', e);
+    } finally {
+        db.close();
+    }
+    if (!failed) indexedDB.deleteDatabase(LEGACY_DB_NAME);
+}
+
+// ─── State data ──────────────────────────────────────────────────────────────
+
+export async function getStateBytes(key: string): Promise<Uint8Array | null> {
+    try { return await readSlotBytes(key, STATE_EXT); }
+    catch (e) { console.error('read state failed:', e); return null; }
+}
 
 /** Store a state's bytes. Resolves false if the write didn't land. */
-export const putStateBytes = (key: string, bytes: Uint8Array): Promise<boolean> =>
-    withDB(async db => {
-        if (await idbPut(db, key, bytes) === undefined) return false;
-        // Fingerprint only a state that actually landed: a hash left behind by a
-        // failed write would make the next identical autosave look like a
-        // duplicate and get silently skipped.
-        stampHash(key, bytes);
-        return true;
-    }, false);
+export async function putStateBytes(key: string, bytes: Uint8Array): Promise<boolean> {
+    try { await writeFile(await getDir(), slotFile(key, STATE_EXT), bytes); }
+    catch (e) { console.error('write state failed:', e); return false; }
+    // Fingerprint only a state that actually landed: a hash left behind by a
+    // failed write would make the next identical autosave look like a
+    // duplicate and get silently skipped.
+    stampHash(key, bytes);
+    return true;
+}
 
-export const getStateCheevosProgress = (key: string): Promise<Uint8Array | null> =>
-    withDB(async db => {
-        const raw = await idbGet<unknown>(db, key + CHEEVOS_SUFFIX);
-        return raw == null ? null : toBytes(raw);
-    }, null);
+export async function getStateCheevosProgress(key: string): Promise<Uint8Array | null> {
+    try { return await readSlotBytes(key, CHEEVOS_EXT); }
+    catch (e) { console.error('read achievement progress failed:', e); return null; }
+}
 
 /** Store (or, with null, clear) the achievement progress for a slot. Always
  *  written alongside the state so a reused slot never keeps stale progress. */
-export const putStateCheevosProgress = (key: string, progress: Uint8Array | null): Promise<void> =>
-    withDB(async db => {
-        if (progress) await idbPut(db, key + CHEEVOS_SUFFIX, progress);
-        else await idbDeleteMany(db, [key + CHEEVOS_SUFFIX]);
-    }, undefined);
+export async function putStateCheevosProgress(key: string, progress: Uint8Array | null): Promise<void> {
+    try {
+        if (progress) await writeFile(await getDir(), slotFile(key, CHEEVOS_EXT), progress);
+        else await removeFiles(await getDir(), [slotFile(key, CHEEVOS_EXT)]);
+    } catch (e) {
+        console.error('write achievement progress failed:', e);
+    }
+}
 
-const putStateThumbnail = (key: string, dataUrl: string, aspect: number): Promise<void> => {
+// ─── Thumbnails ──────────────────────────────────────────────────────────────
+
+// Object URLs by slot key. A thumbnail written this session points at its
+// in-memory blob, so overwriting the file never invalidates a URL still shown.
+const thumbUrls = new Map<string, string>();
+
+function forgetThumbnail(key: string): void {
+    const url = thumbUrls.get(key);
+    if (url) URL.revokeObjectURL(url);
+    thumbUrls.delete(key);
+}
+
+async function getThumbnailUrl(key: string): Promise<string | null> {
+    const cached = thumbUrls.get(key);
+    if (cached) return cached;
+    const file = await readSlotFile(key, THUMB_EXT);
+    if (!file) return null;
+    const url = URL.createObjectURL(file);
+    thumbUrls.set(key, url);
+    return url;
+}
+
+/** Store a slot's thumbnail and return its object URL. */
+async function putStateThumbnail(key: string, png: Blob, aspect: number): Promise<string> {
     stampCoverAspect(key, aspect);
-    return withDB(async db => { await idbPut(db, key + THUMB_SUFFIX, dataUrl); }, undefined);
-};
+    await writeFile(await getDir(), slotFile(key, THUMB_EXT), png);
+    forgetThumbnail(key);
+    const url = URL.createObjectURL(png);
+    thumbUrls.set(key, url);
+    return url;
+}
 
 /** Placeholder aspect when no cover exists yet for a slot. */
 export const DEFAULT_COVER_ASPECT = 4 / 3;
@@ -285,16 +352,10 @@ export function snapshotCover(
     }
 }
 
-function canvasToDataUrl(canvas: HTMLCanvasElement): Promise<string | null> {
+function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob | null> {
     return new Promise(resolve => {
-        try {
-            canvas.toBlob(blob => {
-                if (!blob) { resolve(null); return; }
-                void blobToDataUrl(blob).then(resolve);
-            }, 'image/png');
-        } catch {
-            resolve(null);
-        }
+        try { canvas.toBlob(resolve, 'image/png'); }
+        catch { resolve(null); }
     });
 }
 
@@ -314,15 +375,16 @@ async function encodeAndPersistThumbnail(
     snapshot: HTMLCanvasElement,
 ): Promise<void> {
     const aspect = snapshot.width / snapshot.height;
-    const dataUrl = await canvasToDataUrl(snapshot);
-    if (dataUrl) {
-        try { await putStateThumbnail(key, dataUrl, aspect); }
+    const png = await canvasToPng(snapshot);
+    let url: string | null = null;
+    if (png) {
+        try { url = await putStateThumbnail(key, png, aspect); }
         catch { /* still notify so UI leaves pending state */ }
     }
     dispatchThumbnail({
         gameName, key, phase: 'ready',
-        thumbnail: dataUrl,
-        coverAspect: dataUrl ? aspect : getCoverAspect(key),
+        thumbnail: url,
+        coverAspect: url ? aspect : getCoverAspect(key),
     });
 }
 
@@ -366,7 +428,7 @@ const stampHash = (key: string, bytes: Uint8Array): void =>
 
 /**
  * Fingerprints of every stored slot. Hashes are recorded in localStorage when a
- * state is written, so the common case touches no IndexedDB at all — important
+ * state is written, so the common case reads no state files at all — important
  * because the autosave timer calls this on every tick and states run to tens of
  * megabytes. Slots written before hashes were persisted are read once here and
  * backfilled.
@@ -381,9 +443,8 @@ async function slotHashes(gameName: string): Promise<Set<string>> {
     }
     if (!missing.length) return hashes;
 
-    const store = await withDB(db => idbGetMany(db, missing), new Map<string, unknown>());
     for (const key of missing) {
-        const bytes = toBytes(store.get(key));
+        const bytes = await getStateBytes(key);
         if (!bytes) continue;
         stampHash(key, bytes);
         hashes.add(hashBytes(bytes));
@@ -399,30 +460,22 @@ export async function deleteAllStates(gameName: string): Promise<void> {
     removeKey(SLOT_PREFIX + gameName);
 }
 
-function rowFromStore(key: string, store: Map<string, unknown>): SaveState | null {
-    const data = store.get(key);
-    if (data === undefined) return null;
-    const thumb = store.get(key + THUMB_SUFFIX);
-    return {
-        key,
-        savedAt: getTimestamp(key),
-        rawData: data,
-        thumbnail: typeof thumb === 'string' ? thumb : null,
-        coverAspect: getCoverAspect(key),
-    };
-}
-
-export const fetchStates = (gameName: string): Promise<SaveState[]> => {
+/** List a game's states, newest first. Only checks that each state file exists
+ *  and resolves thumbnail URLs — state bytes are read on load or download. */
+export async function fetchStates(gameName: string): Promise<SaveState[]> {
     const keys = getSlotKeys(gameName);
-    if (!keys.length) return Promise.resolve([]);
-    return withDB(async db => {
-        const store = await idbGetMany(db, keys.flatMap(key => [key, key + THUMB_SUFFIX]));
-        return keys
-            .map(key => rowFromStore(key, store))
-            .filter((r): r is SaveState => r !== null)
-            .reverse();
-    }, []);
-};
+    if (!keys.length) return [];
+    const rows = await Promise.all(keys.map(async (key): Promise<SaveState | null> => {
+        if (!await readSlotFile(key, STATE_EXT)) return null;
+        return {
+            key,
+            savedAt: getTimestamp(key),
+            thumbnail: await getThumbnailUrl(key),
+            coverAspect: getCoverAspect(key),
+        };
+    }));
+    return rows.filter((r): r is SaveState => r !== null).reverse();
+}
 
 export async function removeState(key: string, gameName: string): Promise<void> {
     const m = getManifest(gameName);
@@ -432,7 +485,7 @@ export async function removeState(key: string, gameName: string): Promise<void> 
 const BUNDLE_STATE_ENTRY = 'state.bin';
 const BUNDLE_THUMB_ENTRY = 'thumb.png';
 
-async function unpackImportFile(file: File): Promise<{ state: Uint8Array; thumbnail: string | null }> {
+async function unpackImportFile(file: File): Promise<{ state: Uint8Array; thumbnail: Blob | null }> {
     const buf = await file.arrayBuffer();
     const bytes = new Uint8Array(buf);
     if (!looksLikeZip(bytes.subarray(0, 4))) {
@@ -444,10 +497,7 @@ async function unpackImportFile(file: File): Promise<{ state: Uint8Array; thumbn
     const state = new Uint8Array(await new Response(await openZipEntry(file, stateEntry)).arrayBuffer());
     const thumbEntry = entries.find(e => e.path === BUNDLE_THUMB_ENTRY);
     const thumbnail = thumbEntry
-        ? await blobToDataUrl(new Blob(
-            [await new Response(await openZipEntry(file, thumbEntry)).arrayBuffer()],
-            { type: 'image/png' },
-        ))
+        ? new Blob([await new Response(await openZipEntry(file, thumbEntry)).arrayBuffer()], { type: 'image/png' })
         : null;
     return { state, thumbnail };
 }
@@ -457,28 +507,26 @@ export async function importState(gameName: string, file: File): Promise<void> {
     if (await isStateDuplicate(gameName, incoming)) throw new Error('duplicate');
 
     const key = `${gameName}.state_imported_${Date.now()}`;
-    if (!await putStateBytes(key, incoming)) throw new Error('IndexedDB unavailable');
+    if (!await putStateBytes(key, incoming)) throw new Error('state storage unavailable');
 
     const m = getManifest(gameName);
     await commitManifest(gameName, { ...m, slots: withSlot(m, key) });
     stampSlot(key, new Date(file.lastModified || Date.now()));
     if (thumbnail) {
-        const aspect = await measureDataUrlAspect(thumbnail);
+        const aspect = await measureImageAspect(thumbnail);
         await putStateThumbnail(key, thumbnail, aspect ?? DEFAULT_COVER_ASPECT);
     }
 }
 
-function measureDataUrlAspect(dataUrl: string): Promise<number | null> {
-    return new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => {
-            resolve(img.naturalWidth > 0 && img.naturalHeight > 0
-                ? img.naturalWidth / img.naturalHeight
-                : null);
-        };
-        img.onerror = () => resolve(null);
-        img.src = dataUrl;
-    });
+async function measureImageAspect(image: Blob): Promise<number | null> {
+    try {
+        const bitmap = await createImageBitmap(image);
+        const aspect = bitmap.width > 0 && bitmap.height > 0 ? bitmap.width / bitmap.height : null;
+        bitmap.close();
+        return aspect;
+    } catch {
+        return null;
+    }
 }
 
 function triggerDownload(blob: Blob, filename: string): void {
@@ -487,32 +535,26 @@ function triggerDownload(blob: Blob, filename: string): void {
     URL.revokeObjectURL(url);
 }
 
-export async function downloadState(
-    gameName: string,
-    savedAt: Date | null,
-    data: unknown,
-    thumbnail: string | null,
-): Promise<void> {
-    const bytes = toBytes(data);
-    if (!bytes) return;
+export async function downloadState(gameName: string, key: string, savedAt: Date | null): Promise<void> {
+    const [state, thumb] = await Promise.all([
+        readSlotFile(key, STATE_EXT),
+        readSlotFile(key, THUMB_EXT),
+    ]);
+    if (!state) return;
     const datePart = savedAt
         ? savedAt.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
             .replace(/[/:,]/g, '').replace(/\s+/g, ' ').trim()
         : 'Unknown';
     const baseName = `${gameName} - ${datePart}`;
 
-    const thumbBytes = thumbnail ? dataUrlToBytes(thumbnail) : null;
-    if (thumbBytes) {
+    if (thumb) {
         const blob = buildZip([
-            { path: BUNDLE_STATE_ENTRY, data: bytes },
-            { path: BUNDLE_THUMB_ENTRY, data: thumbBytes },
+            { path: BUNDLE_STATE_ENTRY, data: new Uint8Array(await state.arrayBuffer()) },
+            { path: BUNDLE_THUMB_ENTRY, data: new Uint8Array(await thumb.arrayBuffer()) },
         ]);
         triggerDownload(blob, `${baseName}.zip`);
     } else {
-        triggerDownload(
-            new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' }),
-            `${baseName}.state`,
-        );
+        triggerDownload(state, `${baseName}.state`);
     }
 }
 

@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import { Trash2, Cpu, Image as ImageIcon, RefreshCw, Folder, Trophy } from 'lucide-react';
 import { ThemeColors } from '@/types';
 import { DANGER_BG, DANGER_FG, SHADOW_CARD } from '@/lib/constants';
-import { blobToDataUrl } from '@/lib/utils';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 
 interface GameContextMenuProps {
@@ -14,7 +13,7 @@ interface GameContextMenuProps {
     onClose: () => void;
     onEdit: () => void;
     onDelete: () => void;
-    onUploadCover: (data: string) => void;
+    onUploadCover: (image: File) => void;
     onResetCover: () => void;
     onSaveStates: () => void;
     /** Present when the game's system has RetroAchievements and it's enabled. */
@@ -91,11 +90,12 @@ export function GameContextMenu({
             onClick={e => e.stopPropagation()}
         >
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-                onChange={async e => {
+                onChange={e => {
                     const file = e.target.files?.[0];
+                    e.target.value = '';
                     if (!file) return;
-                    const url = await blobToDataUrl(file);
-                    if (url) { onUploadCover(url); onClose(); }
+                    onUploadCover(file);
+                    onClose();
                 }}
             />
             <div className="p-3">

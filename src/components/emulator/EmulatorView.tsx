@@ -14,6 +14,7 @@ import { useTimer } from '@/hooks/useTimer';
 import { EMULATOR_NOTIFICATION_EVENT, parseEmulatorNotificationEvent } from '@/lib/savestates';
 import { CheevosOverlay } from '@/components/cheevos/CheevosOverlay';
 import { isHardcoreLocked, useCheevosSelector } from '@/lib/cheevos/store';
+import { useCoverSrc } from '@/lib/cover-storage';
 
 interface EmulatorViewProps {
     session: EmulatorSession;
@@ -57,6 +58,7 @@ export const EmulatorView = memo(({
     // Set by handleExit so its intentional reload skips the close-page prompt.
     const exitingRef = useRef(false);
     const hardcoreLocked = useCheevosSelector(isHardcoreLocked);
+    const loadingCoverSrc = useCoverSrc(loadingCoverArt);
     // Menus pause the game too, so they share the hardcore pause throttle.
     const { requestPause } = session.actions;
 
@@ -248,9 +250,9 @@ export const EmulatorView = memo(({
                     className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-6"
                     style={{ backgroundColor: '#000000' }}
                 >
-                    {loadingCoverArt && (
+                    {loadingCoverSrc && (
                         <Image
-                            src={loadingCoverArt}
+                            src={loadingCoverSrc}
                             alt=""
                             width={0}
                             height={0}
