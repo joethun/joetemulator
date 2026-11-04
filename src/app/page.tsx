@@ -118,6 +118,8 @@ export default function Home() {
                 loadingTitle={loadingGame?.title ?? session.currentTitle ?? undefined}
                 loadingSystemName={session.currentCore ? getSystemNameByCore(session.currentCore) : undefined}
                 loadingCoverArt={loadingGame?.coverArt}
+                loadingCoverFit={loadingGame?.coverArtFit}
+                loadingGenre={loadingGame?.genre}
             />
 
             {app.duplicateMessage && <Alert message={app.duplicateMessage} isVisible={app.showDuplicateMessage} />}

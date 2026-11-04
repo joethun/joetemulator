@@ -15,6 +15,7 @@ import { EMULATOR_NOTIFICATION_EVENT, parseEmulatorNotificationEvent } from '@/l
 import { CheevosOverlay } from '@/components/cheevos/CheevosOverlay';
 import { isHardcoreLocked, useCheevosSelector } from '@/lib/cheevos/store';
 import { useCoverSrc } from '@/lib/cover-storage';
+import { getSystemAspectRatio, SHADOW_CARD } from '@/lib/constants';
 
 interface EmulatorViewProps {
     session: EmulatorSession;
@@ -27,6 +28,10 @@ interface EmulatorViewProps {
     loadingSystemName?: string;
     /** Optional cover art to show while loading. */
     loadingCoverArt?: string;
+    /** The game's cover fit, as on its library card. */
+    loadingCoverFit?: 'cover' | 'contain';
+    /** The game's system, for the library card's aspect ratio. */
+    loadingGenre?: string;
 }
 
 const BAR_VISIBLE_MS = 2000;
@@ -36,7 +41,7 @@ const TOUCH_BAR_VISIBLE_MS = 4000;
 
 export const EmulatorView = memo(({
     session, colors, gradient, onDuplicateError,
-    loadingTitle, loadingSystemName, loadingCoverArt,
+    loadingTitle, loadingSystemName, loadingCoverArt, loadingCoverFit, loadingGenre,
 }: EmulatorViewProps) => {
     const isVisible = session.phase !== 'idle';
     const isLoading = session.phase === 'loading-core' || session.phase === 'booting';
@@ -59,6 +64,7 @@ export const EmulatorView = memo(({
     const exitingRef = useRef(false);
     const hardcoreLocked = useCheevosSelector(isHardcoreLocked);
     const loadingCoverSrc = useCoverSrc(loadingCoverArt);
+    const loadingAspect = getSystemAspectRatio(loadingGenre);
     // Menus pause the game too, so they share the hardcore pause throttle.
     const { requestPause } = session.actions;
 
@@ -251,22 +257,26 @@ export const EmulatorView = memo(({
                     style={{ backgroundColor: '#000000' }}
                 >
                     {loadingCoverSrc && (
-                        <Image
-                            src={loadingCoverSrc}
-                            alt=""
-                            width={0}
-                            height={0}
-                            sizes="280px"
-                            draggable={false}
-                            className="rounded-xl shadow-2xl"
+                        // Matches GameCard: system aspect ratio, midDark border and fill, card shadow.
+                        <div
+                            className="relative overflow-hidden rounded-xl border-[0.125rem]"
                             style={{
-                                width: 'auto',
-                                height: 'auto',
-                                maxWidth: 'min(280px, 40vw)',
-                                maxHeight: 'min(50vh, 350px)',
-                                userSelect: 'none',
+                                aspectRatio: loadingAspect,
+                                width: `min(240px, 50vw, calc(50vh * ${loadingAspect}))`,
+                                backgroundColor: colors.midDark,
+                                borderColor: colors.midDark,
+                                boxShadow: SHADOW_CARD,
                             }}
-                        />
+                        >
+                            <Image
+                                src={loadingCoverSrc}
+                                alt=""
+                                fill
+                                sizes="320px"
+                                draggable={false}
+                                style={{ objectFit: loadingCoverFit || 'cover', objectPosition: 'center', userSelect: 'none' }}
+                            />
+                        </div>
                     )}
                     <div
                         className="px-5 py-3 rounded-xl text-sm border-[0.125rem] text-center max-w-[80vw]"
