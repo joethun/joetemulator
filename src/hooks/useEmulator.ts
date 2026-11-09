@@ -7,9 +7,10 @@ import {
     isStateDuplicate, getNextSlotKey, getSlotKeys, stampSlot,
     getStateBytes, putStateBytes, scheduleStateThumbnail, persistStateThumbnailNow, snapshotCover,
     notifyEmulator, getStateCheevosProgress, putStateCheevosProgress,
+    isBlankSave, type SlotRef,
 } from '@/lib/savestates';
 import { CheevosSession } from '@/lib/cheevos/session';
-import { loadCredentials, pushHardcoreToast, type RACredentials } from '@/lib/cheevos/store';
+import { loadCredentials, pushCheevosToast, pushHardcoreToast, type RACredentials } from '@/lib/cheevos/store';
 import {
     loadStoredBindings, saveStoredBindings, resetStoredBindings,
 } from '@/lib/ra/bindings-storage';
@@ -20,6 +21,25 @@ import type { ControllerPort } from '@/lib/ra/controllers';
 
 const MIN_AUTOSAVE_MS = 15_000;
 const DEFAULT_AUTOSAVE_MS = 60_000;
+/** How often save RAM is checked for an in-game save. */
+const SAVE_WATCH_MS = 1000;
+/** Polls save RAM must hold still before it's captured, so a save the game is
+ *  still writing (flash saves take a moment) isn't caught half-written. */
+const SAVE_SETTLE_TICKS = 2;
+
+/** Save RAM change tracking: `captured` is the content last stored (or
+ *  loaded), `seen` the last poll, `stable` how many polls it held still. */
+interface SaveWatch {
+    timer: ReturnType<typeof setInterval>;
+    captured: number | null;
+    seen: number | null;
+    stable: number;
+}
+
+/** Treat save RAM's current content as already stored, so it isn't captured. */
+function markSaveCaptured(watch: SaveWatch | null, hash: number | null): void {
+    if (watch) { watch.captured = watch.seen = hash; watch.stable = 0; }
+}
 
 // Stable empty arrays so memo'd consumers don't see a new reference each render
 // when the runtime is null.
@@ -28,6 +48,10 @@ const EMPTY_CORE_OPTIONS: CoreOption[] = [];
 const EMPTY_DISC_INFO: DiscInfo = { count: 0, current: 0 };
 
 interface UseEmulatorOpts {
+    /** Save/load states (button, hotkeys, autosave, autoload, save on exit). Default on. */
+    saveStates?: boolean;
+    /** Keep a copy of the game's save file each time it saves in-game. */
+    saveFiles?: boolean;
     autoSave?: boolean;
     autoLoad?: boolean;
     autoSaveInterval?: number;     // ms
@@ -53,19 +77,24 @@ interface SessionStatus {
     title: string | null;
     system: string | null;
     libretroCore: string | null;
+    statesEnabled: boolean;
 }
 
 const IDLE_STATUS: SessionStatus = {
     phase: 'idle', message: '', paused: false, error: null,
-    game: null, title: null, system: null, libretroCore: null,
+    game: null, title: null, system: null, libretroCore: null, statesEnabled: true,
 };
 
 interface EmulatorActions {
     pause: () => void;
     resume: () => void;
+    /** Save a new state. No-op when save states are turned off. */
     saveState: (source?: 'manual' | 'auto' | 'exit') => Promise<void>;
-    loadState: (key?: string, source?: 'manual' | 'auto') => Promise<void>;
-    /** Flush save-on-exit (if enabled) without tearing down the runtime — used
+    /** Load a slot (a save file resets the game into it), or with none the
+     *  latest state. */
+    loadState: (slot?: SlotRef, source?: 'manual' | 'auto') => Promise<void>;
+    /** Flush save-on-exit (if enabled) and any in-game save not yet captured,
+     * without tearing down the runtime — used
      * by the in-game exit button, which reloads the page rather than going
      * through the full stop/idle transition. */
     flushExitSave: () => Promise<void>;
@@ -107,6 +136,8 @@ export interface EmulatorSession {
     currentTitle: string | null;
     currentCore: string | null;
     currentLibretroCore: string | null;
+    /** Save states are on for this session (else Save/Load State are hidden). */
+    statesEnabled: boolean;
     bindings: InputBindings;
 }
 
@@ -146,6 +177,8 @@ export function useEmulator(): EmulatorSession {
     const pausedRef = useRef(false);
     const startingRef = useRef(false);
     const cheevosRef = useRef<CheevosSession | null>(null);
+    const statesEnabledRef = useRef(true);
+    const saveWatchRef = useRef<SaveWatch | null>(null);
 
     const [status, setStatus] = useState<SessionStatus>(IDLE_STATUS);
     const [canvasEpoch, setCanvasEpoch] = useState(0);
@@ -170,6 +203,7 @@ export function useEmulator(): EmulatorSession {
     }, []);
 
     const saveState = useCallback(async (source: 'manual' | 'auto' | 'exit' = 'manual') => {
+        if (!statesEnabledRef.current) return;
         const rt = runtimeRef.current;
         const gc = rt?.controller;
         const game = startArgsRef.current?.gameBaseName;
@@ -202,10 +236,87 @@ export function useEmulator(): EmulatorSession {
         }
     }, []);
 
-    const loadState = useCallback(async (specificKey?: string, source: 'manual' | 'auto' = 'manual') => {
+    /**
+     * Store the game's save file (its battery save RAM) as a new slot — run when
+     * the game has just saved in-game. A save identical to a stored one, or one
+     * the game never wrote, isn't stored.
+     */
+    const captureSaveFile = useCallback(async (onExit = false) => {
+        const gc = runtimeRef.current?.controller;
+        const game = startArgsRef.current?.gameBaseName;
+        const watch = saveWatchRef.current;
+        if (!gc || !game || !watch) return;
+        const bytes = gc.readSaveRAM();
+        if (!bytes) return;
+        markSaveCaptured(watch, gc.saveRamHash());
+        if (isBlankSave(bytes)) return;
+        try {
+            // Capture now — an exit tears the canvas down before any async work.
+            const snapshot = snapshotCover(gc.videoCanvas, gc.getDisplayAspect());
+            gc.flushSRAM();
+            if (await isStateDuplicate(game, bytes, 'save')) return;
+            const slotKey = getNextSlotKey(game, 'save');
+            stampSlot(slotKey);
+            if (!await putStateBytes(slotKey, bytes, 'save')) return;
+            if (!onExit) notifyEmulator({ type: 'save', source: 'manual' });
+            if (snapshot) {
+                if (onExit) await persistStateThumbnailNow(slotKey, game, snapshot);
+                else scheduleStateThumbnail(slotKey, game, snapshot);
+            }
+        } catch (e) {
+            console.error('save file capture failed:', e);
+        }
+    }, []);
+
+    /** Poll save RAM; once a change has settled, the game has saved — store it. */
+    const startSaveWatch = useCallback(() => {
+        const gc = runtimeRef.current?.controller;
+        if (!gc?.hasSaveRAM()) return;
+        const baseline = gc.saveRamHash();
+        const watch: SaveWatch = {
+            captured: baseline, seen: baseline, stable: 0,
+            timer: setInterval(() => {
+                const hash = runtimeRef.current?.controller?.saveRamHash() ?? null;
+                if (hash === null || hash === watch.captured) { watch.seen = hash; return; }
+                if (hash !== watch.seen) { watch.seen = hash; watch.stable = 0; return; }
+                if (++watch.stable >= SAVE_SETTLE_TICKS) void captureSaveFile();
+            }, SAVE_WATCH_MS),
+        };
+        saveWatchRef.current = watch;
+    }, [captureSaveFile]);
+
+    const stopSaveWatch = useCallback(() => {
+        if (saveWatchRef.current) clearInterval(saveWatchRef.current.timer);
+        saveWatchRef.current = null;
+    }, []);
+
+    /** Put a stored save file into the game's save RAM and hard-reset into it,
+     *  so the game reads it like at boot. */
+    const applySaveFile = useCallback(async (key: string, source: 'manual' | 'auto') => {
+        const rt = runtimeRef.current;
+        if (!rt?.controller) return;
+        const bytes = await getStateBytes(key, 'save');
+        const gc = rt.controller;
+        if (!bytes || runtimeRef.current !== rt || !gc) return;
+        if (!gc.writeSaveRAM(bytes)) {
+            pushCheevosToast({ kind: 'info', title: 'In-Game Saves', description: "This game doesn't save in-game." });
+            return;
+        }
+        gc.flushSRAM();
+        // The loaded save is already stored — don't capture it as a new one.
+        markSaveCaptured(saveWatchRef.current, gc.saveRamHash());
+        gc.restart();
+        cheevosRef.current?.onReset();
+        notifyEmulator({ type: 'load', source });
+    }, []);
+
+    const loadState = useCallback(async (slot?: SlotRef, source: 'manual' | 'auto' = 'manual') => {
         const rt = runtimeRef.current;
         const game = startArgsRef.current?.gameBaseName;
         if (!rt?.controller || !game) return;
+        // Save files are in-game saves, which hardcore allows.
+        if (slot?.kind === 'save') { await applySaveFile(slot.key, source); return; }
+        if (!slot && !statesEnabledRef.current) return;
         const ra = cheevosRef.current;
         if (ra?.hardcoreLocked) {
             // Identification may still lift the lock (a game without achievements).
@@ -217,7 +328,7 @@ export function useEmulator(): EmulatorSession {
             }
         }
         try {
-            const key = specificKey ?? getSlotKeys(game).at(-1);
+            const key = slot?.key ?? getSlotKeys(game).at(-1);
             if (!key) return;
             const [data, progress] = await Promise.all([
                 getStateBytes(key),
@@ -230,22 +341,25 @@ export function useEmulator(): EmulatorSession {
         } catch (e) {
             console.error('load state failed:', e);
         }
-    }, []);
+    }, [applySaveFile]);
 
-    // Flush save-on-exit (if enabled) without tearing down the runtime — used by
-    // the in-game exit button, which reloads the page rather than going through
-    // the full stop/idle transition. stop() reuses it before destroy().
+    // See EmulatorActions.flushExitSave. stop() reuses it before destroy().
     const flushExitSave = useCallback(async () => {
-        if (saveOnExitRef.current && runtimeRef.current && startArgsRef.current) {
-            await saveState('exit');
+        if (!runtimeRef.current || !startArgsRef.current) return;
+        // An in-game save made just before exiting may not have settled yet.
+        const watch = saveWatchRef.current;
+        if (watch && runtimeRef.current.controller?.saveRamHash() !== watch.captured) {
+            await captureSaveFile(true);
         }
-    }, [saveState]);
+        if (saveOnExitRef.current) await saveState('exit');
+    }, [saveState, captureSaveFile]);
 
     const stop = useCallback(async () => {
         // Save-on-exit must complete BEFORE destroy() — destroy aborts the wasm
         // runtime, which would orphan any in-flight async serialize (ASYNCIFY cores
         // like ppsspp).
         await flushExitSave();
+        stopSaveWatch();
         canvasReadyResolvers.current = [];
         if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
         autoSaveTimerRef.current = null;
@@ -257,7 +371,7 @@ export function useEmulator(): EmulatorSession {
         startArgsRef.current = null;
         pausedRef.current = false;
         setStatus(IDLE_STATUS);
-    }, [flushExitSave]);
+    }, [flushExitSave, stopSaveWatch]);
 
     const start: EmulatorSession['start'] = useCallback(async (args) => {
         if (!canvasRef.current) {
@@ -278,13 +392,18 @@ export function useEmulator(): EmulatorSession {
             startArgsRef.current = args;
             const { opts: userOpts = {}, gameTitle, ...runtimeOpts } = args;
 
+            const statesEnabled = userOpts.saveStates ?? true;
             setStatus({
                 ...IDLE_STATUS,
                 phase: 'loading-core',
                 game: runtimeOpts.gameBaseName,
                 title: gameTitle ?? runtimeOpts.gameBaseName,
                 system: runtimeOpts.system,
+                statesEnabled,
             });
+            // saveState/loadState check this, which also covers autoload,
+            // autosave and save on exit.
+            statesEnabledRef.current = statesEnabled;
 
             const rt = new Runtime();
             runtimeRef.current = rt;
@@ -311,8 +430,9 @@ export function useEmulator(): EmulatorSession {
                     ? startCheevos(rt, runtimeOpts.system, cheevos.hardcore, credentials)
                     : null;
 
+                if (userOpts.saveFiles) startSaveWatch();
                 if (userOpts.autoLoad) loadState(undefined, 'auto');
-                if (userOpts.autoSave) {
+                if (userOpts.autoSave && statesEnabled) {
                     const ms = Math.max(MIN_AUTOSAVE_MS, userOpts.autoSaveInterval ?? DEFAULT_AUTOSAVE_MS);
                     autoSaveTimerRef.current = setInterval(() => {
                         if (runtimeRef.current && !document.hidden) saveState('auto');
@@ -327,7 +447,7 @@ export function useEmulator(): EmulatorSession {
         } finally {
             startingRef.current = false;
         }
-    }, [stop, saveState, loadState, patchStatus]);
+    }, [stop, saveState, loadState, startSaveWatch, patchStatus]);
 
     const switchCore = useCallback(async (libretroName: string) => {
         const prev = startArgsRef.current;
@@ -387,6 +507,7 @@ export function useEmulator(): EmulatorSession {
         currentTitle: status.title,
         currentCore: status.system,
         currentLibretroCore: status.libretroCore,
+        statesEnabled: status.statesEnabled,
         bindings,
     }), [start, setCanvas, canvasEpoch, actions, status, bindings]);
 }

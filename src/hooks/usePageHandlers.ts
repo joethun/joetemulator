@@ -69,6 +69,8 @@ export function usePageHandlers({ lib, app, files, settings, session }: Deps) {
                     autoSave: settings.autoSaveState,
                     autoSaveInterval: settings.autoSaveInterval * 1000,
                     saveOnExit: settings.saveOnExit,
+                    saveStates: settings.saveStatesEnabled,
+                    saveFiles: settings.saveFilesEnabled,
                     cheevos: settings.raEnabled ? { hardcore: settings.raHardcore } : undefined,
                 },
             });

@@ -150,6 +150,7 @@ export default function Home() {
                     gameName={app.saveStateGame.name}
                     onClose={app.closeSaveStateManager}
                     onDuplicateError={app.showDuplicateError}
+                    statesEnabled={settings.saveStatesEnabled}
                 />
             )}
 

@@ -11,6 +11,8 @@ export function useAppSettings() {
     const [autoSaveInterval, setAutoSaveInterval] = useLocalStorage('autoSaveInterval', 300);
     const [autoSaveIcon, setAutoSaveIcon] = useLocalStorage('autoSaveIcon', true);
     const [saveOnExit, setSaveOnExit] = useLocalStorage('saveOnExit', true);
+    const [saveStatesEnabled, setSaveStatesEnabled] = useLocalStorage('saveStatesEnabled', true);
+    const [saveFilesEnabled, setSaveFilesEnabled] = useLocalStorage('saveFilesEnabled', true);
     const [raEnabled, setRaEnabled] = useLocalStorage('raEnabled', false);
     const [raHardcore, setRaHardcore] = useLocalStorage('raHardcore', false);
 
@@ -25,6 +27,8 @@ export function useAppSettings() {
         autoSaveInterval, setAutoSaveInterval,
         autoSaveIcon, setAutoSaveIcon,
         saveOnExit, setSaveOnExit,
+        saveStatesEnabled, setSaveStatesEnabled,
+        saveFilesEnabled, setSaveFilesEnabled,
         raEnabled, setRaEnabled,
         raHardcore, setRaHardcore,
         currentColors, gradientStyle,

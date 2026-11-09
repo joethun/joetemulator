@@ -1,13 +1,14 @@
 import { loadJSON, saveJSON, loadString, saveString, removeKey } from '@/lib/local-storage';
-import { dataUrlToBytes, groupBy, openExistingDB } from '@/lib/utils';
+import { dataUrlToBytes, fnv1a, groupBy, openExistingDB } from '@/lib/utils';
 import { opfsDir, readFile, removeFiles, writeFile } from '@/lib/opfs';
-import { looksLikeZip } from '@/lib/files';
+import { fileExt, looksLikeZip } from '@/lib/files';
 import { buildZip, openZipEntry, readZipDirectory } from '@/lib/zip';
 
 const STATE_TS_PREFIX = 'ejs_state_ts_';
 const STATE_COVER_ASPECT_PREFIX = 'ejs_state_cover_aspect_';
 const STATE_HASH_PREFIX = 'ejs_state_hash_';
 const SLOT_PREFIX = 'ejs_slots_';
+const SAVE_SLOT_PREFIX = 'ejs_savs_';
 
 export const SAVE_STATE_THUMBNAIL_EVENT = 'savestate_thumbnail';
 export const EMULATOR_NOTIFICATION_EVENT = 'emulator_notification';
@@ -55,10 +56,30 @@ const COVER_MAX_WIDTH = 768;
 // reads it every tick without touching the state files.
 const STATES_DIR = 'states';
 const STATE_EXT = '.state';
+/** A snapshot of the game's battery save (its SAVE_RAM), as a raw .sav. */
+const SAVE_EXT = '.sav';
 const THUMB_EXT = '.thumb.png';
 /** RetroAchievements progress captured with a state (rc_client_serialize_progress). */
 const CHEEVOS_EXT = '.rc';
-const SLOT_EXTS = [STATE_EXT, THUMB_EXT, CHEEVOS_EXT];
+const SLOT_EXTS = [STATE_EXT, SAVE_EXT, THUMB_EXT, CHEEVOS_EXT];
+
+/**
+ * What a slot holds: a save state (a snapshot of the whole machine) or a save
+ * file (the game's own battery save — the .sav a cartridge would keep). Both
+ * live side by side in the same store, each kind with its own slot list.
+ */
+export type SaveKind = 'state' | 'save';
+
+/** A stored slot: its key and which kind of save it holds. */
+export type SlotRef = { key: string; kind: SaveKind };
+
+/** Per-kind storage facts: data file extension and slot-manifest key prefix. */
+const KINDS: Record<SaveKind, { ext: string; manifestPrefix: string }> = {
+    state: { ext: STATE_EXT, manifestPrefix: SLOT_PREFIX },
+    save: { ext: SAVE_EXT, manifestPrefix: SAVE_SLOT_PREFIX },
+};
+const dataExt = (kind: SaveKind) => KINDS[kind].ext;
+const manifestKey = (name: string, kind: SaveKind) => KINDS[kind].manifestPrefix + name;
 
 /** IndexedDB store that held states before OPFS; read once to migrate. */
 const LEGACY_DB_NAME = 'EmulatorJS-states';
@@ -68,6 +89,7 @@ const LEGACY_CHEEVOS_SUFFIX = ':rc';
 
 export interface SaveState {
     key: string;
+    kind: SaveKind;
     savedAt: Date | null;
     /** Object URL of the cover thumbnail. */
     thumbnail: string | null;
@@ -79,20 +101,20 @@ interface SlotManifest { slots: string[]; nextIndex: number; }
 
 const EMPTY_MANIFEST: SlotManifest = { slots: [], nextIndex: 0 };
 
-const getManifest = (name: string): SlotManifest =>
-    loadJSON(SLOT_PREFIX + name, EMPTY_MANIFEST);
+const getManifest = (name: string, kind: SaveKind): SlotManifest =>
+    loadJSON(manifestKey(name, kind), EMPTY_MANIFEST);
 
-const saveManifest = (name: string, m: SlotManifest): void =>
-    saveJSON(SLOT_PREFIX + name, m);
+const saveManifest = (name: string, m: SlotManifest, kind: SaveKind): void =>
+    saveJSON(manifestKey(name, kind), m);
 
 /**
  * Persist a new manifest and delete the data (state files, localStorage meta) of
  * every slot that fell out of it — otherwise evicted slots would orphan their
  * files forever. All slot-list mutations must go through here.
  */
-async function commitManifest(name: string, next: SlotManifest): Promise<void> {
-    const prev = getManifest(name);
-    saveManifest(name, next);
+async function commitManifest(name: string, next: SlotManifest, kind: SaveKind): Promise<void> {
+    const prev = getManifest(name, kind);
+    saveManifest(name, next, kind);
     const kept = new Set(next.slots);
     const evicted = prev.slots.filter(k => !kept.has(k));
     if (!evicted.length) return;
@@ -104,19 +126,19 @@ async function commitManifest(name: string, next: SlotManifest): Promise<void> {
     catch (e) { console.error('failed to delete evicted states:', e); }
 }
 
-export const getSlotKeys = (name: string) => getManifest(name).slots;
+export const getSlotKeys = (name: string, kind: SaveKind = 'state') => getManifest(name, kind).slots;
 
 /** Slot list with `key` moved/added to the newest position, capped at MAX_SLOTS. */
 const withSlot = (m: SlotManifest, key: string): string[] =>
     [...m.slots.filter(s => s !== key), key].slice(-MAX_SLOTS);
 
-export function getNextSlotKey(name: string): string {
-    const m = getManifest(name);
-    const key = `${name}.state${m.nextIndex}`;
+export function getNextSlotKey(name: string, kind: SaveKind = 'state'): string {
+    const m = getManifest(name, kind);
+    const key = `${name}${dataExt(kind)}${m.nextIndex}`;
     void commitManifest(name, {
         slots: withSlot(m, key),
         nextIndex: (m.nextIndex + 1) % MAX_SLOTS,
-    });
+    }, kind);
     return key;
 }
 
@@ -222,19 +244,19 @@ async function migrateFromIndexedDB(dir: FileSystemDirectoryHandle): Promise<voi
 
 // ─── State data ──────────────────────────────────────────────────────────────
 
-export async function getStateBytes(key: string): Promise<Uint8Array | null> {
-    try { return await readSlotBytes(key, STATE_EXT); }
+export async function getStateBytes(key: string, kind: SaveKind = 'state'): Promise<Uint8Array | null> {
+    try { return await readSlotBytes(key, dataExt(kind)); }
     catch (e) { console.error('read state failed:', e); return null; }
 }
 
-/** Store a state's bytes. Resolves false if the write didn't land. */
-export async function putStateBytes(key: string, bytes: Uint8Array): Promise<boolean> {
-    try { await writeFile(await getDir(), slotFile(key, STATE_EXT), bytes); }
+/** Store a slot's bytes. Resolves false if the write didn't land. */
+export async function putStateBytes(key: string, bytes: Uint8Array, kind: SaveKind = 'state'): Promise<boolean> {
+    try { await writeFile(await getDir(), slotFile(key, dataExt(kind)), bytes); }
     catch (e) { console.error('write state failed:', e); return false; }
     // Fingerprint only a state that actually landed: a hash left behind by a
     // failed write would make the next identical autosave look like a
     // duplicate and get silently skipped.
-    stampHash(key, bytes);
+    stampHash(key, bytes, kind);
     return true;
 }
 
@@ -415,16 +437,26 @@ function getTimestamp(key: string): Date | null {
     return isNaN(d.getTime()) ? null : d;
 }
 
-/** Cheap content fingerprint: length plus 64 evenly-spaced samples. */
-function hashBytes(bytes: Uint8Array): string {
+/**
+ * Content fingerprint. States (tens of MB, hashed on every autosave tick) get a
+ * cheap one: length plus 64 evenly-spaced samples. Save files are small, and a
+ * new in-game save often changes only a few bytes, so they hash every byte —
+ * sampling would mistake a real new save for a duplicate.
+ */
+function hashBytes(bytes: Uint8Array, kind: SaveKind): string {
+    if (kind === 'save') return `${bytes.length}:fnv:${fnv1a(bytes)}`;
     const step = Math.max(1, Math.floor(bytes.length / 64));
     let h = bytes.length;
     for (let i = 0; i < bytes.length; i += step) h = (h * 31 + bytes[i]) >>> 0;
     return `${bytes.length}:${h}`;
 }
 
-const stampHash = (key: string, bytes: Uint8Array): void =>
-    saveString(STATE_HASH_PREFIX + key, hashBytes(bytes));
+/** Record a slot's fingerprint, and return it. */
+function stampHash(key: string, bytes: Uint8Array, kind: SaveKind): string {
+    const hash = hashBytes(bytes, kind);
+    saveString(STATE_HASH_PREFIX + key, hash);
+    return hash;
+}
 
 /**
  * Fingerprints of every stored slot. Hashes are recorded in localStorage when a
@@ -433,10 +465,10 @@ const stampHash = (key: string, bytes: Uint8Array): void =>
  * megabytes. Slots written before hashes were persisted are read once here and
  * backfilled.
  */
-async function slotHashes(gameName: string): Promise<Set<string>> {
+async function slotHashes(gameName: string, kind: SaveKind): Promise<Set<string>> {
     const hashes = new Set<string>();
     const missing: string[] = [];
-    for (const key of getSlotKeys(gameName)) {
+    for (const key of getSlotKeys(gameName, kind)) {
         const stored = loadString(STATE_HASH_PREFIX + key);
         if (stored) hashes.add(stored);
         else missing.push(key);
@@ -444,31 +476,37 @@ async function slotHashes(gameName: string): Promise<Set<string>> {
     if (!missing.length) return hashes;
 
     for (const key of missing) {
-        const bytes = await getStateBytes(key);
+        const bytes = await getStateBytes(key, kind);
         if (!bytes) continue;
-        stampHash(key, bytes);
-        hashes.add(hashBytes(bytes));
+        hashes.add(stampHash(key, bytes, kind));
     }
     return hashes;
 }
 
-export const isStateDuplicate = async (gameName: string, incoming: Uint8Array): Promise<boolean> =>
-    (await slotHashes(gameName)).has(hashBytes(incoming));
+export const isStateDuplicate = async (gameName: string, incoming: Uint8Array, kind: SaveKind = 'state'): Promise<boolean> =>
+    (await slotHashes(gameName, kind)).has(hashBytes(incoming, kind));
 
-export async function deleteAllStates(gameName: string): Promise<void> {
-    await commitManifest(gameName, EMPTY_MANIFEST);
-    removeKey(SLOT_PREFIX + gameName);
+/** True when every byte is the same — a battery save the game never wrote to
+ *  (cores fill fresh save RAM with 0x00 or 0xFF). Not worth keeping. */
+export function isBlankSave(bytes: Uint8Array): boolean {
+    const first = bytes[0];
+    for (let i = 1; i < bytes.length; i++) if (bytes[i] !== first) return false;
+    return true;
 }
 
-/** List a game's states, newest first. Only checks that each state file exists
- *  and resolves thumbnail URLs — state bytes are read on load or download. */
-export async function fetchStates(gameName: string): Promise<SaveState[]> {
-    const keys = getSlotKeys(gameName);
-    if (!keys.length) return [];
-    const rows = await Promise.all(keys.map(async (key): Promise<SaveState | null> => {
-        if (!await readSlotFile(key, STATE_EXT)) return null;
+export async function deleteAllStates(gameName: string): Promise<void> {
+    await Promise.all((Object.keys(KINDS) as SaveKind[]).map(async kind => {
+        await commitManifest(gameName, EMPTY_MANIFEST, kind);
+        removeKey(manifestKey(gameName, kind));
+    }));
+}
+
+async function fetchKind(gameName: string, kind: SaveKind): Promise<SaveState[]> {
+    const rows = await Promise.all(getSlotKeys(gameName, kind).map(async (key): Promise<SaveState | null> => {
+        if (!await readSlotFile(key, dataExt(kind))) return null;
         return {
             key,
+            kind,
             savedAt: getTimestamp(key),
             thumbnail: await getThumbnailUrl(key),
             coverAspect: getCoverAspect(key),
@@ -477,19 +515,39 @@ export async function fetchStates(gameName: string): Promise<SaveState[]> {
     return rows.filter((r): r is SaveState => r !== null).reverse();
 }
 
-export async function removeState(key: string, gameName: string): Promise<void> {
-    const m = getManifest(gameName);
-    await commitManifest(gameName, { ...m, slots: m.slots.filter(s => s !== key) });
+/** List a game's states and save files, newest first. Only checks that each
+ *  data file exists and resolves thumbnail URLs — bytes are read on load or
+ *  download. */
+export async function fetchStates(gameName: string): Promise<SaveState[]> {
+    const [states, saves] = await Promise.all([fetchKind(gameName, 'state'), fetchKind(gameName, 'save')]);
+    const time = (s: SaveState) => s.savedAt?.getTime() ?? -Infinity;
+    // Stable sort: rows without a timestamp keep their slot order.
+    return [...states, ...saves].sort((a, b) => time(b) - time(a));
+}
+
+export async function removeState(key: string, gameName: string, kind: SaveKind): Promise<void> {
+    const m = getManifest(gameName, kind);
+    await commitManifest(gameName, { ...m, slots: m.slots.filter(s => s !== key) }, kind);
 }
 
 const BUNDLE_STATE_ENTRY = 'state.bin';
 const BUNDLE_THUMB_ENTRY = 'thumb.png';
 
-async function unpackImportFile(file: File): Promise<{ state: Uint8Array; thumbnail: Blob | null }> {
+/**
+ * Battery-save extensions other emulators write: .sav (most), .srm
+ * (RetroArch), .dsv (DeSmuME), .eep/.fla/.sra/.mpk (N64 by chip), .mcr/.mcd
+ * (PlayStation memory cards), .bkr/.brm (Saturn/Sega CD backup RAM).
+ */
+const SAVE_FILE_EXTS = new Set(['sav', 'srm', 'dsv', 'eep', 'fla', 'sra', 'mpk', 'mcr', 'mcd', 'bkr', 'brm']);
+
+async function unpackImportFile(file: File): Promise<{ kind: SaveKind; data: Uint8Array; thumbnail: Blob | null }> {
     const buf = await file.arrayBuffer();
     const bytes = new Uint8Array(buf);
+    if (SAVE_FILE_EXTS.has(fileExt(file.name))) {
+        return { kind: 'save', data: bytes, thumbnail: null };
+    }
     if (!looksLikeZip(bytes.subarray(0, 4))) {
-        return { state: bytes, thumbnail: null };
+        return { kind: 'state', data: bytes, thumbnail: null };
     }
     const entries = await readZipDirectory(file);
     const stateEntry = entries?.find(e => e.path === BUNDLE_STATE_ENTRY);
@@ -499,23 +557,26 @@ async function unpackImportFile(file: File): Promise<{ state: Uint8Array; thumbn
     const thumbnail = thumbEntry
         ? new Blob([await new Response(await openZipEntry(file, thumbEntry)).arrayBuffer()], { type: 'image/png' })
         : null;
-    return { state, thumbnail };
+    return { kind: 'state', data: state, thumbnail };
 }
 
-export async function importState(gameName: string, file: File): Promise<void> {
-    const { state: incoming, thumbnail } = await unpackImportFile(file);
-    if (await isStateDuplicate(gameName, incoming)) throw new Error('duplicate');
+/** Import a save state (raw or bundle) or a save file (by extension, e.g.
+ *  .sav/.srm). Resolves to the kind it was stored as. */
+export async function importState(gameName: string, file: File): Promise<SaveKind> {
+    const { kind, data: incoming, thumbnail } = await unpackImportFile(file);
+    if (await isStateDuplicate(gameName, incoming, kind)) throw new Error('duplicate');
 
-    const key = `${gameName}.state_imported_${Date.now()}`;
-    if (!await putStateBytes(key, incoming)) throw new Error('state storage unavailable');
+    const key = `${gameName}${dataExt(kind)}_imported_${Date.now()}`;
+    if (!await putStateBytes(key, incoming, kind)) throw new Error('state storage unavailable');
 
-    const m = getManifest(gameName);
-    await commitManifest(gameName, { ...m, slots: withSlot(m, key) });
+    const m = getManifest(gameName, kind);
+    await commitManifest(gameName, { ...m, slots: withSlot(m, key) }, kind);
     stampSlot(key, new Date(file.lastModified || Date.now()));
     if (thumbnail) {
         const aspect = await measureImageAspect(thumbnail);
         await putStateThumbnail(key, thumbnail, aspect ?? DEFAULT_COVER_ASPECT);
     }
+    return kind;
 }
 
 async function measureImageAspect(image: Blob): Promise<number | null> {
@@ -535,7 +596,13 @@ function triggerDownload(blob: Blob, filename: string): void {
     URL.revokeObjectURL(url);
 }
 
-export async function downloadState(gameName: string, key: string, savedAt: Date | null): Promise<void> {
+export async function downloadState(gameName: string, key: string, savedAt: Date | null, kind: SaveKind): Promise<void> {
+    if (kind === 'save') {
+        // Raw, under the name emulators look for next to the ROM.
+        const save = await readSlotFile(key, SAVE_EXT);
+        if (save) triggerDownload(save, `${gameName}${SAVE_EXT}`);
+        return;
+    }
     const [state, thumb] = await Promise.all([
         readSlotFile(key, STATE_EXT),
         readSlotFile(key, THUMB_EXT),

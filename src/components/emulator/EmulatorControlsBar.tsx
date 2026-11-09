@@ -20,6 +20,8 @@ interface EmulatorControlsBarProps {
     gameLoaded: boolean;
     /** False while hardcore achievements forbid loading states. */
     canLoadState?: boolean;
+    /** False when save states are turned off in settings (hides Save/Load State). */
+    statesEnabled: boolean;
     onTogglePause: () => void;
     onSaveState: () => void;
     onLoadState: () => void;
@@ -31,7 +33,7 @@ interface EmulatorControlsBarProps {
 }
 
 export const EmulatorControlsBar = memo(({
-    visible, colors, paused, gameLoaded, canLoadState = true, onTogglePause, onSaveState, onLoadState, onOpenSettings, onOpenSaveStates, onExit, onActivity,
+    visible, colors, paused, gameLoaded, canLoadState = true, statesEnabled, onTogglePause, onSaveState, onLoadState, onOpenSettings, onOpenSaveStates, onExit, onActivity,
 }: EmulatorControlsBarProps) => {
     const [exiting, setExiting] = useState(false);
     const handleExit = () => {
@@ -62,9 +64,11 @@ export const EmulatorControlsBar = memo(({
                     colors={colors}
                 />
                 <Divider colors={colors} />
-                <BarBtn icon={Save}     label="Save State"    onClick={onSaveState} colors={colors} />
-                {gameLoaded && canLoadState && <BarBtn icon={Upload}   label="Load State"    onClick={onLoadState} colors={colors} />}
-                <BarBtn icon={Folder}   label="Manage States" onClick={onOpenSaveStates}    colors={colors} />
+                {statesEnabled && <>
+                    <BarBtn icon={Save}     label="Save State"    onClick={onSaveState} colors={colors} />
+                    {gameLoaded && canLoadState && <BarBtn icon={Upload}   label="Load State"    onClick={onLoadState} colors={colors} />}
+                </>}
+                <BarBtn icon={Folder}   label="Manage Saves" onClick={onOpenSaveStates}    colors={colors} />
                 <BarBtn icon={Settings} label="Game Settings" onClick={onOpenSettings} colors={colors} />
                 <VolumeButton colors={colors} />
                 <FullscreenButton colors={colors} />

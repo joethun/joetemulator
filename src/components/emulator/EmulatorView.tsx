@@ -11,7 +11,7 @@ import { useIsTouch } from '@/hooks/useIsTouch';
 import { useUnloadWarning } from '@/hooks/useUnloadWarning';
 import { useDelayedUnmount } from '@/hooks/useDelayedUnmount';
 import { useTimer } from '@/hooks/useTimer';
-import { EMULATOR_NOTIFICATION_EVENT, parseEmulatorNotificationEvent } from '@/lib/savestates';
+import { EMULATOR_NOTIFICATION_EVENT, parseEmulatorNotificationEvent, type SlotRef } from '@/lib/savestates';
 import { CheevosOverlay } from '@/components/cheevos/CheevosOverlay';
 import { isHardcoreLocked, useCheevosSelector } from '@/lib/cheevos/store';
 import { useCoverSrc } from '@/lib/cover-storage';
@@ -188,8 +188,8 @@ export const EmulatorView = memo(({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [settingsOpen, saveStatesOpen, userPaused, isVisible, session.phase]);
 
-    const handleLoadState = (key?: string) => {
-        session.actions.loadState(key);
+    const handleLoadState = (slot?: SlotRef) => {
+        session.actions.loadState(slot);
         setSaveStatesOpen(false);
     };
 
@@ -314,6 +314,7 @@ export const EmulatorView = memo(({
                 paused={userPaused}
                 gameLoaded={session.phase === 'running'}
                 canLoadState={!hardcoreLocked}
+                statesEnabled={session.statesEnabled}
                 onTogglePause={() => { if (userPaused || requestPause()) setUserPaused(p => !p); }}
                 onSaveState={() => session.actions.saveState('manual')}
                 onLoadState={() => handleLoadState()}
@@ -349,6 +350,7 @@ export const EmulatorView = memo(({
                     onClose={() => setSaveStatesOpen(false)}
                     onDuplicateError={onDuplicateError}
                     onLoadState={handleLoadState}
+                    statesEnabled={session.statesEnabled}
                 />
             )}
         </div>

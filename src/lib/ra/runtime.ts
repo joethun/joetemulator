@@ -127,7 +127,7 @@ export class Runtime {
         for (const f of boot.files) writeFile(mod, '/' + f.name, f.bytes);
         this.boot = boot;
 
-        const gc = new GameController(mod, canvas);
+        const gc = new GameController(mod, canvas, libretroName);
         this.gc = gc;
         this.allowedRetroIds = getRetroIdsForCore(system);
         const merged = { ...DEFAULT_BINDINGS, ...bindings };
@@ -165,7 +165,7 @@ export class Runtime {
             }
         }
 
-        this.srmTimer = setInterval(() => { gc.saveSRAM(); gc.syncSRAM(); }, SRM_SYNC_INTERVAL_MS);
+        this.srmTimer = setInterval(() => gc.flushSRAM(),SRM_SYNC_INTERVAL_MS);
 
         // Re-apply the user's last shader. Swallow errors so a missing/renamed
         // shader doesn't break the boot — the core just runs without one.

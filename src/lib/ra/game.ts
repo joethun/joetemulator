@@ -1,4 +1,5 @@
 import { DEFAULT_COVER_ASPECT } from '@/lib/savestates';
+import { fnv1a } from '@/lib/utils';
 import type { CwrapPrimitive, LibretroModule } from '@/lib/ra/types';
 
 const STATE_FILE = '/game.state';
@@ -9,6 +10,15 @@ const MEMORY_KEYS = [
 ];
 
 type CFn<R> = (...args: unknown[]) => R;
+
+/**
+ * Save RAM buffer size for cores whose RETRO_MEMORY_SAVE_RAM size isn't it.
+ * Genesis Plus GX reports only the used length once running (0 until the game
+ * first writes its save), so importing a save would be truncated or refused.
+ */
+const SAVE_RAM_CAPACITY: Record<string, number> = {
+    genesis_plus_gx: 0x10000,
+};
 
 export class GameController {
     private readonly fn: {
@@ -31,12 +41,15 @@ export class GameController {
         frameCount:     CFn<number>;
         restart:        CFn<void>;
     };
+    private readonly saveRamCapacity: number | undefined;
 
     constructor(
         private readonly mod: LibretroModule,
         /** The GL canvas the core renders into. Read directly to grab cover snapshots. */
         public readonly videoCanvas: HTMLCanvasElement,
+        libretroName?: string,
     ) {
+        this.saveRamCapacity = libretroName ? SAVE_RAM_CAPACITY[libretroName] : undefined;
         const w = <R>(name: string, ret: CwrapPrimitive, args: CwrapPrimitive[]): CFn<R> =>
             mod.cwrap<R>(name, ret, args);
         this.fn = {
@@ -83,6 +96,8 @@ export class GameController {
 
     saveSRAM(): void { this.fn.cmdSavefiles(); }
     syncSRAM(): void { this.mod.FS.syncfs(false, () => {}); }
+    /** Write the live .srm and persist it now, rather than on the next SRAM tick. */
+    flushSRAM(): void { this.saveSRAM(); this.syncSRAM(); }
 
     simulateInput(player: number, button: number, value: number): void {
         this.fn.simulateInput(player, button, value);
@@ -126,12 +141,15 @@ export class GameController {
      * side returns a pointer into its own (already popped) stack frame and
      * the wrapper then free()s it. cwrap's 'string' return copies the text
      * out immediately and never frees.
+     *
+     * `sizeOverride` replaces the size the core reports (see SAVE_RAM_CAPACITY).
      */
-    getMemoryInfo(id: number): [number, number] {
+    getMemoryInfo(id: number, sizeOverride?: number): [number, number] {
         const key = MEMORY_KEYS[id];
         if (!key) return [0, 0];
         try {
-            const [size, ptr] = (this.fn.getMemoryData(key) ?? '').split('|').map(Number);
+            const [reported, ptr] = (this.fn.getMemoryData(key) ?? '').split('|').map(Number);
+            const size = sizeOverride ?? reported;
             return Number.isFinite(size) && Number.isFinite(ptr) && ptr > 0 && size > 0 ? [ptr, size] : [0, 0];
         } catch {
             // e.g. mGBA traps before content is loaded
@@ -155,6 +173,43 @@ export class GameController {
         } catch {
             return null;
         }
+    }
+
+    /** [pointer, size] of the save RAM buffer, or [0, 0] without one. */
+    private saveRamSlot(): [number, number] {
+        return this.getMemoryInfo(0, this.saveRamCapacity);
+    }
+
+    hasSaveRAM(): boolean { return this.saveRamSlot()[1] > 0; }
+
+    /** FNV-1a of save RAM, read in place, for cheap change polling. null without one. */
+    saveRamHash(): number | null {
+        const [ptr, size] = this.saveRamSlot();
+        return size ? fnv1a(this.mod.HEAPU8.subarray(ptr, ptr + size)) : null;
+    }
+
+    /**
+     * Copy of the game's battery save (RETRO_MEMORY_SAVE_RAM) — the same bytes
+     * RetroArch writes to its .srm, i.e. a raw .sav. null when the core exposes
+     * no save RAM (no battery on the cart, or a core that saves elsewhere).
+     */
+    readSaveRAM(): Uint8Array | null {
+        const [ptr, size] = this.saveRamSlot();
+        return size ? this.mod.HEAPU8.slice(ptr, ptr + size) : null;
+    }
+
+    /**
+     * Overwrite the game's save RAM in place. A file shorter than the core's
+     * buffer fills its start (as RetroArch does when loading a .srm); a longer
+     * one is truncated (e.g. a .sav with an appended RTC footer). The game only
+     * notices after a reset, since it read its save at boot. False when the core
+     * exposes no save RAM.
+     */
+    writeSaveRAM(bytes: Uint8Array): boolean {
+        const [ptr, size] = this.saveRamSlot();
+        if (!size) return false;
+        this.mod.HEAPU8.set(bytes.subarray(0, size), ptr);
+        return true;
     }
 
     /** RetroArch main-loop iterations so far (advances once per emulated frame). */

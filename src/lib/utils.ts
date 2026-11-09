@@ -1,5 +1,12 @@
 import type { PendingFile, ThemeColors } from '@/types';
 
+/** 32-bit FNV-1a over every byte. Pass a subarray to hash a region in place. */
+export function fnv1a(bytes: Uint8Array): number {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < bytes.length; i++) h = Math.imul(h ^ bytes[i], 0x01000193);
+    return h >>> 0;
+}
+
 export const stripExt = (name: string) => name.replace(/\.[^/.]+$/, '');
 
 /** Group items into a Map keyed by `keyOf`, preserving first-seen key order and push order. */

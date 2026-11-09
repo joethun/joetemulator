@@ -108,7 +108,7 @@ export function GameContextMenu({
                         : <MenuButton onClick={() => fileInputRef.current?.click()} label="Upload Cover" Icon={ImageIcon} colors={colors} />
                     }
                     <div className="h-px w-full my-1" style={{ backgroundColor: `${colors.highlight}20` }} />
-                    <MenuButton onClick={closeThen(onSaveStates)} label="Manage States" Icon={Folder} colors={colors} />
+                    <MenuButton onClick={closeThen(onSaveStates)} label="Manage Saves" Icon={Folder} colors={colors} />
                     {onAchievements && <MenuButton onClick={closeThen(onAchievements)} label="Achievements" Icon={Trophy} colors={colors} />}
                     <MenuButton onClick={closeThen(onEdit)} label="System" Icon={Cpu} colors={colors} />
                     <MenuButton onClick={closeThen(onDelete)} label="Delete" Icon={Trash2} colors={colors} style={{ backgroundColor: DANGER_BG, color: DANGER_FG }} />

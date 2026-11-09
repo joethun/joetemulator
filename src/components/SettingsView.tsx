@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Clock, Eye, EyeOff, Save, Upload, LogOut } from 'lucide-react';
+import { Clock, Eye, EyeOff, Folder, Save, Upload, LogOut, HardDrive } from 'lucide-react';
 import { ChipButton, SettingsCard, SettingItem } from '@/components/SettingsCard';
 import type { AppSettings } from '@/hooks/useAppSettings';
 import { RetroAchievementsSettings } from '@/components/cheevos/RetroAchievementsSettings';
@@ -13,11 +13,31 @@ export const SettingsView = memo(({ settings }: { settings: AppSettings }) => {
         autoSaveState, setAutoSaveState, autoSaveInterval, setAutoSaveInterval,
         autoSaveIcon, setAutoSaveIcon, autoLoadIcon, setAutoLoadIcon,
         saveOnExit, setSaveOnExit,
+        saveStatesEnabled, setSaveStatesEnabled,
+        saveFilesEnabled, setSaveFilesEnabled,
         raEnabled, setRaEnabled, raHardcore, setRaHardcore,
     } = settings;
 
     return (
     <div className="animate-fade-in w-full grid gap-4 pb-8">
+            <SettingsCard
+                colors={colors} gradient={gradient} icon={Folder}
+                title="Save Method" description="Choose which saves to keep."
+                isExpanded
+            >
+                <div className="space-y-4">
+                    <SettingItem
+                        colors={colors} gradient={gradient} label="Save States" icon={Save}
+                        checked={saveStatesEnabled} onToggle={() => setSaveStatesEnabled(!saveStatesEnabled)}
+                    />
+                    <SettingItem
+                        colors={colors} gradient={gradient} label="In-Game Saves" icon={HardDrive}
+                        checked={saveFilesEnabled} onToggle={() => setSaveFilesEnabled(!saveFilesEnabled)}
+                    />
+                </div>
+            </SettingsCard>
+
+            {saveStatesEnabled && <>
             <SettingsCard
                 colors={colors} gradient={gradient} icon={Save}
                 title="Auto-Save State" description="Automatically save your game state periodically."
@@ -69,6 +89,7 @@ export const SettingsView = memo(({ settings }: { settings: AppSettings }) => {
                 animationDelay="0.09s"
                 checked={saveOnExit} onToggle={() => setSaveOnExit(!saveOnExit)}
             />
+            </>}
 
             <RetroAchievementsSettings
                 colors={colors} gradient={gradient}
