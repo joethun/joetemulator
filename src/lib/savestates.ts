@@ -128,21 +128,6 @@ async function commitManifest(name: string, next: SlotManifest, kind: SaveKind):
 
 export const getSlotKeys = (name: string, kind: SaveKind = 'state') => getManifest(name, kind).slots;
 
-/**
- * The most recent slot across `kinds`, by saved time. A slot with no timestamp
- * loses to one that has one; on a tie the earlier kind in `kinds` wins.
- */
-export function getLatestSlot(name: string, kinds: SaveKind[]): SlotRef | null {
-    let best: { ref: SlotRef; time: number } | null = null;
-    for (const kind of kinds) {
-        const key = getSlotKeys(name, kind).at(-1);
-        if (!key) continue;
-        const time = getTimestamp(key)?.getTime() ?? -Infinity;
-        if (!best || time > best.time) best = { ref: { key, kind }, time };
-    }
-    return best?.ref ?? null;
-}
-
 /** Slot list with `key` moved/added to the newest position, capped at MAX_SLOTS. */
 const withSlot = (m: SlotManifest, key: string): string[] =>
     [...m.slots.filter(s => s !== key), key].slice(-MAX_SLOTS);
