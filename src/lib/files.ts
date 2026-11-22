@@ -221,9 +221,20 @@ export async function calculateAutoCoverArt(rom: File, fileName: string, core: s
         };
 
         const hashName = await lookup();
-        if (!hashName) return null;
-        return `https://thumbnails.libretro.com/${encodeURIComponent(lrSys)}/Named_Boxarts/${encodeURIComponent(hashName)}.png`;
+        return hashName ? libretroCoverUrl(lrSys, hashName) : null;
     } catch {
         return null;
     }
+}
+
+export const COVER_BASE_URL = 'https://raw.githubusercontent.com/libretro-thumbnails/';
+
+/**
+ * Box-art URL in libretro's thumbnail repos on GitHub.
+ * Libretro thumbnail filenames replace `&*\/:`<>?\|"` with `_`.
+ */
+function libretroCoverUrl(lrSys: string, name: string): string {
+    const repo = encodeURIComponent(lrSys.replace(/ /g, '_'));
+    const file = encodeURIComponent(name.replace(/[&*/:`<>?\\|"]/g, '_'));
+    return `${COVER_BASE_URL}${repo}/master/Named_Boxarts/${file}.png`;
 }

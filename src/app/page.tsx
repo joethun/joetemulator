@@ -99,7 +99,6 @@ export default function Home() {
                             onDelete: h.handleDeleteGame,
                             onUploadCover: h.handleUploadCover,
                             onResetCover: h.handleResetCover,
-                            onCoverFailed: h.handleCoverFailed,
                             onEdit: h.handleEditGame,
                             onSaveStates: app.openSaveStateManager,
                             onAchievements: app.openAchievements,

@@ -3,7 +3,7 @@
 const CACHE_NAME = 'joetemulator-v2';
 const COVERS_CACHE = 'joetemulator-covers-v1';
 const PRECACHE_ASSETS = ['/', '/manifest.json'];
-const COVER_HOSTS = new Set(['thumbnails.libretro.com']);
+const COVER_HOSTS = new Set(['raw.githubusercontent.com']);
 
 self.addEventListener('install', (event) => {
     event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS)));
@@ -24,7 +24,7 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(request.url);
 
     // why: next/image proxies remote covers through /_next/image?url=…, so most cover traffic
-    // is same-origin. The libretro-direct branch below stays for any non-optimized usage.
+    // is same-origin. The direct-host branch below stays for any non-optimized usage.
     const isOptimizedCover =
         url.origin === location.origin &&
         url.pathname === '/_next/image' &&

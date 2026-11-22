@@ -14,7 +14,7 @@
 ## Features
 
 - **30+ supported systems**
-- **Auto cover art** - Fetched from [thumbnails.libretro.com](https://thumbnails.libretro.com) based on hashing or the game title as a fallback
+- **Auto cover art** - Fetched from the [libretro-thumbnails](https://github.com/libretro-thumbnails) GitHub repos based on hashing or the game title as a fallback
 - **Completely local** - All ROMs and save states stay in your browser
 - **RetroAchievements** - Earn [achievements](https://retroachievements.org) while you play, with an optional hardcore mode
 

@@ -18,7 +18,6 @@ interface GameCardProps {
     onDelete: (game: Game) => void;
     onUploadCover: (gameId: number, image: File) => void;
     onResetCover: (gameId: number) => void;
-    onCoverFailed: (gameId: number) => void;
     onSaveStates: (title: string, name: string) => void;
     /** Omitted when RetroAchievements is turned off. */
     onAchievements?: (game: Game) => void;
@@ -52,7 +51,7 @@ const UploadOverlay = memo(({ progress, isComplete, colors }: { progress?: numbe
 UploadOverlay.displayName = 'UploadOverlay';
 
 export const GameCard = memo(({
-    game, onPlay, onEdit, onDelete, onUploadCover, onResetCover, onCoverFailed, onSaveStates, onAchievements, colors, priority = false
+    game, onPlay, onEdit, onDelete, onUploadCover, onResetCover, onSaveStates, onAchievements, colors, priority = false
 }: GameCardProps) => {
     const longPress = useTimer();
     const didOpenMenu = useRef(false);
@@ -132,10 +131,7 @@ export const GameCard = memo(({
                         loading="eager"
                         priority={priority}
                         draggable={false}
-                        onError={() => {
-                            setErroredSrc(coverSrc);
-                            onCoverFailed(game.id);
-                        }}
+                        onError={() => setErroredSrc(coverSrc)}
                         style={{ objectFit: game.coverArtFit || 'cover', objectPosition: 'center', userSelect: 'none' }}
                     />
                 ) : (
