@@ -33,26 +33,31 @@
 
 ## Adding Games
 
-1. To add a game, click the + button in the sidebar and pick a file or multiple. In addition to this you can drag files onto the page.
+1. Click the **+** button at the bottom of the sidebar and choose one or more game files. You can also drag and drop files anywhere on the page.
 
-<img src="docs/readme/addbutton.png" alt="Add games with the + button or drag and drop" width="800"/>
+<img src="docs/readme/addbutton.png" alt="The + button in the sidebar" width="800"/>
 
-2. You will be prompted to pick a system for your game(s). You can also rename the game through this menu.
+2. If the system can't be detected from the file type (for example, a `.bin` disc image), choose the system and click **Done**.
 
-<img src="docs/readme/systempicker.png" alt="System picker and rename dialog" width="800"/>
+<img src="docs/readme/systempicker.png" alt="Choosing a system for a game" width="800"/>
 
-3. Cover art is then fetched automatically. You can also set your own image via the context menu by right-clicking a game.
+3. Cover art is added automatically. To use your own image instead, right-click the game and choose **Upload Cover**.
 
-<img src="docs/readme/play.png" alt="Playing a game" width="800"/>
+<p>
+  <img src="docs/readme/coverart.png" alt="Cover art added automatically" width="395"/>
+  <img src="docs/readme/uploadcover.png" alt="Upload Cover in the right-click menu" width="395"/>
+</p>
 
-4. Play by clicking a game.
+4. Click a game to start playing.
+
+<img src="docs/readme/play.png" alt="Clicking a game in the library to play it" width="800"/>
 
 ## RetroAchievements
 
-1. Turn on RetroAchievements in Settings and log in with your RetroAchievements account.
+1. Open **Settings**, turn on **RetroAchievements**, then click **Log In** and sign in with your [RetroAchievements](https://retroachievements.org) account.
 
-2. Play a game. Achievements unlock as you play.
+2. Start a game. Achievements unlock automatically as you play.
 
-3. View a game's achievements from the Game Settings menu while playing, or by right-clicking a game in your library.
+3. To see a game's achievements, open **Game Settings** while playing and go to the **Achievements** tab, or right-click the game in your library and choose **Achievements**.
 
-Hardcore mode turns off loading save states and limits pausing.
+**Hardcore Mode** (also in Settings) is for players who want a tougher challenge. While it's on, you can't load save states, pausing is limited, and some core options are blocked.
