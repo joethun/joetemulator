@@ -180,7 +180,6 @@ function ToastCard({ compact = false, colors, visible, kind, title, description,
                 borderColor: colors.midDark,
                 boxShadow: SHADOW_CARD,
                 opacity: visible ? 1 : 0,
-                fontFamily: 'var(--font-lexend, system-ui)',
             }}
         >
             {badgeUrl ? (

@@ -226,7 +226,6 @@ export const EmulatorView = memo(({
                 opacity: isVisible ? 1 : 0,
                 pointerEvents: isVisible ? 'auto' : 'none',
                 transition: 'opacity 120ms linear',
-                fontFamily: 'var(--font-lexend, system-ui)',
             }}
             data-emulator-root="1"
         >

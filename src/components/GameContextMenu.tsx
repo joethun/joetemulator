@@ -85,7 +85,7 @@ export function GameContextMenu({
         <div
             ref={menuRef}
             className={`fixed z-50 rounded-xl border-[0.125rem] overflow-hidden shadow-lg ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}
-            style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, width: MENU_W, left: x, top: y, boxShadow: SHADOW_CARD, fontFamily: 'var(--font-lexend, system-ui)' }}
+            style={{ backgroundColor: colors.darkBg, borderColor: colors.midDark, width: MENU_W, left: x, top: y, boxShadow: SHADOW_CARD }}
             onPointerDown={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
         >

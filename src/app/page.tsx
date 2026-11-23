@@ -52,7 +52,7 @@ export default function Home() {
         : undefined;
 
     return (
-        <div className="min-h-screen flex font-[family-name:var(--font-lexend)]" style={{ backgroundColor: settings.currentColors.darkBg }}>
+        <div className="min-h-screen flex" style={{ backgroundColor: settings.currentColors.darkBg }}>
             <Sidebar
                 activeView={app.activeView}
                 colors={settings.currentColors}

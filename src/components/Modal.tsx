@@ -33,7 +33,7 @@ export function Modal({
     return createPortal(
         <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden"
-            style={{ animation: anim, fontFamily: 'var(--font-lexend, system-ui)', zIndex: z }}
+            style={{ animation: anim, zIndex: z }}
             onClick={onClose}
         >
             <div

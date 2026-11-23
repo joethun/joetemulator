@@ -1,10 +1,10 @@
 'use client';
 
 import { memo, ReactNode } from 'react';
-import Image from 'next/image';
 import { Gamepad2, Palette, Settings, Plus, LucideIcon } from 'lucide-react';
 import { ThemeColors, GradientStyle, ViewType } from '@/types';
 import { SHADOW_CARD } from '@/lib/constants';
+import { PixelDuck } from '@/components/PixelDuck';
 
 const NAV_ITEMS: { view: ViewType; icon: LucideIcon; label: string }[] = [
     { view: 'library', icon: Gamepad2, label: 'Library' },
@@ -59,10 +59,10 @@ const NavBtn = memo(({ icon: Icon, label, isActive, colors, onClick, mobile }: {
 });
 NavBtn.displayName = 'NavBtn';
 
-const LogoLink = ({ className }: { className: string }) => (
+const LogoLink = ({ className = '' }: { className?: string }) => (
     <a href="https://github.com/joethun/joetemulator" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository"
-        className={`${className} transition-all active:scale-95 cursor-pointer`}>
-        <Image src="/icons/duck.png" alt="Logo" width={48} height={48} className="object-contain opacity-90 pointer-events-none" draggable={false} />
+        className={`${className} w-12 h-12 duck-hover flex items-center justify-center transition-transform active:scale-95 cursor-pointer`}>
+        <PixelDuck scale={3} />
     </a>
 );
 
@@ -84,7 +84,7 @@ export const Sidebar = memo(({ activeView, colors, gradient, onNavClick, onAddGa
                 style={{ backgroundColor: colors.midDark, boxShadow: '4px 0 12px rgba(0,0,0,0.3)' }}>
                 <div className="flex flex-col items-center gap-4 mb-2">
                     <div className="relative group">
-                        <LogoLink className="block" />
+                        <LogoLink />
                         <Tooltip text={<span className="inline-flex items-center gap-1.5">Joe T Emulator <svg viewBox="-0.5 16.54 32.13 32.13" fill="currentColor" className="w-[0.85em] h-[0.85em]" aria-hidden="true"><path d={SMILEY_PATH} /></svg></span>} colors={colors} />
                     </div>
                     <div className="w-12 h-px" style={divider} />
@@ -107,7 +107,7 @@ export const Sidebar = memo(({ activeView, colors, gradient, onNavClick, onAddGa
             <aside className="md:hidden fixed inset-x-0 bottom-0 pb-6 flex justify-center z-50 pointer-events-none select-none">
                 <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border-[0.125rem] pointer-events-auto backdrop-blur-2xl"
                     style={{ backgroundColor: `${colors.darkBg}e6`, borderColor: `${colors.midDark}80`, boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
-                    <LogoLink className="w-12 h-12 rounded-xl flex items-center justify-center" />
+                    <LogoLink className="rounded-xl" />
                     <div className="w-px h-10 mx-1" style={divider} />
                     {NAV_ITEMS.map(({ view, icon, label }) => (
                         <NavBtn key={view} icon={icon} label={label} isActive={activeView === view} colors={colors} onClick={() => onNavClick(view)} mobile />

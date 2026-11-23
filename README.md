@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/duck.png" alt="Joe T Emulator" width="120"/>
+<img src="public/icons/duck.svg" alt="Joe T Emulator" width="128"/>
 
 <h1>JOE T EMULATOR</h1>
 

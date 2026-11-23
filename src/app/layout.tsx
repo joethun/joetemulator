@@ -15,8 +15,13 @@ export const metadata: Metadata = {
     title: "Joe T Emulator",
   },
   icons: {
-    icon: "/icons/duck.png",
-    apple: "/icons/duck.png",
+    icon: [
+      { url: "/icons/duck.svg", type: "image/svg+xml" },
+      { url: "/icons/duck-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icons/duck-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/duck-48.png", sizes: "48x48", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
   },
 };
 
@@ -30,7 +35,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={lexend.variable} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -38,7 +43,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           }}
         />
       </head>
-      <body className={`${lexend.variable} antialiased`}>
+      <body className="antialiased">
         <ButtonMouseFocusGuard />
         {children}
       </body>

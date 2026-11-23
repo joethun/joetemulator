@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Lexend is loaded by next/font in layout.tsx, which sets --font-lexend on
+   <html>. Making it the sans font applies it everywhere, portals included. */
+@theme inline {
+  --font-sans: var(--font-lexend), ui-sans-serif, system-ui, sans-serif;
+}
+
 html,
 body {
   width: 100%;
@@ -46,4 +52,25 @@ input:-webkit-autofill:focus {
 input:autofill {
   box-shadow: 0 0 0 1000px var(--field-bg, transparent) inset;
   -webkit-text-fill-color: var(--field-fg, currentColor);
+}
+
+/* Pixel duck (src/components/PixelDuck.tsx). Every step is a hard cut, like
+   sprite frames. Translations are in SVG user units (1px = one duck pixel).
+   Idle: the head nods. Hover (.duck-hover): it hops. */
+.pixel-duck { overflow: visible; }
+.pixel-duck .pd-head { animation: pd-nod 2.4s steps(1, end) infinite; }
+
+.duck-hover:hover .pixel-duck .pd-hop { animation: pd-hop 0.5s steps(1, end) infinite; }
+.duck-hover:hover .pixel-duck .pd-head { animation: none; }
+
+@keyframes pd-nod { 0% { transform: none; } 50% { transform: translateY(1px); } }
+@keyframes pd-hop {
+  0% { transform: none; }
+  25% { transform: translate(-1px, -2px); }
+  50% { transform: none; }
+  75% { transform: translate(1px, -2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixel-duck * { animation: none !important; }
 }
