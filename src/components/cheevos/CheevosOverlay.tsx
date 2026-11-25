@@ -49,7 +49,12 @@ export const CheevosOverlay = memo(({ colors, onOpenAchievement }: {
                 {challenges.length > 0 && (
                     <div className="flex gap-2">
                         {challenges.map(c => (
-                            <Tile key={c.id} colors={colors}>
+                            <Tile
+                                key={c.id}
+                                colors={colors}
+                                label={c.title}
+                                onClick={onOpenAchievement ? () => onOpenAchievement(c.id) : undefined}
+                            >
                                 <Badge url={c.badgeUrl} size={40} colors={colors} />
                             </Tile>
                         ))}
@@ -62,14 +67,26 @@ export const CheevosOverlay = memo(({ colors, onOpenAchievement }: {
 CheevosOverlay.displayName = 'CheevosOverlay';
 
 /** Matches EmulatorNotification's save/load tile. */
-function Tile({ colors, children }: { colors: ThemeColors; children: React.ReactNode }) {
+function Tile({ colors, children, label, onClick }: {
+    colors: ThemeColors;
+    children: React.ReactNode;
+    /** Accessible name / tooltip when clickable. */
+    label?: string;
+    onClick?: () => void;
+}) {
+    // The overlay ignores the pointer; clickable tiles opt back in.
+    const Root = onClick ? 'button' : 'div';
     return (
-        <div
-            className="h-10 min-w-10 rounded-xl flex items-center overflow-hidden backdrop-blur-sm shadow-lg"
+        <Root
+            type={onClick ? 'button' : undefined}
+            onClick={onClick}
+            title={onClick ? label : undefined}
+            aria-label={onClick ? label : undefined}
+            className={`h-10 min-w-10 rounded-xl flex items-center overflow-hidden backdrop-blur-sm shadow-lg ${onClick ? 'pointer-events-auto cursor-pointer' : ''}`}
             style={{ backgroundColor: colors.midDark, animation: 'fadeIn 0.3s ease-out both' }}
         >
             {children}
-        </div>
+        </Root>
     );
 }
 
